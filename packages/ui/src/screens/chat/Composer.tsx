@@ -8,7 +8,7 @@ import { Button } from "../../components/Button.js"
 import { EmojiPicker } from "../../components/EmojiPicker.js"
 import { primeiroEndereco } from "../../components/RichText.js"
 import { useAtalhosDeFormatacao } from "../../hooks/useAtalhosDeFormatacao.js"
-import { CloseIcon, PlusIcon, SmileyIcon } from "../../icons.js"
+import { CloseIcon, EnviarIcon, PlusIcon, SmileyIcon } from "../../icons.js"
 import { colarImagens } from "../../lib/colar.js"
 import {
   comandosASugerir,
@@ -1031,12 +1031,17 @@ export function Composer({
               {MENSAGEM_MAX_CARACTERES - value.length}
             </span>
           )}
+          {/* On the phone the button drops its word and keeps the plane, so the
+              text box gets the room (1.3.6). The word stays in the DOM, the
+              `.sr-only` way: it is the button's name. See `.composer-enviar`. */}
           <Button
             type="submit"
             variant="primary"
+            className="composer-enviar"
             disabled={parado || vazio || ocupada || anexosSemLigacao || value.trim().length > MENSAGEM_MAX_CARACTERES}
           >
-            {strings.chat.send}
+            <EnviarIcon size={18} />
+            <span className="composer-enviar-texto">{strings.chat.send}</span>
           </Button>
         </div>
       </form>

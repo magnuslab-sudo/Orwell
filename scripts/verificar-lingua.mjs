@@ -107,13 +107,14 @@ async function abrir({ locale, endereco = BASE, guardada }) {
 /*
   The two sentences that identify the screen's language.
 
-  The first step of the wizard, not the "Create account" title: that only shows
-  in the single-step variant. These two are always in the first render, and
-  they're the question and the step counter, the two things someone opening the
-  app reads first.
+  The first question of Setup (phase 8.1) and the button that creates the
+  account: they are in the first render, and they are what someone opening the
+  app reads first. Until 10/11/2026 these were the strings of the wizard from
+  before phase 8.1 ("Passo 1 de"), which is no longer the first screen, and the
+  script failed in four cases without anyone running it.
 */
-const EM_PORTUGUES = ["Passo 1 de", "Como queres mostrar o teu nome?"]
-const EM_INGLES = ["Step 1 of", "How do you want your name shown?"]
+const EM_PORTUGUES = ["Já usas o Orwell noutro aparelho?", "Não, criar conta"]
+const EM_INGLES = ["Do you already use Orwell on another device?", "No, create an account"]
 
 const diz = (texto, frases) => frases.every((frase) => texto.includes(frase))
 const naoDiz = (texto, frases) => frases.every((frase) => !texto.includes(frase))
@@ -149,11 +150,15 @@ const naoDiz = (texto, frases) => frases.every((frase) => !texto.includes(frase)
   check("e o sistema não a desfaz ao recarregar", naoDiz(texto, EM_PORTUGUES))
 }
 
-// ------------------------------------ 5. a language that doesn't exist falls back
+// ------------- 5. a language that does not exist here falls back to English (1.3.6)
 {
-  const { texto } = await abrir({ locale: "de-DE" })
-  check("um sistema alemão cai no português, e nunca numa chave em cru", diz(texto, EM_PORTUGUES))
-  check("e não mostra chaves", !/\b(gate|settings|sidebar)\.\w+/.test(texto))
+  // Up to 1.3.6 it fell back to Portuguese, and two users said the
+  // app only existed in Portuguese.
+  for (const locale of ["de-DE", "fr-FR", "es-ES"]) {
+    const { lang, texto } = await abrir({ locale })
+    check(`um sistema em ${locale} apanha inglês, e nunca uma chave em cru`, diz(texto, EM_INGLES) && naoDiz(texto, EM_PORTUGUES), `lang=${lang}`)
+    check("e não mostra chaves", !/\b(gate|settings|sidebar)\.\w+/.test(texto))
+  }
 }
 
 await browser.close()

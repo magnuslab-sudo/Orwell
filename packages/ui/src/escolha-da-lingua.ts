@@ -19,12 +19,23 @@ export type Lingua = "pt" | "en"
  * The base language. It is the only one required to be complete, and it is
  * where everything falls back.
  *
- * It is also the default value anywhere detection does not run: tests, environments
- * without `window`, and a `navigator.languages` that names only languages that
- * do not exist here. A German speaker gets Portuguese and changes it in settings,  * what they do NOT get is an automatic translation no one read, which in a privacy
- * product is the worst of the three choices.
+ * It is also the default value where there is no information about the person:
+ * tests, environments without `window`, and a system that names no language.
+ * Someone who names a language that does not exist here does not get the base:
+ * they get `LINGUA_DE_RECURSO`. See there for why.
  */
 export const LINGUA_BASE: Lingua = "pt"
+
+/**
+ * The language for someone who only speaks languages that do not exist here.
+ *
+ * Up to 1.3.6 a browser in German or French opened everything in Portuguese,
+ * and two users said the app only existed in Portuguese. A German reads
+ * English far more often than Portuguese. What they still do NOT get is an
+ * automatic translation no one read, which in a privacy product is the worst
+ * choice.
+ */
+export const LINGUA_DE_RECURSO: Lingua = "en"
 
 /**
  * What can be chosen: a language, or follow the system.
@@ -127,11 +138,12 @@ export interface FontesDaLingua {
  * Pure function, and that is what makes it the place where the rule is tested:
  * the whole order fits in assertions, no browser and no storage.
  *
- * The order: the URL, then the saved choice, then the system, then the base.
- * And the system reads IN ORDER, a `["fr-FR", "en-GB", "pt"]` gives English
- * not Portuguese, because the second preference of whoever wrote it really is
- * English, and serving them Portuguese because Portuguese is the base was ignoring
- * what they said.
+ * The order: the URL, then the saved choice, then the system. A system that
+ * names languages, but none of the ones here, gives `LINGUA_DE_RECURSO`; a
+ * system that names nothing gives the base. And the system reads IN ORDER: a
+ * `["fr-FR", "en-GB", "pt"]` gives English, not Portuguese, because the second
+ * preference of whoever wrote it really is English, and serving them
+ * Portuguese because Portuguese is the base was ignoring what they said.
  */
 export function escolherLingua(fontes: FontesDaLingua = {}): Lingua {
   const pedida = normalizar(fontes.doEndereco ?? undefined)
@@ -139,12 +151,15 @@ export function escolherLingua(fontes: FontesDaLingua = {}): Lingua {
 
   if (fontes.guardada && fontes.guardada !== "auto") return fontes.guardada
 
+  let disseAlguma = false
   for (const etiqueta of fontes.doSistema ?? []) {
     const encontrada = normalizar(etiqueta)
     if (encontrada) return encontrada
+    // An empty or whitespace-only string is not a language: it does not count as named.
+    if (typeof etiqueta === "string" && etiqueta.trim() !== "") disseAlguma = true
   }
 
-  return LINGUA_BASE
+  return disseAlguma ? LINGUA_DE_RECURSO : LINGUA_BASE
 }
 
 /**

@@ -1094,6 +1094,8 @@ function registerIpc(window: BrowserWindow): void {
   // The round trip to the server is measured where the socket lives, in the main
   // process here: measuring it in the renderer would accidentally time the IPC.
   tratar("session:latency", () => session.measureLatency())
+  // The half-open connection check, also where the socket lives. See `Session.verificarLigacao`.
+  tratar("session:verificar-ligacao", () => session.verificarLigacao())
 
   /*
     If the session still writes: the renderer caches the answer and the main

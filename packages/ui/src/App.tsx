@@ -94,7 +94,7 @@ import { strings, translateError, traduzirErro } from "./strings.js"
 import { AvisoDeActualizacao } from "./components/AvisoDeActualizacao.js"
 import { ErrorBoundary } from "./components/ErrorBoundary.js"
 import { LigacaoContext, type LigacaoDaFaixa } from "./components/ConnectionBanner.js"
-import { ToastProvider, useToast } from "./components/Toast.js"
+import { ToastProvider, useDispensarToast, useToast } from "./components/Toast.js"
 import { ConfirmarProvider, useConfirmar } from "./hooks/useConfirmar.js"
 import { Splash } from "./screens/gate/Splash.js"
 import { GateError } from "./screens/gate/GateError.js"
@@ -203,6 +203,9 @@ import { juntarCopiaAoVivo } from "./lib/mesmaMensagem.js"
 /** Exported for tests, which provide a mock bridge; the app itself only ever
  * renders through `App`, which owns the real provider. */
 export const BridgeContext = createContext<EnclaveBridge | null>(null)
+
+/** How often the connection is checked while the page is in view. See the pulse in `App`. */
+export const INTERVALO_DO_PULSO_MS = 25_000
 
 /** How much of a channel's stored history is seeded into React state. */
 const MEMORY_PER_CHANNEL = 200
@@ -3252,19 +3255,76 @@ function Shell({
     when the person is looking. Waiting for the next backoff step would
     leave them seeing "No connection" for half a minute with the network up.
   */
+  /*
+    When connected, "try now" is not enough: on the phone the socket is often
+    left half open (1.3.6). The system suspends the page, the network changes
+    underneath, and the socket stays `OPEN` without ever firing `close`. So,
+    when connected, we ask the server (`verificarLigacao`: a `ping` with a short
+    deadline), and with no answer the session treats the connection as dropped
+    and connects again. With no connection, it connects, as before.
+  */
+  const verificarOuLigar = useCallback(() => {
+    if (connectionRef.current === "online") {
+      void bridge.session?.verificarLigacao?.().catch(() => false)
+      return
+    }
+    ligarAgora(false)
+  }, [bridge, ligarAgora])
+
   useEffect(() => {
     if (stage !== "ready") return
-    const aoVoltarARede = (): void => ligarAgora(false)
+    const aoVoltarARede = (): void => verificarOuLigar()
     const aoVerSe = (): void => {
-      if (document.visibilityState === "visible") ligarAgora(false)
+      if (document.visibilityState === "visible") verificarOuLigar()
+    }
+    // A page that comes back from the back/forward cache (Safari on the iPhone): the
+    // socket left there is almost always a dead socket.
+    const aoVoltarDaCache = (event: PageTransitionEvent): void => {
+      if (event.persisted) verificarOuLigar()
     }
     window.addEventListener("online", aoVoltarARede)
     document.addEventListener("visibilitychange", aoVerSe)
+    window.addEventListener("pageshow", aoVoltarDaCache)
     return () => {
       window.removeEventListener("online", aoVoltarARede)
       document.removeEventListener("visibilitychange", aoVerSe)
+      window.removeEventListener("pageshow", aoVoltarDaCache)
     }
-  }, [stage, ligarAgora])
+  }, [stage, verificarOuLigar])
+
+  /*
+    The pulse: while the page is in view and connected, one check every
+    `INTERVALO_DO_PULSO_MS`. It stops the banner from saying "connected" over a
+    dead socket when the network changes without the page being hidden. Hidden,
+    there is no pulse at all: no battery and no traffic for someone who is not
+    looking, and the check on return handles the rest. A `ping` is a frame of a
+    few bytes.
+  */
+  useEffect(() => {
+    if (stage !== "ready" || connection !== "online") return
+    let pulso: ReturnType<typeof setInterval> | undefined
+    const armar = (): void => {
+      if (pulso !== undefined || document.visibilityState !== "visible") return
+      pulso = setInterval(() => {
+        if (document.visibilityState !== "visible") return
+        void bridge.session?.verificarLigacao?.().catch(() => false)
+      }, INTERVALO_DO_PULSO_MS)
+    }
+    const desarmar = (): void => {
+      if (pulso !== undefined) clearInterval(pulso)
+      pulso = undefined
+    }
+    const aoMudarVisibilidade = (): void => {
+      if (document.visibilityState === "visible") armar()
+      else desarmar()
+    }
+    armar()
+    document.addEventListener("visibilitychange", aoMudarVisibilidade)
+    return () => {
+      desarmar()
+      document.removeEventListener("visibilitychange", aoMudarVisibilidade)
+    }
+  }, [stage, connection, bridge])
 
   const ligacaoDaFaixa = useMemo<LigacaoDaFaixa>(
     () => ({ ligarAgora: () => ligarAgora(true), caiuEm }),
@@ -4890,6 +4950,22 @@ function Shell({
     estaLigado: (who) => online.has(who),
     pronto: stage === "ready",
   })
+
+  /*
+    The "request sent" alert goes away when it stops being the news (1.3.6):
+    when the direct chat opens, and when one of our requests gets an answer. It
+    used to sit on top of the compose bar of the direct chat opened right after,
+    talking about a request already accepted.
+  */
+  const dispensarToast = useDispensarToast()
+  const directaAberta = active !== null && isDirect(active) ? active : null
+  const pedidosNossos = friendships.sent.length
+  const pedidosNossosAntes = useRef(pedidosNossos)
+  useEffect(() => {
+    const respondido = pedidosNossos < pedidosNossosAntes.current
+    pedidosNossosAntes.current = pedidosNossos
+    if (directaAberta !== null || respondido) dispensarToast(strings.userMenu.friendSent)
+  }, [directaAberta, pedidosNossos, dispensarToast])
   /**
    * And the state of all invites, by the same fold and for the same reason.
    *
@@ -7070,6 +7146,8 @@ function Shell({
         ) : view === "config" ? (
           <SettingsScreen
             seccao={seccaoConfig}
+            /* On the phone the screen itself shows the list of sections (1.3.6). */
+            onSeccao={setSeccaoConfig}
             /* The microphone tests use the call banner, without opening it again. */
             microfoneDaChamada={callChannel !== null ? localStream : null}
             address={address}

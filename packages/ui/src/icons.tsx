@@ -648,6 +648,20 @@ export function ReproduzirCheioIcon(props: IconProps): React.JSX.Element {
   )
 }
 
+/**
+ * Send: the paper plane. It only shows on the phone, where the Send button
+ * gives up its word so the text box gets the room (1.3.6). The word stays the
+ * button's name for screen readers.
+ */
+export function EnviarIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Svg {...props}>
+      <path d="M21 3 10.5 13.5" />
+      <path d="M21 3 14.5 21l-4-7.5L3 9.5z" />
+    </Svg>
+  )
+}
+
 /** A left arrow: go back to the previous place on the person's page. */
 export function SetaParaTrasIcon(props: IconProps): React.JSX.Element {
   return (

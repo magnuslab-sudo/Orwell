@@ -829,6 +829,7 @@ export function createBrowserBridge(opcoes: OpcoesDaPonte = {}): PonteDoBrowser 
         return { ok: true }
       },
       latency: () => session.measureLatency(),
+      verificarLigacao: () => session.verificarLigacao(),
       // Synchronous, so the interface can read it mid-frame. This channel's pause lives here (`escritaParada`, the same one that rejects `connect`);
       // the core's pause (`Session.pararDeEscrever`) applies to the caller.
       escreve: () => !escritaParada && session.escreve(),

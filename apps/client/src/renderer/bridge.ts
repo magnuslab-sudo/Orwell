@@ -158,6 +158,8 @@ interface HostApi {
     setVisible: (visible: boolean) => Promise<{ ok: boolean }>
     /** A round trip to the server, in ms. See `bridge.ts` in `@enclave/ui`. */
     latency: () => Promise<number | null>
+    /** Does the connection still carry anything? See `bridge.ts` in `@enclave/ui`. Optional: an old `preload` does not bring it. */
+    verificarLigacao?: () => Promise<boolean>
     /** Whether the session still writes. Synchronous. Optional: an old `preload` does not bring it. */
     escreve?: () => boolean
   }

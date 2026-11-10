@@ -1923,6 +1923,96 @@ export class Session extends Emitter<SessionEvents> {
     return Math.round(performance.now() - partiu)
   }
 
+  /** How long a check waits for the `pong` before it treats the connection as dead. */
+  static PRAZO_DA_VERIFICACAO_MS = 5_000
+
+  /**
+   * How much socket silence makes a send check the connection before it goes out.
+   *
+   * The interface pulse (`INTERVALO_DO_PULSO_MS`, 25 s) brings a `pong` more
+   * often than this, so with the page in view it almost never happens. It covers
+   * the case where nothing said the page came back: the iPhone does not always
+   * fire `visibilitychange` when an installed app is unlocked.
+   */
+  static SILENCIO_ANTES_DE_VERIFICAR_MS = 30_000
+
+  /** The check in progress, if any. Sends wait for it. See `verificarLigacao`. */
+  #verificacao: Promise<boolean> | null = null
+
+  /** When the last frame from the server arrived. Zero before the first. */
+  #ultimaTramaEm = 0
+
+  /**
+   * Does the connection still carry anything? A `ping`, and the `pong` within
+   * the deadline.
+   *
+   * It exists because of the half-open connection (1.3.6). The phone suspends
+   * the page, the network changes underneath, and the socket stays `OPEN`
+   * without ever firing `close`: the app said "connected" and whatever was
+   * written went nowhere. The interface calls this when the page becomes
+   * visible again, when the network comes back, and every so often while the
+   * page is in view (see `App.tsx`).
+   *
+   * With no `pong` in time, the connection counts as dropped: the socket is
+   * dropped, the session stops calling itself "online", and it connects again
+   * right away, without waiting for the backoff. The new connection runs the
+   * usual recovery, and that is how whatever was lost in the meantime arrives.
+   *
+   * Sends made while the check runs wait for it (see
+   * `#esperarPelaVerificacao`). With the connection dead they fail as "the
+   * connection dropped", and the interface queues the message until the
+   * connection is back, instead of letting it go out to a socket that carries
+   * it to no one.
+   *
+   * One at a time: two calls together (the network and the tab at the same
+   * moment) share the same answer. Also `false` when there is no connection
+   * to check.
+   */
+  verificarLigacao(prazoMs = Session.PRAZO_DA_VERIFICACAO_MS): Promise<boolean> {
+    if (this.#verificacao) return this.#verificacao
+    const socket = this.#socket
+    if (this.#connection !== "online" || !socket || socket.readyState !== 1) return Promise.resolve(false)
+    const verificacao = (async (): Promise<boolean> => {
+      try {
+        socket.send(JSON.stringify({ t: "ping" } satisfies ClientFrame))
+      } catch {
+        // A socket that no longer accepts anything answers the question by itself.
+      }
+      const frame = await this.#await("pong", prazoMs).catch(() => null)
+      if (frame?.t === "pong") return true
+      // Replaced midway (an outside `connect()`): the new connection is in charge.
+      if (this.#socket !== socket) return this.#connection === "online"
+      // Dead. Dropped BEFORE closing: its `close`, if it ever comes, no longer belongs to this session.
+      this.#socket = null
+      try {
+        socket.close()
+      } catch {
+        // Closing a dead socket can throw in some environments; it changes nothing.
+      }
+      this.#onClose()
+      if (!this.#deliberateClose) void this.connect().catch(() => {})
+      return false
+    })()
+    this.#verificacao = verificacao
+    void verificacao.finally(() => {
+      if (this.#verificacao === verificacao) this.#verificacao = null
+    })
+    return verificacao
+  }
+
+  /**
+   * A send does not go out during a check: it waits for the answer, and fails if
+   * the connection died. After a long socket silence, the send starts a check.
+   */
+  async #esperarPelaVerificacao(payload?: Payload): Promise<void> {
+    const efemero = payload?.t === "typing" || payload?.t === "buzz"
+    if (!efemero && this.#connection === "online" && Date.now() - this.#ultimaTramaEm > Session.SILENCIO_ANTES_DE_VERIFICAR_MS) {
+      void this.verificarLigacao()
+    }
+    const verificacao = this.#verificacao
+    if (verificacao && !(await verificacao)) throw new Error("the connection dropped")
+  }
+
   /**
    * The channels of this account, for the interface.
    *
@@ -2154,6 +2244,8 @@ export class Session extends Emitter<SessionEvents> {
     }
 
     socket.addEventListener("message", (event) => {
+      // Any frame proves the socket still brings things. See `SILENCIO_ANTES_DE_VERIFICAR_MS`.
+      if (this.#socket === socket) this.#ultimaTramaEm = Date.now()
       // A frame that will not parse is the relay's problem, not a reason to
       // throw inside a DOM event handler where nothing can catch it.
       let frame: ServerFrame
@@ -4532,6 +4624,7 @@ What was left behind:
    */
   async #enviarEmLote(channel: string, payloads: readonly Payload[]): Promise<void> {
     if (!this.#groups.has(channel)) throw new Error("not a member of this channel", { cause: { channel } })
+    await this.#esperarPelaVerificacao(payloads[0])
     const vida = this.#vida
     const preparados = payloads.map((payload) => {
       const conferido = this.#comMencoesConferidas(channel, this.identity.address, payload)
@@ -4652,6 +4745,8 @@ What was left behind:
    */
   async #sendPayload(channel: string, payload: Payload): Promise<string> {
     if (!this.#groups.has(channel)) throw new Error("not a member of this channel", { cause: { channel } })
+    // Before encrypting: a connection found to be dead spends no generation.
+    await this.#esperarPelaVerificacao(payload)
     // The life of this account in the session (S6): what to expect from the pace and wake
     // after an account switch does not leave. See `#vida`.
     const vida = this.#vida

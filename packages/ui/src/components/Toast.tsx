@@ -13,6 +13,16 @@ export type EmpurrarToast = (detail: string, level?: ToastLevel, accao?: AccaoDo
 
 export const ToastContext = createContext<EmpurrarToast | null>(null)
 
+/** Remove the alerts whose text is no longer true. See `useToasts`. */
+export const DispensarToastContext = createContext<((detail: string) => void) | null>(null)
+
+/** The action that removes an alert by its text. Outside `ToastProvider`, it does nothing. */
+export function useDispensarToast(): (detail: string) => void {
+  return useContext(DispensarToastContext) ?? nadaADispensar
+}
+
+function nadaADispensar(): void {}
+
 export function useToast(): EmpurrarToast {
   const push = useContext(ToastContext)
   if (!push) throw new Error("useToast must be used inside a ToastContext provider")
@@ -29,12 +39,13 @@ export function useToast(): EmpurrarToast {
  * is a stable callback, so consumers of the context never re-render either.
  */
 export function ToastProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const { toasts, push, dismiss, pausar, retomar } = useToasts()
+  const { toasts, push, dismiss, pausar, retomar, dispensarTexto } = useToasts()
   // Friend cards in the style of MSN live in the same corner, below the alerts: two
   // stacks in the same corner would overlap. See `AvisosDeAmigos.tsx`.
   const amigos = useAvisosDeAmigos()
   return (
     <ToastContext.Provider value={push}>
+      <DispensarToastContext.Provider value={dispensarTexto}>
       <AvisosDeAmigosContext.Provider value={amigos.empurrar}>
         {children}
         <ToastHost toasts={toasts} onDismiss={dismiss} onPausar={pausar} onRetomar={retomar}>
@@ -46,6 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
           />
         </ToastHost>
       </AvisosDeAmigosContext.Provider>
+      </DispensarToastContext.Provider>
     </ToastContext.Provider>
   )
 }

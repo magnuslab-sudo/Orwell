@@ -20,7 +20,7 @@ import { usePreferenciaDeLingua } from "../../hooks/useLingua.js"
 import { useCamaras } from "../../hooks/useCamaras.js"
 import { useMicrofones } from "../../hooks/useMicrofones.js"
 import { readPrefs, REGRAS_DE_PEDIDOS, usePrefs } from "../../hooks/usePrefs.js"
-import { CopyIcon } from "../../icons.js"
+import { CopyIcon, SetaParaTrasIcon } from "../../icons.js"
 import { diagnosticsSnapshot, formatDiagnostics } from "../../lib/diagnostics.js"
 import { connectionLabel } from "../../lib/format.js"
 import { prefsDeMediaParaONucleo } from "../../lib/mediaPrefs.js"
@@ -33,7 +33,7 @@ import { LINGUAS, strings, traduzirErro } from "../../strings.js"
 import { ConfiguracoesDeVoz } from "./ConfiguracoesDeVoz.js"
 import { SensibilidadeDoMicrofone } from "./SensibilidadeDoMicrofone.js"
 import { FolhaComoFunciona } from "./ComoFunciona.js"
-import { seccaoValida } from "./seccoes.js"
+import { seccaoValida, seccoes, type Seccao } from "./seccoes.js"
 
 /** The public Orwell repository (AGPL-3.0, section 13). */
 const CODIGO_FONTE = "https://github.com/magnuslab-sudo/orwell"
@@ -72,6 +72,7 @@ export function SettingsScreen({
   onToggleSound,
   onEditProfile,
   seccao: pedida,
+  onSeccao,
   bloqueados = [],
   nomeDe,
   onDesbloquear,
@@ -121,6 +122,12 @@ export function SettingsScreen({
    * Account. See `seccaoValida`.
    */
   seccao?: string | undefined
+  /**
+   * Pick another section. Only the phone uses it: there the sidebar menu lives
+   * in a drawer, and the screen opens with the list of sections (1.3.6).
+   * Without it, the screen shows the requested section, as on a wide screen.
+   */
+  onSeccao?: ((seccao: Seccao) => void) | undefined
   /** Who is blocked on this device. Comes from `useAmizade`, like the gesture. */
   bloqueados?: readonly { address: string; at: number }[] | undefined
   nomeDe?: ((address: string) => string) | undefined
@@ -139,6 +146,13 @@ export function SettingsScreen({
   const bridge = useBridge()
   const toast = useToast()
   const seccao = seccaoValida(pedida)
+  /*
+    The phone: the list of sections first, and the section after (1.3.6). See
+    `useMenuNaGaveta`. `naLista` only counts where the menu lives in the drawer;
+    on a wide screen the screen always shows the section.
+  */
+  const menuNaGaveta = useMenuNaGaveta() && onSeccao !== undefined
+  const [naLista, setNaLista] = useState(true)
   const {
     prefs,
     setNotifications,
@@ -323,10 +337,47 @@ export function SettingsScreen({
       })
   }
 
+  if (menuNaGaveta && naLista) {
+    return (
+      <main className="main">
+        <ConnectionBanner state={connection} detail={connectionDetail} />
+        <header className="topbar">
+          <h1>{strings.settings.title}</h1>
+        </header>
+        <nav className="settings-scroll settings-seccoes" aria-label={strings.settings.seccoesDoEcra}>
+          {seccoes().map((entrada) => (
+            <button
+              key={entrada.id}
+              type="button"
+              className="settings-seccoes-item"
+              onClick={() => {
+                onSeccao?.(entrada.id)
+                setNaLista(false)
+              }}
+            >
+              {entrada.label}
+            </button>
+          ))}
+        </nav>
+      </main>
+    )
+  }
+
   return (
     <main className="main">
       <ConnectionBanner state={connection} detail={connectionDetail} />
       <header className="topbar">
+        {menuNaGaveta && (
+          <button
+            type="button"
+            className="settings-voltar"
+            title={strings.settings.voltarAsSeccoes}
+            aria-label={strings.settings.voltarAsSeccoes}
+            onClick={() => setNaLista(true)}
+          >
+            <SetaParaTrasIcon size={18} />
+          </button>
+        )}
         <h1>{strings.settings.title}</h1>
       </header>
 
@@ -904,6 +955,37 @@ export function SettingsScreen({
  * in memory. A failure (leaving channels is network) stays in the sheet, and
  * the account stays up: see `ConfirmarDestruicao`.
  */
+/**
+ * The breakpoint at which the section menu moves to the sidebar drawer. It is
+ * the same as `.sidebar` in `screens.css` (`max-width: 840px`).
+ */
+const LARGO_DO_MENU_NA_GAVETA = "(max-width: 840px)"
+
+function lerMenuNaGaveta(): boolean {
+  try {
+    return typeof window.matchMedia === "function" && window.matchMedia(LARGO_DO_MENU_NA_GAVETA).matches
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Is the section menu in the drawer? Then the screen shows the list itself.
+ * Without `matchMedia` (the tests, by default) the answer is "no": wide screen.
+ */
+function useMenuNaGaveta(): boolean {
+  const [naGaveta, setNaGaveta] = useState(lerMenuNaGaveta)
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return
+    const consulta = window.matchMedia(LARGO_DO_MENU_NA_GAVETA)
+    const mudou = (): void => setNaGaveta(consulta.matches)
+    mudou()
+    consulta.addEventListener("change", mudou)
+    return () => consulta.removeEventListener("change", mudou)
+  }, [])
+  return naGaveta
+}
+
 function DestroyModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const bridge = useBridge()
   return (

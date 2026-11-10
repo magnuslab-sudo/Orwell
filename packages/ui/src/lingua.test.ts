@@ -71,10 +71,29 @@ describe("escolherLingua — a ordem de quem manda", () => {
     expect(escolherLingua({ doSistema: ["EN_gb"] })).toBe("en")
   })
 
-  it("sem nada que se conheça, cai na base e não numa chave em cru", () => {
-    expect(escolherLingua({ doSistema: ["de-DE", "ja"] })).toBe("pt")
+  it("um sistema que só nomeia línguas que não existem aqui apanha inglês", () => {
+    // 1.3.6: two users with the browser in German and French saw the
+    // app only in Portuguese. Someone who speaks neither reads English better.
+    expect(escolherLingua({ doSistema: ["de-DE"] })).toBe("en")
+    expect(escolherLingua({ doSistema: ["fr-FR"] })).toBe("en")
+    expect(escolherLingua({ doSistema: ["es-ES"] })).toBe("en")
+    expect(escolherLingua({ doSistema: ["de-DE", "ja"] })).toBe("en")
+    expect(escolherLingua({ guardada: "auto", doSistema: ["de-DE"] })).toBe("en")
+    expect(escolherLingua({ doEndereco: "klingon", doSistema: ["de-DE"] })).toBe("en")
+  })
+
+  it("uma língua conhecida mais abaixo na lista ganha ao inglês de recurso", () => {
+    expect(escolherLingua({ doSistema: ["de-DE", "pt-PT"] })).toBe("pt")
+    expect(escolherLingua({ doSistema: ["fr", "en-GB"] })).toBe("en")
+    expect(escolherLingua({ doSistema: ["pt-BR"] })).toBe("pt")
+  })
+
+  it("sem informação nenhuma do sistema, cai na base e não numa chave em cru", () => {
+    expect(escolherLingua({ doSistema: [] })).toBe("pt")
     expect(escolherLingua({})).toBe("pt")
     expect(escolherLingua({ doEndereco: "klingon" })).toBe("pt")
+    // Junk in the list is not information: it counts as empty.
+    expect(escolherLingua({ doSistema: ["", "  "] })).toBe("pt")
   })
 })
 
@@ -191,6 +210,19 @@ describe("translateError — o único recurso que não é o português", () => {
     expect(translateError("something else entirely")).toBe("Erro 900\nAconteceu um erro que a app não conhece.\nsomething else entirely")
     definirLingua("en")
     expect(translateError("something else entirely")).toBe("Error 900\nThe app does not know this error.\nsomething else entirely")
+  })
+})
+
+describe('voltar a "automática" segue o mesmo sistema que o arranque', () => {
+  it("na aplicação instalada, a lista do anfitrião, e não o `navigator`", async () => {
+    const { arrancarLingua } = await import("./strings.js")
+    const { aplicarEscolhaDeLingua } = await import("./hooks/useLingua.js")
+    // The host (Electron) says Portuguese; the jsdom `navigator` says "en-US".
+    expect(arrancarLingua({ doSistema: ["pt-PT"] })).toBe("pt")
+    aplicarEscolhaDeLingua("en")
+    expect(linguaActual()).toBe("en")
+    aplicarEscolhaDeLingua("auto")
+    expect(linguaActual()).toBe("pt")
   })
 })
 

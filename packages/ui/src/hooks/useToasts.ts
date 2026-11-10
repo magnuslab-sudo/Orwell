@@ -100,8 +100,12 @@ export function useToasts(): {
   dismiss: (id: number) => void
   pausar: (id: number) => void
   retomar: (id: number) => void
+  dispensarTexto: (detail: string) => void
 } {
   const [toasts, dispatch] = useReducer(toastsReducer, [])
+  // Mirrored in a ref so `dispensarTexto` is stable and sees the current stack.
+  const toastsRef = useRef(toasts)
+  toastsRef.current = toasts
   const counter = useRef(0)
   const relogios = useRef<Map<number, Relogio>>(new Map())
 
@@ -159,5 +163,20 @@ export function useToasts(): {
     }
   }, [])
 
-  return { toasts, push, dismiss, pausar, retomar }
+  /**
+   * Remove the alerts with this text: an alert that is no longer true (1.3.6).
+   *
+   * The "request sent" alert sat on top of the compose bar of the direct chat
+   * that opened right after, and stayed there after the request was accepted.
+   * Whoever knows the sentence no longer holds removes it, instead of waiting
+   * for the timer.
+   */
+  const dispensarTexto = useCallback(
+    (detail: string) => {
+      for (const toast of toastsRef.current) if (toast.detail === detail) dismiss(toast.id)
+    },
+    [dismiss],
+  )
+
+  return { toasts, push, dismiss, pausar, retomar, dispensarTexto }
 }

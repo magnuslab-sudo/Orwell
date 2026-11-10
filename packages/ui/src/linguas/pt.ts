@@ -2742,6 +2742,9 @@ export const pt = {
     videoAuto: "Automática",
 
     title: "Configurações",
+    /* No telemóvel o ecrã abre com a lista das secções (1.3.6). */
+    seccoesDoEcra: "Secções das configurações",
+    voltarAsSeccoes: "Voltar às secções",
     /*
       A língua da interface, e só da interface.
 

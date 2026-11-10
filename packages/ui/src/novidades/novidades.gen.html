@@ -45,6 +45,20 @@ body { margin: 0; background: var(--fundo); }
   <h1>Release notes</h1>
   <p class="subtitulo">Orwell version Carmelo 1.3</p>
   <section class="versao">
+    <h2><span class="numero">1.3.6</span> <time class="data" datetime="2026-11-10">November 10, 2026</time></h2>
+    <ul>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">Mobile: Settings opens with its list of sections. Tap one to open it, and the back button returns to the list. Before, the sections were only in the side drawer.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">Mobile: the message box is wider. The Send button shows an icon instead of the word, and the touch targets stay at 44 px.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Language: a browser or system set only to languages Orwell does not have (German, French, Spanish and so on) now gets English instead of Portuguese. A ?lingua= link and a saved choice still win, and pt or en anywhere in the system list is still used.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Desktop app: choosing &quot;Automatic&quot; in Settings &gt; Account &gt; Language follows the operating system's languages again, the same list the app uses at startup.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Mobile sync: when the page comes back (tab switch, unlock, network change, back-forward cache) and every 25 s while it is visible, the app pings the server with a 5 s timeout. A dead connection is closed and reopened at once, missed messages are fetched, and messages written meanwhile wait and go out after the reconnect. Before, the status could say &quot;connected&quot; over a dead socket and messages went nowhere.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Mobile: the side rail scrolls on short landscape screens, so Settings is always reachable (iPhone SE and iPhone 13 in landscape).</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Mobile: all four Friends tabs fit on screen. &quot;Find&quot; is no longer cut off.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Mobile: the direct message header stays on one line, with icon-only call, video and search buttons.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">The &quot;request sent&quot; notice goes away when you open the direct message or when the request gets an answer. It no longer covers the message box.</span></li>
+    </ul>
+  </section>
+  <section class="versao">
     <h2><span class="numero">1.3.5</span> <time class="data" datetime="2026-11-10">November 10, 2026</time></h2>
     <ul>
       <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The Windows installer is always in English, whatever the system language, with no language picker.</span></li>

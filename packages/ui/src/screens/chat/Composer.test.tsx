@@ -316,7 +316,7 @@ describe("Composer — imagens", () => {
 
   it("sem texto nem imagens, o botão de enviar está fechado", () => {
     render(<Harness />)
-    expect((screen.getByText(strings.chat.send) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: strings.chat.send }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("envia com um argumento só quando não há nada agarrado", async () => {
@@ -413,10 +413,10 @@ describe("Composer — ficheiros", () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<Harness onSend={onSend} />)
-    expect((screen.getByText(strings.chat.send) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: strings.chat.send }) as HTMLButtonElement).disabled).toBe(true)
     await user.upload(clipe(), ficheiro("contrato.pdf", 1000))
     await screen.findByText("contrato.pdf")
-    expect((screen.getByText(strings.chat.send) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole("button", { name: strings.chat.send }) as HTMLButtonElement).disabled).toBe(false)
 
     await user.click(screen.getByText(strings.chat.send))
     expect(onSend).toHaveBeenCalledWith(
@@ -831,7 +831,7 @@ describe("Composer: um separador que já não escreve", () => {
     const caixa = screen.getByPlaceholderText(strings.connection.separadorParado) as HTMLInputElement
     expect(caixa.disabled).toBe(true)
     expect(screen.getByText(strings.connection.separadorParado, { selector: "p" })).toBeTruthy()
-    expect((screen.getByText(strings.chat.send) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: strings.chat.send }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("sem a pergunta na ponte, ou a dizer que sim, escreve-se como sempre", () => {

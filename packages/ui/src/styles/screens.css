@@ -42,6 +42,39 @@
   flex: 1;
 }
 
+/*
+  Short screen: the rail scrolls (1.3.6).
+
+  The page and `.app` have `overflow: hidden` (see `base.css`), and the rail
+  did not scroll. On an iPhone SE in landscape (568x320) and an iPhone 13 in
+  landscape (750x342), Settings, which lives at the bottom of the rail, was
+  cut off or off-screen. Now the rail is as tall as its grid row
+  (`min-height: 0`) and scrolls, with no visible scrollbar, like the phone
+  lists. The buttons do not shrink: a button squeezed to 20 px was no longer
+  a finger target.
+
+  Only on a short screen. On a tall screen nothing overflows, and `overflow`
+  would clip what sticks out the side of a button (the active pill).
+*/
+@media (max-height: 600px) {
+  .rail {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    gap: var(--space-2);
+  }
+
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail > * {
+    flex-shrink: 0;
+  }
+}
+
 /* Circle at rest, rounded square on hover/active — the shape itself says
    "this is where you are". */
 .rail-btn {
@@ -5781,28 +5814,61 @@ button.tag-pill[aria-pressed="true"] {
   gap: var(--space-4);
 }
 
-/* Narrow: the menu lays on top of the panel and scrolls sideways, which is
-   what fits. The alternative was a 196px column eating half the screen. */
-@media (max-width: 720px) {
-  .settings-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
+/*
+  Narrow: the menu lives in the sidebar drawer, and it stays one column, as on
+  a wide screen. Up to 1.3.6 it lay in a row that scrolled sideways, and a
+  280 px drawer fit two and a half sections.
 
-  .settings-nav {
-    flex-direction: row;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
+  And the screen itself shows the list of sections first (`.settings-seccoes`):
+  without it, someone who tapped Settings on the phone saw Account and did not
+  know there were five more. See `SettingsScreen.tsx`.
+*/
+.settings-seccoes {
+  align-items: stretch;
+  gap: var(--space-3);
+}
 
-  .settings-nav-item {
-    flex: none;
-    white-space: nowrap;
-  }
+.settings-seccoes-item {
+  width: 100%;
+  max-width: 560px;
+  align-self: center;
+  min-height: 48px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--font-base);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.settings-seccoes-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-deep);
+}
+
+/* The back-to-list button, in the header. It only exists on the phone (the JS adds it). */
+.settings-voltar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: calc(-1 * var(--space-2));
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.settings-voltar:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .settings-card {
@@ -8338,6 +8404,75 @@ button.tag-pill[aria-pressed="true"] {
   cursor: default;
 }
 
+/* Send: the word on a wide screen, the plane on the phone. See `Composer.tsx`. */
+.composer-enviar svg {
+  display: none;
+}
+
+/*
+  Phone: the text box gets the room (1.3.6).
+
+  At 390 px the box was 119 px wide, between the "+", the emojis and a "Send"
+  spelled out in full: about twelve letters fit. Here Send drops its word and
+  keeps the plane, and the gaps around it shrink. The word stays in the DOM,
+  hidden the `.sr-only` way, and it is the button's name.
+*/
+@media (max-width: 480px) {
+  .chat-composer {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+
+  /* `form.` in front: the skin's capsule (`pele.css`, which comes later) sets
+     the same `padding` with the same specificity, and won. */
+  form.chat-composer .composer-line {
+    gap: var(--space-2);
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+
+  form.chat-composer .composer-line > input {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+
+  .composer-enviar {
+    flex: none;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+  }
+
+  .composer-enviar svg {
+    display: block;
+  }
+
+  .composer-enviar-texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* With a finger, each bar button reaches 44 px. The box text stays at the
+   16 px iOS needs to avoid zooming (see `movel.css`). */
+@media (max-width: 480px) and (pointer: coarse) {
+  .composer-enviar,
+  .composer-line .composer-attach,
+  .composer-line .composer-emoji,
+  .composer-line .composer-buzz {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /**
  * The disabled attachment clip says it's disabled again.
  *
@@ -8817,15 +8952,15 @@ button.tag-pill[aria-pressed="true"] {
     background: rgb(0 0 0 / 0.45);
   }
 
-  /* The stripe doesn't push the separators off-screen: it scrolls horizontally,
-     the way the conversation header does at the same width. */
+  /* The stripe doesn't push the tabs off-screen. Up to 1.3.6 they slid
+     horizontally, with no visible scrollbar, and at 390 px "Encontrar" was
+     cut in half (347 px of tabs in 304): no one guessed there was more. Now
+     the tabs wrap to a second line when they don't fit, and all stay in
+     view. */
   .people-tabs {
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .people-tabs::-webkit-scrollbar {
-    display: none;
+    flex: 1;
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
   }
 
   /* The badge gives way to tabs, which are what will be used there. What it says
@@ -8851,6 +8986,34 @@ button.tag-pill[aria-pressed="true"] {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+}
+
+/* Phone: tighter tabs, so all four fit on one line at 390 px with the
+   conversations handle beside them. At 360 px, with the handle, they wrap to
+   two lines (see above), all in view. */
+@media (max-width: 480px) {
+  .people-bar {
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .people-tabs {
+    gap: var(--space-1);
+  }
+
+  .people-tab {
+    justify-content: center;
+    padding: var(--space-2);
+    font-size: var(--font-sm);
+  }
+}
+
+/* And with a finger, each tab reaches 44 px. */
+@media (pointer: coarse) {
+  .people-tab {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
@@ -11528,4 +11691,54 @@ button.message-citacao:focus-visible {
   font-size: var(--font-xs);
   line-height: 1.25;
   color: var(--warning);
+}
+
+/* ===========================================================================
+   THE CONVERSATION HEADER ON THE PHONE (1.3.6)
+   ===========================================================================
+   At 390 px the header of a direct chat wrapped onto three lines: the name,
+   Call and Video spelled out, search and the members button. It took a fifth
+   of the screen before the first message. Here it stays on one line: the
+   buttons keep only the icon, and the name shrinks with an ellipsis. The word
+   stays in the DOM, hidden the `.sr-only` way, and it is the button's name;
+   the `title` says the same to mouse users. */
+@media (max-width: 480px) {
+  .topbar.topbar-conversa {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  .topbar.topbar-conversa h1 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar.topbar-conversa > :not(h1, .topbar-espaco) {
+    flex: none;
+  }
+
+  .topbar.topbar-conversa .action {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .topbar-rotulo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* With a finger, each header button reaches 44 px. */
+@media (max-width: 480px) and (pointer: coarse) {
+  .topbar.topbar-conversa .action {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
 }

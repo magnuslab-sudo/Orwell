@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import userEvent from "@testing-library/user-event"
 import { formatInviteLink } from "@enclave/client-core"
 import type { EnclaveBridge } from "./bridge.js"
-import { App } from "./App.js"
+import { App, INTERVALO_DO_PULSO_MS } from "./App.js"
 import { PRIMEIROS_PASSOS_KEY } from "./hooks/usePrimeirosPassos.js"
 import { strings } from "./strings.js"
 
@@ -231,6 +231,96 @@ describe('a faixa "Sem ligação" com acção', () => {
     })
     fireEvent.click(botao)
     expect(connect.mock.calls.length).toBe(antes + 2)
+  })
+})
+
+describe("a ligação meio aberta (1.3.6)", () => {
+  /** The test bench bridge, with the connection check counting. */
+  function comVerificacao(): Bancada & { verificar: ReturnType<typeof vi.fn> } {
+    const banco = bancada()
+    const verificar = vi.fn(async () => true)
+    ;(banco.bridge.session as { verificarLigacao?: () => Promise<boolean> }).verificarLigacao = verificar
+    return { ...banco, verificar }
+  }
+
+  function visibilidade(estado: "visible" | "hidden"): void {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => estado })
+  }
+
+  afterEach(() => {
+    visibilidade("visible")
+    vi.useRealTimers()
+  })
+
+  it("ligada, o separador a voltar, a rede a voltar e a página a sair da cache verificam a ligação, sem a substituir", async () => {
+    const { bridge, connect, ligar, verificar } = comVerificacao()
+    render(<App bridge={bridge} />)
+    await dentro()
+    ligar()
+    const ligada = connect.mock.calls.length
+    const antes = verificar.mock.calls.length
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
+      await Promise.resolve()
+    })
+    expect(verificar.mock.calls.length).toBe(antes + 1)
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"))
+      await Promise.resolve()
+    })
+    expect(verificar.mock.calls.length).toBe(antes + 2)
+
+    const voltou = new Event("pageshow") as Event & { persisted?: boolean }
+    Object.defineProperty(voltou, "persisted", { value: true })
+    await act(async () => {
+      window.dispatchEvent(voltou)
+      await Promise.resolve()
+    })
+    expect(verificar.mock.calls.length).toBe(antes + 3)
+    // None of these replaces the socket: that would close a socket that may be fine.
+    expect(connect.mock.calls.length).toBe(ligada)
+  })
+
+  it("enquanto se vê, verifica de tempos a tempos; escondida, não gasta bateria nem rede", async () => {
+    const { bridge, ligar, verificar } = comVerificacao()
+    render(<App bridge={bridge} />)
+    await dentro()
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] })
+    ligar()
+    const antes = verificar.mock.calls.length
+
+    await act(async () => {
+      vi.advanceTimersByTime(INTERVALO_DO_PULSO_MS + 10)
+    })
+    expect(verificar.mock.calls.length).toBe(antes + 1)
+
+    visibilidade("hidden")
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
+    })
+    const escondida = verificar.mock.calls.length
+    await act(async () => {
+      vi.advanceTimersByTime(INTERVALO_DO_PULSO_MS * 4)
+    })
+    expect(verificar.mock.calls.length).toBe(escondida)
+  })
+
+  it("sem ligação não se verifica: liga-se, como antes", async () => {
+    const { bridge, connect, ligar, cair, verificar } = comVerificacao()
+    render(<App bridge={bridge} />)
+    await dentro()
+    ligar()
+    cair()
+    const antes = connect.mock.calls.length
+    const verificadas = verificar.mock.calls.length
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
+      await Promise.resolve()
+    })
+    expect(connect.mock.calls.length).toBe(antes + 1)
+    expect(verificar.mock.calls.length).toBe(verificadas)
   })
 })
 

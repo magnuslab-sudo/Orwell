@@ -7,6 +7,7 @@ import {
   lerPreferencia,
   linguaActual,
   LINGUA_BASE,
+  linguasDoSistemaDoArranque,
   type Lingua,
   type PreferenciaDeLingua,
 } from "../strings.js"
@@ -89,7 +90,7 @@ export function usePreferenciaDeLingua(): {
  */
 export function aplicarEscolhaDeLingua(proxima: PreferenciaDeLingua): void {
   guardarPreferencia(proxima)
-  definirLingua(proxima === "auto" ? escolherLingua({ doSistema: doNavegador() }) : proxima)
+  definirLingua(proxima === "auto" ? escolherLingua({ doSistema: linguasDoSistemaDoArranque() ?? doNavegador() }) : proxima)
   for (const ouvinte of [...ouvintesDaEscolha]) ouvinte()
 }
 

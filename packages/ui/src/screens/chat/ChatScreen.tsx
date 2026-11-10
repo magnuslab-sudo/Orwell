@@ -625,7 +625,9 @@ export function ChatScreen({
   return (
     <main className={`${active ? "main with-members" : "main"}${shaking ? " buzzing" : ""}${naSala ? " com-sala" : ""}`}>
       <ConnectionBanner state={connection} detail={connectionDetail} />
-      <header className="topbar">
+      {/* `topbar-conversa`: on the phone the header stays on one line, with
+          icon-only buttons (1.3.6). See `.topbar.topbar-conversa`. */}
+      <header className="topbar topbar-conversa">
         {active ? (
           <>
             {/* A direct conversation is people, and the form says so: a round marker
@@ -657,6 +659,7 @@ export function ChatScreen({
               <>
                 <Button
                   variant="action"
+                  title={strings.chat.call}
                   onClick={() => {
                     setCallChannel(active)
                     void bridge.call.join(active).catch((error: Error) => {
@@ -666,10 +669,11 @@ export function ChatScreen({
                   }}
                 >
                   <MicIcon size={16} />
-                  {strings.chat.call}
+                  <span className="topbar-rotulo">{strings.chat.call}</span>
                 </Button>
                 <Button
                   variant="action"
+                  title={strings.chat.video}
                   onClick={() => {
                     setCallChannel(active)
                     void bridge.call.join(active, { video: true }).catch((error: Error) => {
@@ -679,7 +683,7 @@ export function ChatScreen({
                   }}
                 >
                   <CameraIcon size={16} />
-                  {strings.chat.video}
+                  <span className="topbar-rotulo">{strings.chat.video}</span>
                 </Button>
               </>
             )}

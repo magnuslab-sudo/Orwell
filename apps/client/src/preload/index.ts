@@ -125,6 +125,7 @@ contextBridge.exposeInMainWorld("enclaveHost", {
     escolherSalaComum: (entrar: boolean) => ipcRenderer.invoke("session:escolher-sala-comum", entrar),
     setVisible: (visible: boolean) => ipcRenderer.invoke("session:set-visible", visible),
     latency: () => ipcRenderer.invoke("session:latency"),
+    verificarLigacao: () => ipcRenderer.invoke("session:verificar-ligacao"),
     // Read during a render, so from cache: the main process pushes the value when
     // it changes (`avisarEscrita`), starting as yes. See the main process.
     escreve: (): boolean => escreveEmCache,

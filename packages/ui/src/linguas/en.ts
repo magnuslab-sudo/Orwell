@@ -1416,6 +1416,8 @@ export const en: Traducao = {
     videoAuto: "Automatic",
 
     title: "Settings",
+    seccoesDoEcra: "Settings sections",
+    voltarAsSeccoes: "Back to sections",
     language: "Language",
     languageAuto: "Automatic",
     languageNote:

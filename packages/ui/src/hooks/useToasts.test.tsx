@@ -162,3 +162,19 @@ describe("useToasts: o relógio pára enquanto alguém está no aviso (WCAG 2.2.
     expect(result.current.toasts.map((t) => t.id)).toEqual([erro])
   })
 })
+
+describe("useToasts: um aviso que deixou de ser verdade sai (1.3.6)", () => {
+  it("dispensarTexto tira os avisos com esse texto, e só esses", () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useToasts())
+    act(() => {
+      result.current.push("pedido enviado")
+      result.current.push("outra coisa", "error")
+    })
+    act(() => result.current.dispensarTexto("pedido enviado"))
+    expect(result.current.toasts.map((toast) => toast.detail)).toEqual(["outra coisa"])
+    // The timer of the removed alert dies too: it does not touch the stack again.
+    act(() => vi.advanceTimersByTime(INFO_TOAST_MS + 10))
+    expect(result.current.toasts.map((toast) => toast.detail)).toEqual(["outra coisa"])
+  })
+})

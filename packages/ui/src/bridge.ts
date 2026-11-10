@@ -654,6 +654,18 @@ export interface EnclaveBridge {
      */
     latency?: () => Promise<number | null>
     /**
+     * Does the connection still carry anything? A `ping` with a short deadline;
+     * with no `pong`, the session treats the connection as dropped and connects
+     * again. `true` when the connection is alive, `false` when it is dead or
+     * there is no connection.
+     *
+     * This guards against the phone's half-open connection (1.3.6): a socket
+     * that says `OPEN` but no longer carries anything to anyone. Optional like
+     * the other additions: an old `preload` does not have it, and then nothing
+     * is checked.
+     */
+    verificarLigacao?: () => Promise<boolean>
+    /**
      * Does this session still write? `false` after the tab loses ownership of
      * the vault or gets stale code (`pararDeEscrever` from the web host):
      * `connect` is then refused with "this tab no longer writes". Synchronous,
