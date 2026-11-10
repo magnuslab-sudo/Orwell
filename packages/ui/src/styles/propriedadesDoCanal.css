@@ -1,0 +1,127 @@
+/* Channel properties by sections (3/11/2026, parity plan §5.3). Its own sheet
+   to not touch the screen sheets. On wide screen, section column on the left and
+   content on the right, like Discord settings. On phone, sections move to a tab
+   row at top, scrolling sideways. Nothing here animates, so reduced motion has
+   nothing to slow. */
+
+/* The sheet widens and has fixed height: changing sections does not jump the window. */
+.sheet.propriedades-do-canal {
+  width: min(880px, calc(100vw - 2 * var(--space-5)));
+  height: min(640px, 88vh);
+  height: min(640px, 88dvh);
+}
+
+/* With a role open, the role editor has two more columns next to ours. */
+.sheet.propriedades-do-canal:has(.cargos[data-aberto]) {
+  width: min(1040px, calc(100vw - 2 * var(--space-5)));
+}
+
+.propriedades {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.propriedades-do-canal .propriedades {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.propriedades-seccoes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-3) var(--space-5) var(--space-5);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.propriedades-aba {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.propriedades-aba:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+
+.propriedades-aba[aria-selected="true"] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+
+.propriedades-aba:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.propriedades-conteudo {
+  min-height: 0;
+}
+
+.propriedades-do-canal .propriedades-conteudo {
+  padding-left: var(--space-5);
+}
+
+/* General's phrase lives inside the panel: no sheet margin around it. */
+.propriedades-lead.sheet-lead {
+  padding: 0;
+}
+
+/* The line above the role editor separated it from the rest of the feed.
+   In one section there's nothing above it anymore. */
+.propriedades-painel .role-editor {
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Mobile: tabs at the top, in a row that scrolls sideways. */
+@media (max-width: 640px) {
+  .sheet.propriedades-do-canal,
+  .sheet.propriedades-do-canal:has(.cargos[data-aberto]) {
+    width: calc(100vw - 2 * var(--space-3));
+    height: 88vh;
+    height: 88dvh;
+  }
+
+  .propriedades-do-canal .propriedades {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .propriedades-seccoes {
+    flex: none;
+    flex-direction: row;
+    gap: var(--space-1);
+    padding: 0 var(--space-4) var(--space-3);
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .propriedades-aba {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .propriedades-do-canal .propriedades-conteudo {
+    flex: 1;
+    padding: var(--space-4) var(--space-4) var(--space-5);
+  }
+}

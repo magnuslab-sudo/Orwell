@@ -1,0 +1,39 @@
+<!--
+  O favicon, com fundo.
+
+  Esteve como data-URI dentro do `index.html` da aplicação, e sem fundo: um
+  traço lilás de dois píxeis sobre o que quer que o browser tenha por trás. Em
+  separadores claros perde-se, e foi assim que se descobriu que "está sem
+  favicon" era, na verdade, "está com um favicon que não se vê".
+
+  Um ficheiro e não um data-URI porque agora é preciso em três sítios — a
+  aplicação, a página e as páginas legais — e três cópias de uma cadeia de
+  novecentos caracteres divergem à primeira vez que alguém acertar num traço.
+
+  A grelha é de 24 e não de 32 de propósito: 24 para 16 é dois terços e 24 para
+  32 é quatro terços, e nas duas as tarjas caem em fronteira de pixel. Com um
+  factor de escala qualquer por cima, não caem, e o favicon fica um borrão.
+
+  O NOME TRAZ A IMPRESSÃO DO DESENHO, e não é arrumação. O Chrome guarda os
+  favicons numa base de dados própria, indexada pelo URL do ícone, e revisita-a
+  ao fim de dias — o `no-cache` do Caddyfile manda no HTML e não lhe diz nada.
+  Um desenho novo debaixo do mesmo nome fica invisível durante uma semana, que
+  foi o que aconteceu à marca de 13 de Agosto. Com a impressão no nome, desenho
+  novo é URL novo, e um URL novo não tem cópia velha para o browser preferir.
+
+  NÃO EDITAR À MÃO: sai de `marca/gerar-marca.py`, que desenha o mesmo O para
+  aqui, para o ícone da aplicação e para o `OrwellMark` da interface.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <rect width="24" height="24" rx="5.5" fill="#0e0f13" />
+  <g fill="#7a85f5">
+    <path d="M4.59865 1.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V3.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V2.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M2.51329 6H7.70308a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H2.51329a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M14.6969 6H19.8867a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H14.6969a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M2.35 10.5H7.15a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H2.35a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M15.25 10.5H20.05a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H15.25a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M4.11329 15H9.30308a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H4.11329a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M16.2969 15H21.4867a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H16.2969a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+    <path d="M4.59865 19.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V21.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V20.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+{
+  "name": "prova-imagem",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "mediasoup": "3.24.2"
+  }
+}

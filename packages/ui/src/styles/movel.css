@@ -1,0 +1,188 @@
+/* ------------------------------------------------- mobile, installed */
+
+/*
+  What installed mode breaks, and nothing else.
+  
+  The web app installs on the main screen (`apps/web/public/
+  manifest.webmanifest`) and its `index.html` calls for `viewport-fit=cover`:
+  the page fills the screen, below the notch, status bar, and gesture bar. Anything
+  touching the edges got covered: the top of the rail below the time, the write bar
+  below the gesture bar.
+  
+  THE ANSWER IS ONE, AT THE ROOT, NOT ONE PER ELEMENT. `.app` and `.gate` gain the
+  margin the device asks for inside, and everything in the grid (rail, channel bar,
+  header, conversation, write bar, status bar) stays in the safe rectangle without
+  knowing anything. One margin per element would need everyone to remember every
+  one across ten thousand lines, and forgetting only showed on a notched phone.
+  The cost is a band of background color behind the time and gesture bar, instead
+  of each panel bleeding to the edge: acceptable, and the touch redesign will choose
+  better.
+  
+  What is `position: fixed` does not live in the grid and measures against the screen, so it
+  takes the margin by hand, one by one, next. The menus JavaScript positions
+  (`.context-menu`, `.activity-menu`) stay out: they open where the finger touched.
+  
+  ON SCREENS WITH NO NOTCH NOTHING CHANGES. The `env()` are zero, and each rule here
+  returns the value the original rule already had. That is why all math is `calc(o que lá estava + margem)`
+  and never a new number.
+  
+  This file comes after `screens.css` and `overlays.css`, because coming last is how it wins,
+  and before `fundo.css`, which must be last for the reasons `styles.css` explains.
+  
+  The three things this header said were OUT OF SCOPE, touch targets for 44 px,
+  long press instead of right click, and the virtual keyboard covering the write
+  bar, all landed in September 2026, in the slice the owner asked for after using
+  the app on a real phone. Targets and hover are in `screens.css` (under `pointer: coarse`), long
+  press in `hooks/useToqueLongo.ts`, and the keyboard at the end of this file. What stays out is
+  the touch redesign of `docs/PLANO_MOVEL.md`: bottom navigation bar, edge drag, landscape.
+  See `docs/PENDENTES.md`.
+  */
+
+:root {
+  --seguro-topo: env(safe-area-inset-top, 0px);
+  --seguro-direita: env(safe-area-inset-right, 0px);
+  --seguro-fundo: env(safe-area-inset-bottom, 0px);
+  --seguro-esquerda: env(safe-area-inset-left, 0px);
+}
+
+.app,
+.gate {
+  padding: var(--seguro-topo) var(--seguro-direita) var(--seguro-fundo) var(--seguro-esquerda);
+}
+
+/* The veil covers the whole screen; the sheet it centers is what can't go below the notch. */
+.overlay {
+  padding: var(--seguro-topo) var(--seguro-direita) var(--seguro-fundo) var(--seguro-esquerda);
+}
+
+/* The ones that float stuck to a corner. */
+.toast-stack,
+.call-dock {
+  right: calc(var(--space-5) + var(--seguro-direita));
+  bottom: calc(var(--space-5) + var(--seguro-fundo));
+}
+
+/*
+  The call dock rises with the keyboard, by the FOOT, never by `transform`.
+  
+  A negative `translateY` looked simpler and is only safe while the dock is in the factory corner. It DRAGS (see `CallDock.tsx`), and whoever drags it leaves it with `top`/`left` written and `bottom: auto`: in that state the `translateY` subtracts from the CHOSEN position, and a dock dropped in the top third with the iPhone keyboard open would end up at y ≈ -186, off screen, with it the only way back to the call.
+  
+  By the foot it doesn't happen, and the dragged case excludes itself: `bottom: auto` on the element ignores this rule entirely, and the dock stays where you put it.
+  */
+.call-dock {
+  bottom: calc(var(--space-5) + var(--seguro-fundo) + var(--teclado, 0px));
+}
+
+.aviso-versao {
+  left: calc(var(--space-5) + var(--seguro-esquerda));
+  bottom: calc(var(--space-5) + var(--seguro-fundo));
+}
+
+.notif-panel {
+  left: calc(68px + var(--seguro-esquerda));
+  bottom: calc(var(--space-5) + var(--seguro-fundo));
+}
+
+/* The drawers. Same widths that `screens.css` makes fixed: outside them are
+   grid panels, and the root already handles them. */
+@media (max-width: 1100px) {
+  .members {
+    top: var(--seguro-topo);
+    right: var(--seguro-direita);
+    bottom: var(--seguro-fundo);
+  }
+}
+
+@media (max-width: 840px) {
+  .sidebar,
+  .people-aside {
+    top: var(--seguro-topo);
+    bottom: var(--seguro-fundo);
+    /* The 60px rail is already pushed by the root; the drawer opens next to it. */
+    left: calc(60px + var(--seguro-esquerda));
+  }
+
+  .drawer-scrim,
+  .people-scrim {
+    left: calc(60px + var(--seguro-esquerda));
+  }
+}
+
+/*
+  iOS zooms the page when focusing a field with text below 16px, and does not
+  reset it on blur: the user ends up mid-conversation with a zoomed screen and
+  the text bar cut off. The app uses 14 and 15.
+
+  `pointer: coarse` means a finger: on a desktop with a mouse, this rule does
+  not exist, and field text stays as it always was.
+
+  The `!important` is intentional and the only one in this file. Dozens of
+  fields have their text set by more specific rules (`.chat-composer input`,
+  `.gate-card input`, ...), and beating them one by one was the same checklist
+  we wanted to avoid that the root up there already prevents. Checkboxes and
+  cursors have no text, so they stay out.
+*/
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/*
+  The virtual keyboard, and the text bar it covered.
+  
+  `base.css` prevents the page from scrolling (`overflow: hidden`, `100dvh`),
+  because a chat is a window, not a document. The cost is that the usual fix,   the page scrolls and the text bar moves up with it, does not exist here:
+  with the keyboard open, the bar stayed below it and no gesture could bring it
+  back. Users typed blind.
+  
+  Where the browser knows `interactive-widget=resizes-content` (see
+  `index.html`), the page shrinks and these rules have no effect. Where it does
+  not, today's iOS, the `useVisualViewport` measures how much the keyboard
+  covers and writes it to `--teclado`, and that is what adds here.
+  
+  `padding-bottom` in a separate rule, not inside the `padding` shorthand up
+  there: this keeps the notch math readable where it is, without adding a
+  second topic. And the rail, the channel bar, and the conversation know nothing
+  about this, just as they know nothing about the notch.
+  
+  This block comes AFTER the 16px text block on purpose: the test that pins the
+  sheet pulls the first `@media (pointer: coarse)` it finds to verify that no
+  other rule touches field text.
+  */
+@media (pointer: coarse) {
+  .app,
+  .gate {
+    padding-bottom: calc(var(--seguro-fundo) + var(--teclado, 0px));
+  }
+
+  /*
+    Modal sheets too, and iOS needs them.
+
+    The `interactive-widget` viewport serves Android on ALL screens; iOS does
+    not know it, and was only served where `--teclado` applied. "New room",
+    "Change name", any sheet with a field: you typed and could not reach the
+    button, because the sheet is centered on the entire screen and half of it
+    was below the keyboard.
+  */
+  .overlay {
+    padding-bottom: calc(var(--seguro-fundo) + var(--teclado, 0px));
+  }
+}
+
+/*
+  Tooltips (`[data-tip]`) do not exist on touch.
+
+  They are a balloon that appears on mouse hover. On a touch screen `:hover`
+  gets STUCK to the last tapped button: tapping the hamburger left "Open side
+  panel" floating over the first line of the drawer, which is the open channel.
+  No hover means no tooltip; the accessible name (`aria-label`) stays.
+*/
+@media (hover: none) {
+  [data-tip]::after,
+  [data-tip]::before {
+    display: none;
+  }
+}

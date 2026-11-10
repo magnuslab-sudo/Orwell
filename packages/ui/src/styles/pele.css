@@ -1,0 +1,838 @@
+/* ------------------------------------------------------------------- pele */
+
+/*
+  The "Tokyo Rain, midnight" skin: the layout of the approved boards.
+
+  `tokens.css` gives the colors; this sheet gives the form: glass panels with
+  14px corners and 12px gap between them, the rail without background, sidebar
+  lines rounded, messages in glass balloons, the input bar in a capsule, and
+  buttons from the design (primary in gradient, hang up in pink).
+
+  It comes after the screen sheets and before `movel.css`: it beats them by
+  coming later, and leaves the phone the final say. The layout rules (gaps,
+  columns) only apply on wide screens, above 840px, where the sidebar is a
+  column and not a drawer.
+
+  No color is written by hand here: everything comes from `tokens.css`.
+*/
+
+body {
+  font-family: var(--fonte);
+  color: var(--text);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--titulo);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--titulo);
+}
+
+/* ------------------------------------------------------------- o vidro */
+
+/*
+  The color of panels, cards, sheets, and menus is all in `paineis.css`,
+  which comes after this sheet. This file only has the form.
+*/
+
+/* The uppercase spaced labels, like "text", "voice", and "members". */
+.members-header,
+.category-name,
+.settings-nav-title {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--discreto);
+}
+
+/* -------------------------------------------------------------- o carril */
+
+.rail {
+  background: transparent;
+}
+
+.rail-btn {
+  border-radius: var(--radius-lg);
+  background: var(--vidro);
+  border: 1px solid var(--vidro-contorno);
+  color: var(--apagado);
+}
+
+.rail-btn:hover {
+  background: var(--bg-hover);
+  color: var(--titulo);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+/* The open target: outline and icon in the accent color, no fill. */
+.rail-btn.active {
+  background: var(--vidro);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.rail-btn::before {
+  display: none;
+}
+
+/* -------------------------------------------------------- a barra lateral */
+
+.sidebar-header {
+  height: auto;
+  min-height: 46px;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom-color: var(--vidro-contorno);
+  color: var(--titulo);
+}
+
+.sidebar-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.channel-row,
+.room-row {
+  border-radius: var(--radius-md);
+}
+
+.channel-row.current,
+.room-row.current {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.channel-row.current::before {
+  display: none;
+}
+
+.channel,
+.room {
+  color: var(--secundario);
+}
+
+.channel-row.current .channel,
+.room-row.current .room {
+  color: var(--titulo);
+}
+
+/* --------------------------------------------------------------- a conversa */
+
+.topbar {
+  color: var(--titulo);
+}
+
+.timeline-divider::before,
+.timeline-divider::after {
+  border-top-color: var(--vidro-contorno);
+}
+
+/* Each message in a glass balloon, with the top corner touching the speaker. */
+.message:hover {
+  background: transparent;
+}
+
+.message .message-body {
+  min-width: 0;
+  /* The balloon is the size of what it holds, not the column: "ok" is a small
+     balloon, a paragraph is a wide balloon, an image is the image. Owner request
+     on 27 October 2026, for rooms and direct messages. */
+  width: fit-content;
+  max-width: min(640px, 100%);
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-sm);
+  background: var(--vidro);
+  line-height: 1.55;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.message:hover .message-body {
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.message.grouped .message-body {
+  border-top-left-radius: var(--radius-lg);
+}
+
+.message .author {
+  color: var(--titulo);
+}
+
+/* The input bar in a glass capsule. */
+.chat-composer .composer-line {
+  padding: var(--space-3) 10px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: 16px;
+  background: var(--vidro);
+}
+
+.chat-composer .composer-line input,
+.chat-composer .composer-line textarea {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* ------------------------------------------------------------ the controls */
+
+/* The primary from the boards: gradient from indigo to accent, with dark text.
+   The glow around it (owner, 27 October 2026: "subtle glow on pink and blue
+   buttons") is only outer shadow: the background and letter stay the same, and
+   so does the contrast. */
+.primary {
+  background: linear-gradient(135deg, var(--indigo), var(--accent));
+  color: var(--on-accent);
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--accent) 14%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--indigo), var(--accent));
+  filter: brightness(1.08);
+}
+
+/* Destroy and hang up: full pink with dark text. 6.5:1 measured. The glow is
+   from the primary, in the button color. */
+.danger:not(.ghost) {
+  background: var(--danger);
+  color: var(--on-danger);
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--danger) 14%, transparent),
+    0 0 14px color-mix(in srgb, var(--danger) 26%, transparent);
+}
+
+/* Disabled doesn't draw attention: no glow. */
+.primary:disabled,
+.danger:not(.ghost):disabled {
+  box-shadow: none;
+}
+
+.danger:not(.ghost):hover:not(:disabled) {
+  background: var(--danger);
+  filter: brightness(1.08);
+}
+
+.action,
+.ghost,
+.chip {
+  border-color: var(--poco-contorno);
+}
+
+.action {
+  background: var(--poco);
+  color: var(--secundario);
+}
+
+.action:hover,
+.ghost:hover:not(:disabled),
+.chip:hover {
+  color: var(--titulo);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+/* The input fields are wells: darker than glass. */
+.sheet-body input,
+.sheet-body textarea,
+.prompt input,
+.gate-card input,
+.chat-composer input,
+select {
+  background-color: var(--poco);
+  border-color: var(--poco-contorno);
+}
+
+select option {
+  background: var(--vidro-solido);
+}
+
+/* The switch button darkens against the light accent. */
+.interruptor[aria-checked="true"] .interruptor-botao {
+  background: var(--on-accent);
+}
+
+/* --------------------------------------------- folhas, menus e avisos */
+
+.overlay {
+  background: rgb(4 6 14 / 0.6);
+}
+
+.toast {
+  border-left: 3px solid var(--accent);
+}
+
+/* Errors with a code: full border in pink and "Error 104" in pink. */
+.toast.error {
+  border: 1px solid var(--danger);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.toast.error p::first-line {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------- wide layout */
+
+@media (min-width: 841px) {
+  /* `:root .app` not `.app`: the notch margin (`movel.css`) comes after and
+     overwrites the root `padding`. Here we add the skin's padding to its own.
+
+     The left side gets the same padding as the other three and as `column-gap`. Without
+     the notch the icon bar stuck to the window edge, and the grid read crooked: padding
+     on the right, nothing on the left. See `grelhas.test.ts`. */
+  :root .app {
+    grid-template-columns: 76px 244px 1fr;
+    column-gap: var(--space-4);
+    padding: calc(var(--space-4) + var(--seguro-topo)) calc(var(--space-4) + var(--seguro-direita))
+      calc(var(--space-4) + var(--seguro-fundo)) calc(var(--space-4) + var(--seguro-esquerda));
+  }
+
+  :root .app.sem-barra {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .rail {
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+  }
+
+  .rail-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .sidebar {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* No `row-gap`: the grid has eight rows and almost all come empty, and a
+     `row-gap` pays the spacing between empty rows too. The padding goes at the top. */
+  .main {
+    background: transparent;
+    grid-template-rows: auto 56px auto auto auto minmax(0, 1fr) auto auto;
+  }
+
+  .main > .topbar {
+    margin-bottom: var(--space-3);
+  }
+
+  /* The input bar spans the full width of the main area, like the top bar: without
+     the 20px inner margin on each side, it ended 15px before the end of the members
+     panel and did not align with anything (owner, 27 October 2026). The capsule has
+     its own padding; the margin was extra. */
+  .chat-composer,
+  .chat-escrita-trancada {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .main.with-members {
+    column-gap: var(--space-4);
+  }
+
+  .topbar {
+    border-radius: var(--radius-lg);
+    padding: 0 18px;
+  }
+
+  .members {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------- a chamada, na concha */
+
+/*
+  Open voice room: the call is the entire main area. The conversation header,
+  member list, chat and input bar go away; "Room chat" brings them back (see
+  `ChatScreen`). The connection banner, friend request and status bar stay.
+  */
+.main.com-sala {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "banner"
+    "topbar"
+    "call"
+    "pedido"
+    "intro"
+    "timeline"
+    "composer"
+    "status";
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto auto;
+}
+
+.main.com-sala > :not(.connection-banner, .call, .chat-pedido, .statusbar) {
+  display: none;
+}
+
+.main.com-sala .call-people {
+  overflow-y: auto;
+}
+
+/* "View stage only": the call takes the entire window. Exit with Esc. */
+:root .app.so-palco {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.so-palco > .rail,
+.app.so-palco > .sidebar,
+.app.so-palco > .drawer-scrim {
+  display: none;
+}
+
+/*
+  The call box (the dock, in side layout) and the column foot panel live in
+  `painel.css` since P1 (28 October 2026).
+*/
+
+/*
+  A line that scrolls when it does not fit (`components/Andante.tsx`): the
+  label of the side card, the track name in the broadcaster's card, and the
+  display in the "Share audio" sheet. One line only, overflow hidden; with
+  `.andante` (set by the component, only when text does not fit) the tape slides
+  left continuously, with the ends fading. The tape has two copies of the text
+  with the same padding between them and at the end, and the loop is half the tape:
+  the second copy reaches where the first began.
+*/
+.andante-caixa {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.andante-caixa .andante-fita {
+  display: inline-flex;
+  gap: 1.6em;
+}
+
+.andante-caixa.andante {
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.andante-caixa.andante .andante-fita {
+  padding-right: 1.6em;
+  animation: call-dock-anda 9s linear infinite;
+}
+
+@keyframes call-dock-anda {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* With reduced motion the label still scrolls, at half speed. Until 28 October
+     2026 it stopped and cut with ellipsis, and on Windows with animations off (which
+     the browser reads as reduced motion) the personal message, room and track name
+     all got cut without ever scrolling: the owner saw it in places where text did not
+     fit. The scrolling label exists to read what does not fit; stopped, it does not
+     help. Same logic as the opening ring. The `!important` overrides the universal
+     rule in `base.css`, which sets duration to 0.01ms and one loop only. */
+  .andante-caixa.andante .andante-fita {
+    animation: call-dock-anda 18s linear infinite !important;
+  }
+}
+
+/* ---------------------------------------------------------------- gate */
+
+/* gate */
+/*
+  The gate in midnight skin: sign in, create account, import, pair, another
+  tab, revoked device, and the opening.
+
+  The background (the two lights and still rain) comes from `fundo.css`, which
+  serves `.gate` like it serves `body`. Here is the shape: a glass card centered
+  with faint cyan outline, fields as wells, primary with cyan-to-indigo gradient
+  and dark text, errors in pink at the field location, and the opening.
+*/
+
+/* The card text color is in `paineis.css`. */
+.gate-card {
+  border: 1px solid var(--portao-contorno);
+}
+
+.gate-card h1 {
+  color: var(--titulo);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+/* Fields are wells, with the same corner radius as input lines (10px). */
+.gate-card input:not([type="checkbox"]) {
+  background-color: var(--poco);
+  border-color: var(--poco-contorno);
+  border-radius: var(--radius-md);
+}
+
+/* Focus: the accent ring from `base.css`, flush with the well (1px not 2px,
+   because with the field outline it read as two rings). */
+.gate-card input:not([type="checkbox"]):focus {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.gate-card input:not([type="checkbox"]):focus-visible {
+  outline-offset: 1px;
+}
+
+/* Field labels are in normal case: at the gate it is a question, not a form.
+   The file button is a label, and inherited uppercase ("IMPORT ACCOUNT"). */
+.gate-card label:not(.checkbox) {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--secundario);
+}
+
+.gate-card label.ghost.file {
+  color: var(--texto);
+  font-size: var(--font-base);
+}
+
+/* Primary: cyan to indigo gradient, dark text. 6.5:1 or better on both. */
+.gate .primary {
+  background: linear-gradient(135deg, var(--accent), var(--indigo));
+  color: var(--on-accent);
+  /* Same brightness as the primary button outside the gate. */
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--accent) 14%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.gate .primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent), var(--indigo));
+}
+
+.gate .ghost,
+.gate .reveal-toggle {
+  background: var(--poco);
+  border-color: var(--poco-contorno);
+}
+
+/* Errors, in pink, at the field location: full border and "Error 104" in bold
+   on the first line. */
+.gate-card .error {
+  margin: 0;
+  padding: 10px var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+  color: var(--danger);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.gate-card .error strong {
+  font-weight: 700;
+}
+
+/* The warning: cyan line on the left, and quiet text. */
+.gate-warning {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* The invite and revoked device, shown over the gate: glass too. */
+.gate-convite {
+  border-color: var(--portao-contorno);
+  border-radius: var(--radius-md);
+  background: var(--flutuante);
+  color: var(--secundario);
+}
+
+/* The waiting tab: the first sentence is the title, the second explains. */
+.outro-separador .gate-lead {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--titulo);
+}
+
+.outro-separador .gate-lead + p {
+  color: var(--secundario);
+}
+
+/* Import: the file button, and below the sentence, warning and button,
+   in the same column and with the same padding as the rest of the card. */
+.gate-card .import-account,
+.gate-card .import-account form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ------------------------------------------------------------- a abertura */
+
+/*
+  The opening: the O drawn brightening banner by banner, top to bottom, inside
+  a thin ring that spins slowly; "Opening..." below, quiet.
+
+  Only `opacity` and `transform`, which the compositor renders without repainting.
+  Also true for the opacity of each `<path>` inside the SVG with `drop-shadow`:
+  tested 3 November 2026 on Chrome, with the main thread busy for two seconds
+  (`scripts/abertura-prova.mjs`), one animated width stopped and the banners did
+  not. No JavaScript per frame: the phase between mounts is a `startTime` set once
+  (`abertura-viva.ts`), the rest is CSS.
+
+  With `prefers-reduced-motion` everything still moves, slower: the ring spins and
+  the whole mark pulses opacity (see end of this section).
+*/
+.abertura {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.abertura-sinal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--abertura-lado);
+  height: var(--abertura-lado);
+}
+
+/* The ring: one thin complete circle, and on top a ring in four quarters with
+   the site colors, rotating.
+   
+   Owner request 27 October 2026: "the circle around Orwell divided into 4 parts
+   with site colors alternately". The quarters are cyan, indigo, pink and green
+   (`--acento`, `--indigo`, `--rosa`, `--presenca`: the four skin colors, in the
+   order the site uses them), adjacent with no gap: the owner chose this from four
+   versions (one with gaps, one with two colors, this one, and one with cyan and
+   pink). Drawn with a `conic-gradient` clipped to a ring with a radial mask: a
+   `border` can only paint four sides, and the sides of a circle are not quarters.
+   
+   28 October 2026, owner request: "gradients between colors and more speeds".
+   The four colors no longer have edges: each fades into the next, and the last
+   fades back to the first, so the loop seam does not show. The ring no longer
+   spins at constant speed: starts fast, brakes mid-loop, slows down, speeds up
+   again to close the loop (`abertura-gira-vivo`, one curve per segment). Still
+   only `transform`, on the compositor. The small ring on the button ("Opening...")
+   keeps constant speed: it is a letter, not a signal.
+   
+   3px and `--abertura-volta` per loop: was a 1.5px arc at 2.4s, and appeared
+   stopped. */
+.abertura-anel {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.abertura-anel::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--acento) 0deg,
+    var(--indigo) 90deg,
+    var(--rosa) 180deg,
+    var(--presenca) 270deg,
+    var(--acento) 360deg
+  );
+  /* Only the 3px crown: the center stays transparent for the mark. */
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  filter: drop-shadow(0 0 8px var(--portao-brilho));
+  animation: abertura-gira-vivo var(--abertura-volta) linear infinite;
+}
+
+.abertura-marca {
+  width: calc(var(--abertura-lado) / 2);
+  height: calc(var(--abertura-lado) / 2);
+  color: var(--accent);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 22%, transparent));
+}
+
+/* Each banner lights in its turn: the line number (`--linha`, 0 to 6) sets the delay. */
+.abertura-marca path {
+  opacity: 0.18;
+  animation: abertura-tarja var(--abertura-tarjas) var(--ease) infinite;
+  animation-delay: calc(var(--linha, 0) * 110ms);
+}
+
+.abertura-texto {
+  margin: 0;
+  font-size: var(--font-sm);
+  letter-spacing: 0.04em;
+  color: var(--discreto);
+}
+
+/* The emergency exit: a 12px link, quiet, no text around it. Out of flow,
+   below: appearing does not push the mark off center. */
+.abertura-saida {
+  position: absolute;
+  top: calc(100% - var(--space-3));
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--font-sm);
+  color: var(--discreto);
+}
+
+/*
+  The small ring in "Opening...": the same arc as the splash, scaled to the
+  letter, inside the gate button while the key derives (one to seven seconds on
+  a phone). Until 26 October 2026 the button only changed the word, and a button
+  still for seven seconds reads as a frozen app. Owner request: "Opening" must
+  have a spinning animation.
+
+  Rotates with the text color where it is (`currentColor`): in the primary button
+  it is light text on the accent. Only `transform`, like the big ring.
+*/
+.anel-ocupado {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.5em;
+  vertical-align: -0.15em;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  animation: abertura-gira 0.9s linear infinite;
+}
+
+@keyframes abertura-gira {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* The loop with speeds: starts fast (0 to 0.62 loop in 38% of time), brakes and
+   slows (another 0.12 loop in 24% of time), speeds up again to close. One curve
+   per segment; only `transform`. */
+@keyframes abertura-gira-vivo {
+  0% {
+    transform: rotate(0turn);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.7, 0.45);
+  }
+  38% {
+    transform: rotate(0.62turn);
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.6, 1);
+  }
+  62% {
+    transform: rotate(0.74turn);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.5, 1);
+  }
+  100% {
+    transform: rotate(1turn);
+  }
+}
+
+/* Off, lights, stays lit, and off again before the next loop. */
+@keyframes abertura-tarja {
+  0% {
+    opacity: 0.18;
+  }
+  22%,
+  64% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.18;
+  }
+}
+
+@keyframes abertura-pulsa {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/*
+  The opening fade-out (`abertura-viva.ts`): a copy of the last splash stays on
+  top and fades; the next screen waits hidden below and appears at the same time.
+  The dawn comes from `body::before` and does not hide: the background does not
+  flicker. The duration comes from the script (`--abertura-saida`), which removes
+  the copy.
+  */
+.abertura-veu {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.abertura-a-segurar body > :not(.abertura-veu) {
+  opacity: 0;
+}
+
+.abertura-a-sair .abertura-veu {
+  animation: abertura-esbate var(--abertura-saida, 200ms) ease-out both;
+}
+
+.abertura-a-sair body > :not(.abertura-veu) {
+  animation: abertura-esbate var(--abertura-saida, 200ms) ease-out reverse both;
+}
+
+@keyframes abertura-esbate {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+  Reduced motion: the ring spins slower, the banners stay lit and the whole mark
+  pulses opacity. The `!important` overrides the universal rule in `base.css`,
+  which shortens all animations to 0.01ms.
+
+  The `animation` here does not reset the phase to zero: the phase is not in an
+  `animation-delay` (it was until 3 November 2026, and each splash change jumped
+  to the start of the loop), it is in the `startTime` that `abertura-viva.ts` sets
+  at each mount.
+*/
+@media (prefers-reduced-motion: reduce) {
+  /* With reduced motion the ring still spins, slower: it signals the opening is
+     alive, and a progress indicator is essential motion (WCAG 2.3.3). Until 27
+     October 2026 it stopped, and on Windows with animations off, which Firefox
+     reads as reduced motion, the opening looked frozen. The `!important` overrides
+     the universal rule in `base.css`. */
+  .abertura-anel::after {
+    animation: abertura-gira-vivo 4.4s linear infinite !important;
+  }
+
+  .anel-ocupado {
+    animation: abertura-gira 1.8s linear infinite !important;
+  }
+
+  .abertura-marca path {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .abertura-marca {
+    animation: abertura-pulsa 3.2s ease-in-out infinite !important;
+  }
+
+  /* The fade-out fades the same way, slower (`SAIDA_REDUZIDA_MS`): a hard cut is
+     not less motion, it is a flash. */
+  .abertura-a-sair .abertura-veu {
+    animation: abertura-esbate var(--abertura-saida, 360ms) ease-out both !important;
+  }
+
+  .abertura-a-sair body > :not(.abertura-veu) {
+    animation: abertura-esbate var(--abertura-saida, 360ms) ease-out reverse both !important;
+  }
+}

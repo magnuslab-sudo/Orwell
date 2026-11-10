@@ -1,0 +1,34 @@
+{
+  "name": "@enclave/client-core",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cifra-worker": {
+      "types": "./dist/media-sframe-worker.d.ts",
+      "default": "./dist/media-sframe-worker.js"
+    },
+    "./contas": {
+      "types": "./dist/contasDoAparelho.d.ts",
+      "default": "./dist/contasDoAparelho.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@enclave/crypto": "*",
+    "@enclave/protocol": "*",
+    "@noble/ciphers": "2.1.1",
+    "@noble/hashes": "^2.0.1",
+    "@sapphi-red/web-noise-suppressor": "0.4.1"
+  },
+  "license": "AGPL-3.0-only"
+}

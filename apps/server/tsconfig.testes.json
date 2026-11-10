@@ -1,0 +1,16 @@
+{
+  "//": "SÓ PARA VERIFICAR TIPOS DOS TESTES (1.0 «Arca»): npx tsc -p apps/server/tsconfig.testes.json. Não emite nada; o tsconfig.json de produção continua a excluir os testes. O DOM entra só aqui, para os tipos de WebRTC dos testes.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false
+  },
+  "include": ["src/**/*.ts", "testes/**/*.ts"],
+  "exclude": []
+}

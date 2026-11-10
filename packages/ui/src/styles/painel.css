@@ -1,0 +1,246 @@
+/*
+  The control panel: the bottom of the left column.
+  
+  Design P1 from the owner, "console in three tiers", chosen on 28 October 2026
+  from six options. The "Connected" banner and the account banner became one
+  piece (`CartaoDaConta`, with the sidebar dock in the middle), larger and more
+  prominent, because it is where you control everything that is yours:
+  
+  - at the top, you: the 46 px face with the status dot, the 16 px name, and
+  below it the personal message (that scrolls when it doesn't fit) or the
+  status;
+  - in the middle, only in a call, the green call box;
+  - at the bottom, a row of equal 38 px buttons: microphone, sound, bell, gear,
+  and hang up during a call. Four buttons when not in a call.
+  
+  The base rules of the banner (`.me-*` in `screens.css`) still apply: the
+  minimal bar color, the line above, the button colors. This file only changes
+  the layout, and all rules bind to `.me-faixa.painel` to beat the base rules
+  without `!important`.
+  */
+
+.me-faixa.painel {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 12px;
+  padding: 14px;
+  /* A very faint cyan veil descending: highlights the list panel above it
+     without framing it. Above the color (`background-color` from
+     `screens.css`), which is what contrast checks use. */
+  background-image: linear-gradient(180deg, rgba(139, 233, 253, 0.05), transparent);
+}
+
+/* --------------------------------------------------- top tier: you */
+
+.me-faixa.painel .me-identity {
+  flex: none;
+  gap: 10px;
+  padding: 3px;
+}
+
+.me-faixa.painel .me-avatar > .avatar {
+  width: 46px;
+  height: 46px;
+  font-size: 19px;
+}
+
+/* The status dot grows with the face: at 10 px on a 46 px circle it read as dirt. */
+.me-faixa.painel .me-avatar > .dot {
+  width: 12px;
+  height: 12px;
+}
+
+.me-faixa.painel .me-labels {
+  flex: 1;
+  gap: 2px;
+}
+
+.me-faixa.painel .me-name {
+  font-size: 16px;
+}
+
+.me-faixa.painel .me-state {
+  font-size: 12.5px;
+}
+
+/*
+  The personal message, in italics and in the muted color: you write it, and
+  the italics separate it from the status, which comes from the app. The scroll
+  mechanic is from `Andante` (`pele.css`).
+*/
+.me-faixa.painel .me-mensagem {
+  max-width: 100%;
+  color: var(--discreto);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* ----------------------------------------- andar do meio: a chamada */
+
+/*
+  The call box: the dock, in sidebar form (`CallDock`). A faint green box with
+  radius 12, and the whole box is the button to return to the call. The padding
+  is on the button, not the box, so the click counts to the edge.
+*/
+.call-dock.lateral {
+  position: static;
+  z-index: auto;
+  display: block;
+  cursor: auto;
+  touch-action: auto;
+  user-select: auto;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border: 1px solid rgba(80, 250, 123, 0.28);
+  border-radius: 12px;
+  background: rgba(80, 250, 123, 0.06);
+  box-shadow: none;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.call-dock.lateral:has(.call-dock-back:hover) {
+  background: rgba(80, 250, 123, 0.1);
+  border-color: rgba(80, 250, 123, 0.42);
+}
+
+.call-dock.lateral .call-dock-back {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+}
+
+.call-dock.lateral .call-dock-lines {
+  width: 100%;
+  gap: 2px;
+}
+
+/*
+  The status reads in full, in any language: it wraps to the next line instead
+  of cutting off. Before it was `nowrap` with `overflow: hidden` in a flex, and
+  the loose text (an anonymous item that doesn't shrink) was cut off mid-word.
+*/
+.call-dock.lateral .call-dock-state {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 7px;
+  max-width: 100%;
+  color: var(--titulo);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The measure (the ping, or "Connected") is what lights up green. */
+.call-dock.lateral .call-dock-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--presenca);
+}
+
+.call-dock.lateral .call-dock-separador,
+.call-dock.lateral .call-dock-count {
+  color: var(--discreto);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.call-dock.lateral .call-dock-back:hover .call-dock-state {
+  color: var(--titulo);
+}
+
+.call-dock.lateral .call-dock-back:hover .call-dock-count {
+  text-decoration: underline;
+}
+
+.call-dock-ponto {
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presenca);
+  /* At rest it already glows a bit (6 px), and incoming voice lights up the rest. */
+  box-shadow: 0 0 calc(6px + min(1, var(--voz, 0) * 3) * 6px) color-mix(in srgb, var(--presenca) 55%, transparent);
+}
+
+/* The bottom line doesn't break or cut: it SCROLLS (the `Andante`). Here only
+   the color and width stay. */
+.call-dock.lateral .call-dock-where {
+  max-width: 100%;
+  color: var(--apagado);
+  font-size: 12.5px;
+}
+
+/* -------------------------------------------- bottom tier: the row */
+
+/*
+  A grid of equal columns. Sections with names (audio, account) are
+  `subgrid` of it: buttons align as if they were direct children, and sections
+  keep existing for screen readers. The number of columns and how many each
+  section spans come from the component, which knows which buttons are drawn.
+  */
+.me-faixa.painel .me-accoes {
+  display: grid;
+  gap: 6px;
+}
+
+.me-faixa.painel .me-audio,
+.me-faixa.painel .me-conta {
+  display: grid;
+  grid-template-columns: subgrid;
+  gap: 6px;
+}
+
+.me-faixa.painel .me-audio-btn,
+.me-faixa.painel .me-btn {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--poco-contorno);
+  border-radius: 10px;
+  background: var(--poco);
+  color: var(--secundario);
+}
+
+.me-faixa.painel .me-audio-btn:hover,
+.me-faixa.painel .me-btn:hover {
+  border-color: var(--line);
+  background: var(--painel-claro);
+  color: var(--text);
+}
+
+.me-faixa.painel .me-audio-btn:active,
+.me-faixa.painel .me-btn:active {
+  background: var(--bg-raised);
+}
+
+/* The button color stays pink, with the same contrast math as `screens.css`:
+   the well is darker than the banner, and pink on top of it only gains
+   contrast. */
+.me-faixa.painel .me-audio-btn.off {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.me-faixa.painel .me-audio-btn.off:hover {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: color-mix(in srgb, var(--danger) 82%, #fff);
+}
+
+/*
+  Hang up the call: a ghost with the icon in the title color, which turns
+  red for "busy" (not pink for "danger") on hover or focus. Choice A from the
+  owner, 28 October 2026, kept in P1.
+*/
+.me-faixa.painel .me-btn.me-sair {
+  color: var(--titulo);
+}
+
+.me-faixa.painel .me-btn.me-sair:hover,
+.me-faixa.painel .me-btn.me-sair:focus-visible {
+  border-color: var(--presence-busy);
+  background: var(--presence-busy);
+  color: var(--on-danger);
+}

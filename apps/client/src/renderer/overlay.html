@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      Game overlay page. The tightest policy in the app: this page needs no
+      network (`connect-src 'none'`), only shows embedded images (`img-src data:`),
+      and has no inline scripts. What it draws comes through IPC, already checked
+      by the main process. See `main/overlay-janela.ts`.
+      -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Orwell</title>
+  </head>
+  <body>
+    <div id="overlay"></div>
+    <script type="module" src="./overlay/entrada.ts"></script>
+  </body>
+</html>

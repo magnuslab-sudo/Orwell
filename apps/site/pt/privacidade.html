@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Orwell · Privacidade</title>
+    <meta name="description" content="O que o Orwell guarda sobre ti, durante quanto tempo, e o que o servidor vê mesmo com a cifra." />
+    <link rel="icon" href="/marca.04656517.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://orwell.pt/pt/privacidade.html" />
+    <link rel="alternate" hreflang="en" href="https://orwell.pt/privacy.html" />
+    <link rel="alternate" hreflang="pt" href="https://orwell.pt/pt/privacidade.html" />
+    <link rel="alternate" hreflang="x-default" href="https://orwell.pt/privacy.html" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <link rel="stylesheet" href="/src/estilo.css" />
+  </head>
+
+  <body class="editorial">
+    <!-- The `i-marca` is written by `marca/gerar-marca.py`. Don't edit it here. -->
+    <svg class="desenhos" aria-hidden="true">
+      <defs>
+        <symbol id="i-marca" viewBox="0 0 24 24">
+          <path d="M4.59865 1.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V3.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V2.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.51329 6H7.70308a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H2.51329a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M14.6969 6H19.8867a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H14.6969a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.35 10.5H7.15a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H2.35a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M15.25 10.5H20.05a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H15.25a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.11329 15H9.30308a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H4.11329a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M16.2969 15H21.4867a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H16.2969a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.59865 19.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V21.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V20.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="topo">
+      <a class="marca" href="/pt/">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell</span>
+      </a>
+      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
+      <a class="topo-entrar" href="/app/">Entrar</a>
+    </header>
+
+    <main class="legal">
+      <h1>Privacidade</h1>
+      <p class="legal-data">Em vigor desde 4 de Novembro de 2026.</p>
+      <p class="legal-lingua">
+        Este texto tem uma <a href="/privacy.html" hreflang="en">tradução em inglês</a>. A versão portuguesa é a que vale
+        juridicamente.
+      </p>
+
+      <p class="legal-abertura">
+        Aqui dizemos o que o servidor de <span class="mono">orwell.pt</span> guarda e o que consegue ver mesmo com a
+        cifra.
+      </p>
+
+      <h2>Quem é o responsável</h2>
+      <p>
+        O responsável pelo tratamento dos teus dados é Duarte Bivar. Para tudo o que é sobre os teus dados, escreve
+        para <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>, em português ou em inglês.
+      </p>
+
+      <h2>O que não pedimos</h2>
+      <p>
+        Para criares conta não te pedimos email, número de telefone, nome verdadeiro, idade, morada nem forma de
+        pagamento. A tua palavra-passe nunca sai do teu aparelho.
+      </p>
+
+      <h2>O que o servidor guarda</h2>
+      <ul>
+        <li>
+          <strong>Mensagens, publicações e ficheiros, cifrados, durante 30 dias.</strong> O servidor guarda-os sem
+          os conseguir abrir, para chegarem a quem esteve desligado. Ao fim dos 30 dias, apaga-os.
+        </li>
+        <li><strong>A tua chave pública</strong> e as chaves que permitem que os outros te convidem.</li>
+        <li><strong>O teu perfil, cifrado</strong>, para os canais onde estás.</li>
+      </ul>
+
+      <h2>O que o servidor vê, apesar da cifra</h2>
+      <ul>
+        <li>
+          <strong>Endereços IP.</strong> O servidor vê o endereço de quem se liga a ele. Por omissão, não guarda um
+          registo de acessos.
+        </li>
+        <li><strong>Quando estás ligado, e em que canais estás.</strong> Não sabe o que foi dito.</li>
+        <li><strong>O tamanho aproximado do que envias.</strong></li>
+        <li><strong>Numa chamada</strong>, quem está a falar com quem. O som e a imagem vão cifrados.</li>
+      </ul>
+
+      <h2>Quando denuncias</h2>
+      <p>
+        A denúncia é a excepção à cifra: quem denuncia entrega-nos, já decifrado, o texto de outras pessoas. Se foste
+        denunciado, os teus dados vieram de quem te denunciou.
+      </p>
+      <p><strong>O que guardamos.</strong></p>
+      <ul>
+        <li>O motivo e a nota.</li>
+        <li>
+          As mensagens denunciadas e o contexto, com o autor, o dia, a hora e a assinatura do autor. Dos anexos, só o
+          nome, o tipo e o tamanho.
+        </li>
+        <li>O endereço da conta de quem denuncia e o da conta denunciada, e o canal e a sala.</li>
+        <li>A versão da app, e o dia e a hora da denúncia.</li>
+        <li>O teu nome e o teu email, se os deres. São opcionais.</li>
+        <li>A tua confirmação de que denuncias de boa-fé.</li>
+        <li>O endereço do fundador do canal, quando há cópia para ele.</li>
+        <li>A decisão e os pedidos de revisão.</li>
+      </ul>
+      <p><strong>Bases legais.</strong></p>
+      <ul>
+        <li>
+          Para o que o Regulamento dos Serviços Digitais (DSA) nos obriga a fazer, a base é o art. 6.º, n.º 1, al. c)
+          do RGPD: o cumprimento de uma obrigação legal.
+        </li>
+        <li>
+          Para guardar a denúncia 90 dias depois de fechada, e para a cópia ao fundador, a base é o art. 6.º, n.º 1,
+          al. f) do RGPD: o interesse legítimo.
+        </li>
+      </ul>
+      <p><strong>Quem recebe.</strong></p>
+      <ul>
+        <li>
+          O fundador do canal, quando está no canal, recebe uma cópia sem o nome de quem denunciou. Numa conversa
+          pequena, pode adivinhar quem foi.
+        </li>
+        <li>
+          As autoridades, só quando a lei nos obriga: com uma ordem judicial, ou quando há perigo para a vida ou a
+          segurança de alguém.
+        </li>
+      </ul>
+      <p><strong>Durante quanto tempo.</strong></p>
+      <p>
+        Guardamos cada denúncia 90 dias depois de a fecharmos, ou enquanto houver uma suspensão ou uma revisão em
+        aberto. Depois, o servidor apaga-a.
+      </p>
+
+      <h2>Os teus direitos</h2>
+      <p>
+        Podes pedir acesso aos teus dados, a sua correcção e o seu apagamento, no que não contrarie uma obrigação
+        legal. Podes opor-te ao que fazemos por interesse legítimo. Escreve para
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>. Podes reclamar à CNPD, a Comissão Nacional de
+        Protecção de Dados. Sobre as decisões nas denúncias, podes também reclamar à ANACOM.
+      </p>
+
+      <h2>Terceiros</h2>
+      <p>
+        Não há publicidade, análise de tráfego nem cookies de rastreio. Quando carregas num vídeo do YouTube dentro
+        de uma conversa, o leitor vem da Google, e a Google fica a saber o teu endereço IP. Antes de carregares, nada
+        é pedido.
+      </p>
+
+      <h2>O que podes apagar</h2>
+      <p>
+        Quando apagas a conta, a aplicação apaga-a do teu aparelho. Quando apagas uma mensagem, a aplicação pede aos
+        aparelhos de quem a recebeu que a apaguem. Quem já a leu, já a leu.
+      </p>
+      <p class="legal-nota">
+        Se a tua comunidade usar um servidor próprio, operado por outra entidade, esta página não fala por ele.
+      </p>
+    </main>
+
+    <footer class="rodape">
+      <div class="rodape-marca">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      </div>
+      <nav class="rodape-links">
+        <a href="/pt/">Início</a>
+        <a href="/pt/transferencias/">Descarregar</a>
+        <a href="/pt/privacidade.html">Privacidade</a>
+        <a href="/pt/termos.html">Termos</a>
+        <a href="/pt/embaixadores.html">Embaixadores</a>
+        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+      </nav>
+      <nav class="linguas" aria-label="Língua">
+        <a href="/privacy.html" hreflang="en" lang="en">EN</a>
+        <span aria-hidden="true">·</span>
+        <a href="/pt/privacidade.html" hreflang="pt" aria-current="page">PT</a>
+      </nav>
+      <p class="rodape-nota">
+        Esta página não corre JavaScript nenhum, não põe cookies e não pediu nada a servidor nenhum além deste.
+        Feita em Portugal.
+      </p>
+      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
+      <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,773 @@
+/* The report sheet (`DenunciarSheet.tsx`, 4/11/2026), for the two layouts
+   the owner chose (`docs/planos/denunciar-layout/`):
+   
+   - on desktop, a stepped dialog: Reason, Review, Send. On Review, the
+   reported message in a card with the danger bar and pill, context in
+   faded cards, summary with icons and the lock line;
+   - on mobile (up to 640 px), a bottom sheet with handle, anchored to the
+   bottom, button full width and room for device margin.
+   
+   Cards are from the founder's box (`denunciasDoCanal.css`): interior ink,
+   panel border, pills with color ink. Tokens are from the skin: no new
+   colors. Everything under `.sheet.denunciar`.
+   
+   Motion: the sheet fades in and grows slightly (on mobile, rises); each step
+   fades in. With reduced motion nothing moves and nothing stops: everything
+   fades, slower (the end block). */
+
+.sheet.denunciar {
+  width: min(600px, calc(100vw - 2 * var(--space-5)));
+  max-height: min(820px, 90dvh);
+  animation: denunciar-entra 220ms var(--ease) both;
+}
+
+.sheet.denunciar .sheet-header h2 {
+  color: var(--titulo);
+  font-size: var(--font-lg);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* The handle exists only on the mobile bottom sheet. */
+.sheet.denunciar .denunciar-pega {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- passos */
+
+.sheet.denunciar .denunciar-passos {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-5);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: none;
+}
+
+.sheet.denunciar .denunciar-passo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+}
+
+/* The line between two steps: from the center of one to the next, behind the
+   circles. Lights up when the step behind is done. */
+.sheet.denunciar .denunciar-passo + .denunciar-passo::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  right: calc(50% + 26px);
+  left: calc(-50% + 26px);
+  height: 1px;
+  background: var(--line);
+  transition: background-color var(--dur) var(--ease);
+}
+
+.sheet.denunciar .denunciar-passo:is([data-estado="agora"], [data-estado="feito"]) + .denunciar-passo::before {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.sheet.denunciar .denunciar-passo[data-estado="feito"] + .denunciar-passo:is([data-estado="agora"], [data-estado="feito"])::before {
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.sheet.denunciar .denunciar-passo-numero {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--line);
+  background: var(--poco);
+  color: var(--text-dim);
+  font-size: var(--font-base);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.sheet.denunciar .denunciar-passo[data-estado="agora"] {
+  color: var(--titulo);
+  font-weight: 600;
+}
+
+.sheet.denunciar .denunciar-passo[data-estado="agora"] .denunciar-passo-numero {
+  border-color: var(--accent);
+  color: var(--titulo);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sheet.denunciar .denunciar-passo[data-estado="feito"] .denunciar-passo-numero {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ----------------------------------------------------------------- corpo */
+
+.sheet.denunciar .denunciar-corpo {
+  animation: denunciar-passo 200ms var(--ease) both;
+}
+
+/* The heading that receives focus when moving steps: no ring, because you
+   do not click it; the screen reader reads it. */
+.sheet.denunciar [tabindex="-1"]:focus {
+  outline: none;
+}
+
+.sheet.denunciar .denunciar-titulo-do-passo {
+  margin: 0;
+  color: var(--secundario);
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
+/* What is being reported, at the top of the first step. */
+.sheet.denunciar .denunciar-alvo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--painel-interior);
+  border: 1px solid var(--painel-borda);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--painel-aresta);
+}
+
+.sheet.denunciar .denunciar-alvo-texto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.sheet.denunciar :is(.denunciar-alvo-cabecalho, .denunciar-item-cabecalho) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  min-width: 0;
+}
+
+.sheet.denunciar :is(.denunciar-alvo-cabecalho, .denunciar-item-cabecalho) strong {
+  color: var(--titulo);
+  font-size: var(--font-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sheet.denunciar .denunciar-quando {
+  color: var(--text-faint);
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sheet.denunciar .denunciar-alvo-mensagem {
+  margin: 0;
+  color: var(--texto);
+  font-size: var(--font-base);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The "Reported" / "Message reported" pill: the one from `denunciasDoCanal.css`. */
+.sheet.denunciar .denunciar-pilula {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  align-self: start;
+  flex: none;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 36%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.9;
+  white-space: nowrap;
+}
+
+/* On the target card, the pill at mid-height, as in the mobile design. */
+.sheet.denunciar .denunciar-alvo .denunciar-pilula {
+  align-self: center;
+}
+
+/* The avatars: slightly larger than in chat, with the accent ring. */
+.sheet.denunciar .message-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: var(--font-md);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- motivos */
+
+.sheet.denunciar fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.sheet.denunciar fieldset > legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+  color: var(--secundario);
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+/* The reason rows: one card, with a line between them. */
+.sheet.denunciar .denunciar-motivos {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet.denunciar .denunciar-motivo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
+  background: var(--painel-interior);
+  border: 1px solid var(--painel-borda);
+  border-top-width: 0;
+  color: var(--texto);
+  font-size: var(--font-base);
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.sheet.denunciar legend + .denunciar-motivo {
+  border-top-width: 1px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.sheet.denunciar .denunciar-motivo:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.sheet.denunciar .denunciar-motivo:hover {
+  background: color-mix(in srgb, var(--accent) 5%, var(--painel-interior));
+}
+
+.sheet.denunciar .denunciar-motivo:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 9%, var(--painel-interior));
+  color: var(--titulo);
+}
+
+/* The radio, styled like the app's checkbox (see `components.css`). */
+.sheet.denunciar input[type="radio"] {
+  appearance: none;
+  box-sizing: border-box;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--text-faint);
+  border-radius: var(--radius-full);
+  background: var(--poco);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.sheet.denunciar input[type="radio"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 4px var(--bg-side);
+}
+
+.sheet.denunciar input:is([type="radio"], [type="checkbox"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------- detalhes */
+
+.sheet.denunciar .denunciar-detalhes textarea {
+  resize: vertical;
+  min-height: 76px;
+  font: inherit;
+  font-size: var(--font-base);
+  line-height: 1.5;
+}
+
+/* Good faith on a card: it's the only required field and must be visible. */
+.sheet.denunciar .denunciar-boa-fe {
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--painel-interior);
+  border: 1px solid var(--painel-borda);
+  border-radius: var(--radius-lg);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.sheet.denunciar .denunciar-boa-fe input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.sheet.denunciar .denunciar-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sheet.denunciar .denunciar-contacto > legend {
+  margin-bottom: var(--space-4);
+}
+
+/* ------------------------------------------------------------------ rever */
+
+.sheet.denunciar .denunciar-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The context: faded cards, smaller face. */
+.sheet.denunciar .denunciar-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--secundario);
+}
+
+.sheet.denunciar .denunciar-item:not(.denunciada) .message-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-sm);
+  opacity: 0.8;
+}
+
+.sheet.denunciar .denunciar-item:not(.denunciada) .denunciar-item-cabecalho strong {
+  color: var(--secundario);
+  font-size: var(--font-base);
+}
+
+/* A denunciada: a tinta interior, a borda do painel e a barra do perigo. */
+.sheet.denunciar .denunciar-item.denunciada {
+  background: var(--painel-interior);
+  border-color: var(--painel-borda);
+  box-shadow: inset 3px 0 0 var(--danger), var(--painel-aresta);
+  color: var(--texto);
+}
+
+.sheet.denunciar .denunciar-item-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sheet.denunciar .denunciar-item-texto {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sheet.denunciar .denunciar-item.denunciada .denunciar-item-texto {
+  color: var(--titulo);
+  font-size: var(--font-md);
+}
+
+.sheet.denunciar .denunciar-item-anexo {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  overflow-wrap: anywhere;
+}
+
+.sheet.denunciar .denunciar-item .denunciar-pilula {
+  margin-top: var(--space-2);
+}
+
+/* The summary: one line per item, icon, full label and value. */
+.sheet.denunciar .denunciar-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.sheet.denunciar .denunciar-resumo dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.sheet.denunciar .denunciar-resumo-linha {
+  display: grid;
+  grid-template-columns: 22px auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--space-4);
+  font-size: var(--font-base);
+  line-height: 1.45;
+}
+
+.sheet.denunciar .denunciar-resumo-icone {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+
+.sheet.denunciar .denunciar-resumo-linha dt {
+  color: var(--titulo);
+  font-weight: 600;
+}
+
+.sheet.denunciar .denunciar-resumo-linha dd {
+  margin: 0;
+  color: var(--secundario);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The addresses: they go in the request, so they're here; collapsed to avoid breaking the lines above. */
+.sheet.denunciar .denunciar-enderecos {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--poco);
+}
+
+.sheet.denunciar .denunciar-enderecos > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  color: var(--secundario);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sheet.denunciar .denunciar-enderecos > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The detail arrow, styled: rotates when it opens. */
+.sheet.denunciar .denunciar-enderecos > summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--dur) var(--ease);
+}
+
+.sheet.denunciar .denunciar-enderecos[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.sheet.denunciar .denunciar-enderecos > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.sheet.denunciar .denunciar-enderecos > p {
+  margin: 0;
+  padding: 0 var(--space-4);
+}
+
+.sheet.denunciar .denunciar-enderecos dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.sheet.denunciar .denunciar-enderecos dl > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.sheet.denunciar .denunciar-enderecos dt {
+  color: var(--titulo);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.sheet.denunciar .denunciar-enderecos dd {
+  margin: 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  overflow-wrap: anywhere;
+}
+
+/* The lock line: what leaves the device, and nothing else. */
+.sheet.denunciar .denunciar-sai {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--poco);
+  color: var(--secundario);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.sheet.denunciar .denunciar-sai svg {
+  flex: none;
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------ enviar, fim */
+
+.sheet.denunciar .denunciar-aviso {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--texto);
+  font-size: var(--font-base);
+  line-height: 1.5;
+}
+
+.sheet.denunciar .denunciar-enviada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) 0 var(--space-4);
+  text-align: center;
+}
+
+.sheet.denunciar .denunciar-enviada-marca {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+
+.sheet.denunciar .denunciar-enviada .field-note {
+  margin: 0;
+  color: var(--titulo);
+  font-size: var(--font-md);
+  font-weight: 600;
+}
+
+/* The error, with the code, on a danger-colored card. */
+.sheet.denunciar .denunciar-corpo > .field-note.warn[role="alert"] {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  font-size: var(--font-sm);
+}
+
+/* The footer: "Back" on the left, the step button on the right. */
+.sheet.denunciar .sheet-actions {
+  flex: none;
+}
+
+.sheet.denunciar .sheet-actions .primary {
+  margin-left: auto;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+}
+
+.sheet.denunciar .sheet-actions .ghost {
+  min-height: 44px;
+  padding: var(--space-3) var(--space-5);
+}
+
+@keyframes denunciar-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes denunciar-passo {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes denunciar-sobe {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+}
+
+@keyframes denunciar-esvanece {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------- mobile */
+
+@media (max-width: 640px) {
+  /* A column the width of the screen, the sheet anchored to the bottom (like the bell, `.notif-janela`). At the bottom the device margin stays inside the sheet, and the keyboard (`--teclado`, `movel.css`) keeps pushing it up. */
+  .overlay:has(> .sheet.denunciar) {
+    grid-template-columns: 100%;
+    place-items: end stretch;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: var(--teclado, 0px);
+  }
+
+  .sheet.denunciar {
+    width: 100%;
+    min-width: 0;
+    max-height: 92dvh;
+    border-radius: var(--painel-raio) var(--painel-raio) 0 0;
+    border-bottom: none;
+    animation-name: denunciar-sobe;
+  }
+
+  .sheet.denunciar .denunciar-pega {
+    display: block;
+    flex: none;
+    width: 40px;
+    height: 4px;
+    margin: var(--space-4) auto 0;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--text) 28%, transparent);
+  }
+
+  .sheet.denunciar .sheet-header {
+    padding: var(--space-4) var(--space-5) var(--space-4);
+  }
+
+  .sheet.denunciar .sheet-header h2 {
+    font-size: var(--font-lg);
+  }
+
+  /* The steps shrink: number and name on one short line. */
+  .sheet.denunciar .denunciar-passos {
+    padding: 0 var(--space-5) var(--space-4);
+  }
+
+  .sheet.denunciar .denunciar-passo {
+    gap: var(--space-2);
+    font-size: var(--font-xs);
+  }
+
+  .sheet.denunciar .denunciar-passo-numero {
+    width: 26px;
+    height: 26px;
+    font-size: var(--font-sm);
+  }
+
+  .sheet.denunciar .denunciar-passo + .denunciar-passo::before {
+    top: 13px;
+    right: calc(50% + 20px);
+    left: calc(-50% + 20px);
+  }
+
+  .sheet.denunciar .denunciar-corpo {
+    padding: 0 var(--space-5) var(--space-5);
+  }
+
+  /* Large rows, touch-sized. */
+  .sheet.denunciar .denunciar-motivo {
+    min-height: 54px;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--font-md);
+  }
+
+  .sheet.denunciar .denunciar-alvo {
+    padding: var(--space-4);
+  }
+
+  .sheet.denunciar .denunciar-item {
+    padding: var(--space-4) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .sheet.denunciar .denunciar-resumo-linha {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  /* The value moves below the label, aligned with it. */
+  .sheet.denunciar .denunciar-resumo-linha dd {
+    grid-column: 2;
+  }
+
+  /* The button fixed at the bottom, full width, above the device margin. */
+  .sheet.denunciar .sheet-actions {
+    padding: var(--space-4) var(--space-5) calc(var(--space-4) + var(--seguro-fundo, 0px));
+  }
+
+  .sheet.denunciar .sheet-actions .primary {
+    flex: 1;
+    min-height: 50px;
+    font-size: var(--font-md);
+  }
+}
+
+/* Reduced motion: nothing moves and nothing stops. The window and each step
+   fade out at double the time; step colors change slowly. The universal rule
+   in `base.css` set everything to 0.01 ms and transitions to 0; a class
+   selector wins over `*`. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet.denunciar {
+    animation-name: denunciar-esvanece !important;
+    animation-duration: 440ms !important;
+  }
+
+  .sheet.denunciar .denunciar-corpo {
+    animation-duration: 400ms !important;
+  }
+
+  .sheet.denunciar .denunciar-passo-numero,
+  .sheet.denunciar .denunciar-passo + .denunciar-passo::before,
+  .sheet.denunciar .denunciar-enderecos > summary::before {
+    transition-duration: 400ms !important;
+  }
+}

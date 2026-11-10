@@ -1,0 +1,236 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>prova wkwebview</title>
+<body>
+<script>
+/*
+ * The same question as `scripts/sfu-script-transform-por-motor.mjs`, run inside
+ * a WKWebView instead of inside Safari.
+ *
+ * Count what DECRYPTED on the far end, never what arrived. And run `chave-trocada`
+ * mode as control: without that half, a counter going up by mistake read as proof.
+ */
+const CABECALHO = 11
+
+const FONTE_DO_WORKER = `
+const CABECALHO = 11
+const chaves = {}
+const contagens = {
+  emissor: { entrada: 0, saida: 0 },
+  receptor: { entrada: 0, saida: 0, falhados: 0, semCabecalho: 0 },
+}
+const mensagens = []
+
+self.onmessage = async (evento) => {
+  const dados = evento.data || {}
+  mensagens.push(dados.tipo || "sem-tipo")
+  if (dados.tipo === "chave") {
+    chaves[dados.papel] = await crypto.subtle.importKey("raw", dados.bytes, "AES-GCM", false, ["encrypt", "decrypt"])
+    self.postMessage({ tipo: "chave-posta", papel: dados.papel })
+  }
+  if (dados.tipo === "contar") self.postMessage({ tipo: "contagens", contagens: contagens, mensagens: mensagens })
+}
+
+const nonce = (contador) => {
+  const bytes = new Uint8Array(12)
+  new DataView(bytes.buffer).setUint32(8, contador, false)
+  return bytes
+}
+
+let contador = 0
+
+const cifrar = async (frame, controlador) => {
+  contagens.emissor.entrada++
+  const chave = chaves.emissor
+  if (!chave) return
+  const n = contador++
+  const cabecalho = new Uint8Array(CABECALHO)
+  new DataView(cabecalho.buffer).setUint32(4, n, false)
+  const selado = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce(n), additionalData: cabecalho }, chave, frame.data),
+  )
+  const saida = new Uint8Array(CABECALHO + selado.length)
+  saida.set(cabecalho, 0)
+  saida.set(selado, CABECALHO)
+  frame.data = saida.buffer
+  contagens.emissor.saida++
+  controlador.enqueue(frame)
+}
+
+const decifrar = async (frame, controlador) => {
+  contagens.receptor.entrada++
+  const chave = chaves.receptor
+  if (!chave) return
+  const bytes = new Uint8Array(frame.data)
+  if (bytes.length < CABECALHO) { contagens.receptor.semCabecalho++; return }
+  const cabecalho = bytes.slice(0, CABECALHO)
+  const n = new DataView(cabecalho.buffer).getUint32(4, false)
+  try {
+    const aberto = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: nonce(n), additionalData: cabecalho },
+      chave,
+      bytes.slice(CABECALHO),
+    )
+    frame.data = aberto
+    contagens.receptor.saida++
+    controlador.enqueue(frame)
+  } catch (erro) {
+    contagens.receptor.falhados++
+  }
+}
+
+const soltar = (papel) => async (frame, controlador) => {
+  contagens[papel].entrada++
+  contagens[papel].saida++
+  controlador.enqueue(frame)
+}
+
+self.onrtctransform = (evento) => {
+  const transformador = evento.transformer
+  const opcoes = transformador.options || {}
+  const papel = opcoes.papel || "sem-options"
+  mensagens.push("rtctransform:" + papel + ":" + (opcoes.modo || "sem-modo"))
+  const transformacao =
+    opcoes.modo === "solto" ? soltar(papel) : papel === "emissor" ? cifrar : decifrar
+  transformador.readable
+    .pipeThrough(new TransformStream({ transform: transformacao }))
+    .pipeTo(transformador.writable)
+    .catch(() => {})
+}
+`
+
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms))
+const responder = (o) => window.webkit.messageHandlers.prova.postMessage(JSON.stringify(o))
+
+/** The GUARD question of the product: is there somewhere to hang the transform? */
+const ondePendurar = (classe) => {
+  if (typeof classe === "undefined") return "sem-classe"
+  const d = Object.getOwnPropertyDescriptor(classe.prototype, "transform")
+  if (!d) return "sem-propriedade"
+  if (d.set) return "setter"
+  return d.writable ? "escrevivel" : "so-leitura"
+}
+
+const temInsertable = (classe) =>
+  typeof classe?.prototype?.createEncodedStreams === "function"
+
+/** A full run: pair of local connections, worker, and what decrypted. */
+async function correr(modo) {
+  const resultado = { modo, erro: null, contagens: null, mensagens: null, workerBlob: null,
+                      pacotesEnviados: 0, pacotesRecebidos: 0, origemDaFaixa: "?", ice: "?" }
+  let worker = null
+  try {
+    console.log("corrida " + modo + ": a comecar")
+    try {
+      worker = new Worker(URL.createObjectURL(new Blob([FONTE_DO_WORKER], { type: "text/javascript" })))
+      resultado.workerBlob = "ok"
+    } catch (e) {
+      // A `blob:` worker refused is a LOADING failure, not an engine failure.
+      resultado.workerBlob = "recusado: " + e.message
+      throw e
+    }
+    const respostas = []
+    worker.onmessage = (ev) => respostas.push(ev.data)
+
+    const chaveA = new Uint8Array(16).fill(7)
+    const chaveB = modo === "chave-trocada" ? new Uint8Array(16).fill(9) : chaveA
+    if (modo !== "solto") {
+      worker.postMessage({ tipo: "chave", papel: "emissor", bytes: chaveA })
+      worker.postMessage({ tipo: "chave", papel: "receptor", bytes: chaveB })
+      for (let i = 0; i < 60 && respostas.filter((r) => r.tipo === "chave-posta").length < 2; i++) await dormir(50)
+    }
+
+    // Track with no permissions: an oscillator. Doesn't open the microphone.
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    await Promise.race([ctx.resume(), dormir(2000)])
+    const osc = ctx.createOscillator()
+    osc.frequency.value = 440
+    const destino = ctx.createMediaStreamDestination()
+    osc.connect(destino)
+    osc.start()
+    const faixa = destino.stream.getAudioTracks()[0]
+    resultado.origemDaFaixa = "oscilador/" + ctx.state
+
+    const pc1 = new RTCPeerConnection()
+    const pc2 = new RTCPeerConnection()
+    pc1.onicecandidate = (e) => e.candidate && pc2.addIceCandidate(e.candidate)
+    pc2.onicecandidate = (e) => e.candidate && pc1.addIceCandidate(e.candidate)
+
+    const emissor = pc1.addTrack(faixa, destino.stream)
+    emissor.transform = new RTCRtpScriptTransform(worker, { papel: "emissor", modo })
+
+    pc2.ontrack = (ev) => {
+      ev.receiver.transform = new RTCRtpScriptTransform(worker, { papel: "receptor", modo })
+    }
+
+    await pc1.setLocalDescription(await pc1.createOffer())
+    await pc2.setRemoteDescription(pc1.localDescription)
+    await pc2.setLocalDescription(await pc2.createAnswer())
+    await pc1.setRemoteDescription(pc2.localDescription)
+
+    for (let i = 0; i < 100 && pc1.iceConnectionState !== "connected" && pc1.iceConnectionState !== "completed"; i++) {
+      await dormir(100)
+    }
+    resultado.ice = pc1.iceConnectionState
+    console.log("corrida " + modo + ": ice=" + pc1.iceConnectionState)
+    await dormir(4000)
+    console.log("corrida " + modo + ": passou a espera")
+
+    for (const stat of (await pc1.getStats()).values()) {
+      if (stat.type === "outbound-rtp") resultado.pacotesEnviados += stat.packetsSent || 0
+    }
+    for (const stat of (await pc2.getStats()).values()) {
+      if (stat.type === "inbound-rtp") resultado.pacotesRecebidos += stat.packetsReceived || 0
+    }
+    console.log("corrida " + modo + ": stats env=" + resultado.pacotesEnviados + " rec=" + resultado.pacotesRecebidos)
+
+    worker.postMessage({ tipo: "contar" })
+    for (let i = 0; i < 60 && !respostas.some((r) => r.tipo === "contagens"); i++) await dormir(50)
+    const conta = respostas.find((r) => r.tipo === "contagens")
+    resultado.contagens = conta?.contagens ?? null
+    resultado.mensagens = conta?.mensagens ?? null
+    console.log("corrida " + modo + ": contagens=" + JSON.stringify(resultado.contagens))
+
+    pc1.close(); pc2.close(); osc.stop(); ctx.close()
+    console.log("corrida " + modo + ": fechada")
+  } catch (e) {
+    resultado.erro = String(e && e.message ? e.message : e)
+  }
+  worker?.terminate()
+  return resultado
+}
+
+;(async () => {
+  const relatorio = {
+    ua: navigator.userAgent,
+    origem: location.origin,
+    href: location.href,
+    isSecureContext,
+    crossOriginIsolated: self.crossOriginIsolated ?? null,
+    temWorker: typeof Worker,
+    temSubtle: typeof crypto?.subtle,
+    temPeerConnection: typeof RTCPeerConnection,
+    temGetUserMedia: typeof navigator.mediaDevices?.getUserMedia,
+    construtorScriptTransform: typeof RTCRtpScriptTransform,
+    emissorTemTransform: ondePendurar(window.RTCRtpSender),
+    receptorTemTransform: ondePendurar(window.RTCRtpReceiver),
+    insertableEmissor: temInsertable(window.RTCRtpSender),
+    insertableReceptor: temInsertable(window.RTCRtpReceiver),
+    corridas: [],
+  }
+  /*
+   * One mode per run, chosen from outside. Three modes in one load
+   * means a stop in the second throws away what the first measured,    * and that's how this test rig lost two runs before switching to this.
+   */
+  const pedidos = (new URLSearchParams(location.search).get("modos") ?? "solto,cifrado,chave-trocada").split(",")
+  try {
+    if (typeof RTCRtpScriptTransform === "function") {
+      for (const modo of pedidos) relatorio.corridas.push(await correr(modo))
+    }
+  } catch (e) {
+    relatorio.erroGlobal = String(e)
+  }
+  responder(relatorio)
+})()
+</script>
+</body>

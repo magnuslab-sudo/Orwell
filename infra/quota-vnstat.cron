@@ -1,0 +1,5 @@
+# The month output for Orwell (see infra/quota-vnstat.sh). Goes to
+# /etc/cron.d/orwell-quota on deploy. Git archive puts the script in /opt/enclave/infra/.
+# From 5 em 5 minutos, which is the rate at which vnstat writes. The server reads the
+# file minute by minute and ignores it if it is older than 2 h.
+*/5 * * * * root /opt/enclave/infra/quota-vnstat.sh >/dev/null 2>>/var/log/orwell-quota.log

@@ -1,0 +1,12 @@
+# The image builds everything from source; nothing pre-built or host-local
+# may leak into the context, host node_modules are for the host's OS.
+**/node_modules
+**/dist
+**/out
+**/*.tsbuildinfo
+.git
+data
+**/*.sqlite*
+.env
+.env.*
+!.env.example

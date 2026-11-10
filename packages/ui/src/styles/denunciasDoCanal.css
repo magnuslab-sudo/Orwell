@@ -1,0 +1,257 @@
+/* The "Reports" section in channel properties: the founder's box
+   (`SeccaoDenuncias.tsx`, 4/11/2026). Each report is a card with interior
+   ink and 14 px corners like large cards (`.cargos-folha`); messages are rows
+   inside it.
+
+   Everything under `.seccao-denuncias`. The report sheet (`DenunciarSheet`)
+   has its own sheet, `folhaDeDenunciar.css`.
+
+   Motion: the card fades in, opacity only. With reduced motion it still fades,
+   slower (the end block), and never stops. */
+
+/* Those still on the server, waiting for the device with the account key. */
+.seccao-denuncias .denuncias-a-espera {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--texto);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.seccao-denuncias .denuncias {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.seccao-denuncias .denuncia {
+  --painel-fundo: var(--painel-interior);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--painel-fundo);
+  border: 1px solid var(--painel-borda);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--painel-aresta);
+  animation: denuncia-entra 240ms var(--ease) both;
+}
+
+@keyframes denuncia-entra {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A new one lights the outline with accent, nothing else moves. */
+.seccao-denuncias .denuncia.nova {
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.seccao-denuncias .denuncia-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.seccao-denuncias .denuncia-motivo {
+  color: var(--titulo);
+  font-size: var(--font-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.seccao-denuncias .denuncia-dia {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+
+/* The pills: "Nova", the proof, and the reported message. Ink color, text color. */
+.seccao-denuncias :is(.denuncia-nova, .denuncia-prova, .denuncia-marca) {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.seccao-denuncias .denuncia-nova {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.seccao-denuncias .denuncia-prova.verificada {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+
+.seccao-denuncias .denuncia-prova.nao-verificada {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.seccao-denuncias .denuncia-marca {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+/* The report data: small label above, value below, in columns that arrange
+   themselves. On mobile two per row. */
+.seccao-denuncias .denuncia-dados {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.seccao-denuncias .denuncia-dados > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.seccao-denuncias :is(.denuncia-dados dt, .denuncia-rotulo) {
+  color: var(--text-faint);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seccao-denuncias .denuncia-dados dd {
+  margin: 0;
+  max-width: 100%;
+  color: var(--texto);
+  font-size: var(--font-sm);
+  overflow-wrap: anywhere;
+}
+
+/* The reporter's note: in a well, so it does not mix with messages. */
+.seccao-denuncias .denuncia-nota {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--poco);
+  box-shadow: inset 0 0 0 1px var(--poco-contorno);
+}
+
+.seccao-denuncias .denuncia-nota p {
+  margin: 0;
+  color: var(--secundario);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Messages: one row each, no browser line numbers. The reported one has the
+   danger color bar on the left and its ink behind. */
+.seccao-denuncias .denuncia-itens {
+  list-style: none;
+  margin: calc(-1 * var(--space-2)) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.seccao-denuncias .denuncia-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.seccao-denuncias .denuncia-item.denunciada {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.seccao-denuncias .denuncia-item-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+  font-size: var(--font-sm);
+}
+
+.seccao-denuncias .denuncia-item-cabecalho strong {
+  color: var(--titulo);
+  overflow-wrap: anywhere;
+}
+
+.seccao-denuncias .denuncia-hora {
+  color: var(--text-faint);
+  font-size: var(--font-xs);
+}
+
+.seccao-denuncias .denuncia-texto {
+  margin: 0;
+  color: var(--texto);
+  font-size: var(--font-base);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.seccao-denuncias .denuncia-anexo {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--font-xs);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  /* The date drops to its own row on the left instead of hanging on the right. */
+  .seccao-denuncias .denuncia-dia {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .seccao-denuncias .denuncia {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .seccao-denuncias .denuncia-item {
+    padding: var(--space-3);
+  }
+
+  .seccao-denuncias .denuncia-dados {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Reduced motion: the card still fades, twice as slow. The universal rule
+   in `base.css` put it at 0.01 ms; a class selector beats `*`. Opacity only:
+   nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .seccao-denuncias .denuncia {
+    animation-duration: 480ms !important;
+  }
+}

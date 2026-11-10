@@ -1,0 +1,112 @@
+/* ------------------------------------------------------------------ vozes */
+
+/* Someone is speaking there. The design and the reason for it are in
+   `components/Vozes.tsx`; here is only where it sits and what color it wears.
+   
+   It takes the place that `.live` had: tucked to the right of the line, with
+   unread counts next to it. The color is accent by inheritance of `currentColor`,
+   and our banner is the text color: bright, like someone on this side of the
+   screen. */
+.vozes {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--accent);
+  line-height: 0;
+}
+
+.vozes svg {
+  display: block;
+  overflow: visible;
+}
+
+.vozes .vozes-minha {
+  color: var(--text);
+}
+
+.channel .vozes {
+  margin-left: auto;
+}
+
+/* When the voice avatars already take the right edge, the unread badge sits next to them. */
+.vozes + .badge {
+  margin-left: var(--space-3);
+}
+
+/* On the line of a closed voice room, in the spot where the number was. */
+.room .vozes {
+  margin-left: auto;
+}
+
+/* In the call header and in the banner that invites you in. */
+.call-head .vozes {
+  margin: 0;
+}
+
+/* `.call-invite > span` stretches and truncates with ellipsis, which is what
+   we want from the text, not from the graphic next to it. */
+.call-invite .vozes {
+  flex: none;
+  overflow: visible;
+}
+
+/* The only motion on this sheet: the bell shakes twice when it appears, then
+stops.
+
+It is not a state pulsing forever: it is the gesture of someone calling, once.
+Only `transform`, and the frames do not carry `var()`: with a variable inside
+Chromium does not pass them to the compositor and the animation runs on the
+main thread (measured in `Onda`, see `scripts/medir-voz-visivel.mjs`). */
+.vozes-badalo {
+  transform-box: view-box;
+  transform-origin: 13px 8px;
+  animation: vozes-chamar 720ms ease-in-out 1 both;
+}
+
+@keyframes vozes-chamar {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20%,
+  60% {
+    transform: rotate(-22deg);
+  }
+  40%,
+  80% {
+    transform: rotate(10deg);
+  }
+}
+
+/* Explicit, to not depend on the universal rule in `base.css`: whoever asked
+   for less motion gets the bell already tilted, which is the full design. */
+@media (prefers-reduced-motion: reduce) {
+  .vozes-badalo {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------ person badges */
+
+/* Muted by her and muted by us are two designs (see `components/MarcaDeChamada.tsx`),
+   and have two colors as well: red is hers (the mic), amber is ours and undoes
+   with a click. The color helps, but it's not what sets them apart: the shape
+   already did. */
+.silenced-badge,
+.tile-silenced,
+.member-silenced {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--warning);
+}
+
+/* In the member list it follows the name on the line, like `.member-mic-off`. */
+.member-silenced {
+  vertical-align: -2px;
+  margin-left: var(--space-2);
+}
+
+span[data-marca] svg {
+  display: block;
+}

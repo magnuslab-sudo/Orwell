@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <title>Medição: onde é que um endereço de quatro palavras cabe</title>
+    <link rel="stylesheet" href="../packages/ui/src/styles.css" />
+    <style>
+      body { margin: 0; padding: 16px; }
+      .harness { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Not a screen of the application: it is the actual markup of each place
+      where an address appears, with the real stylesheet and real widths, to
+      answer the only question that matters, does it fit, or is it cut off?
+    -->
+    <div class="harness">
+      <!-- People panel: 224 px, the tightest place that exists. -->
+      <aside class="members" style="width: 224px">
+        <ul class="member-list">
+          <li>
+            <div class="member-row">
+              <span class="avatar" style="width: 34px; height: 34px"></span>
+              <span class="member-labels">
+                <span class="member-name" id="nome-membro"></span>
+                <span class="member-sub" id="sub-membro"></span>
+              </span>
+            </div>
+          </li>
+        </ul>
+      </aside>
+
+      <div style="width: 640px">
+        <article class="card post">
+          <header>
+            <span class="avatar" style="width: 40px; height: 40px"></span>
+            <div class="post-who">
+              <button class="author" id="autor-post"></button>
+              <span class="post-meta"><time>há 5 min</time></span>
+            </div>
+          </header>
+          <div class="post-engagement">
+            <div class="post-comments">
+              <ul class="comment-list">
+                <li class="comment">
+                  <span class="avatar" style="width: 32px; height: 32px"></span>
+                  <div class="comment-body">
+                    <span class="comment-who">
+                      <span class="comment-name" id="nome-comentario"></span>
+                      <time class="comment-when">há 2 min</time>
+                    </span>
+                    <p class="comment-text">Um comentário qualquer, para a linha ter altura.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <ul class="people-list">
+          <li class="person-row">
+            <span class="avatar" style="width: 40px; height: 40px"></span>
+            <div class="person-labels">
+              <span class="person-name" id="nome-pessoa"></span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- The two places that show the address IN FULL, and so moved from 16 to ~33
+           characters. Not in this scope; measured for the report to say numbers
+           not impressions. -->
+      <!-- 580 px is what `.sheet` takes on a large screen; 358 is what is left on a
+           390 phone. Both, because the narrow one decides. -->
+      <div class="sheet" id="folha-larga" style="width: 580px">
+        <div class="sheet-body">
+          <div class="verify-who">
+            <span class="member-labels">
+              <span class="member-name">Ana</span>
+              <span class="member-sub" id="verify-endereco"></span>
+            </span>
+          </div>
+        </div>
+        <footer class="sheet-actions">
+          <span class="sheet-address" id="editor-endereco"></span>
+          <button class="primary">Guardar</button>
+        </footer>
+      </div>
+
+      <div class="sheet" id="folha-estreita" style="width: 358px">
+        <div class="sheet-body">
+          <div class="verify-who">
+            <span class="member-labels">
+              <span class="member-name">Ana</span>
+              <span class="member-sub" id="verify-endereco-movel"></span>
+            </span>
+          </div>
+        </div>
+        <footer class="sheet-actions">
+          <span class="sheet-address" id="editor-endereco-movel"></span>
+          <button class="primary">Guardar</button>
+        </footer>
+      </div>
+    </div>
+
+    <pre id="resultado"></pre>
+    <script>
+      // An address in the new format: four words, ~33 characters.
+      const ENDERECO = "milsinda-odreto-viddyvox-pofletum"
+      const PRIMEIRA = ENDERECO.split("-")[0]
+      // Control: a profile name at the maximum length the protocol allows. If this one is cut and the other isn't, it proves the box can hold it and the cut belongs to CSS.
+      const NOME_LONGO = "N".repeat(64)
+
+      // Where `shortAddress` goes (the first word) and where the full number goes.
+      const curtos = ["nome-membro", "sub-membro", "autor-post", "nome-comentario", "nome-pessoa"]
+      const inteiros = ["verify-endereco", "editor-endereco", "verify-endereco-movel", "editor-endereco-movel"]
+
+      function medir(ids, texto) {
+        return ids.map((id) => {
+          const el = document.getElementById(id)
+          el.textContent = texto
+          const estilo = getComputedStyle(el)
+          // `scrollWidth > clientWidth` is the operational definition of "didn't fit".
+          const cortado = el.scrollWidth > el.clientWidth + 1
+          return `${id.padEnd(17)} texto=${String(Math.round(el.scrollWidth)).padStart(4)}px  caixa=${String(Math.round(el.clientWidth)).padStart(4)}px  fonte=${estilo.fontSize.padStart(4)}  corta=${estilo.textOverflow}  cortado=${cortado}`
+        })
+      }
+
+      const linhas = [
+        `— shortAddress: a primeira palavra ("${PRIMEIRA}", ${PRIMEIRA.length} caracteres) —`,
+        ...medir(curtos, PRIMEIRA),
+        `— controlo: nome de perfil de ${NOME_LONGO.length} caracteres —`,
+        ...medir(curtos, NOME_LONGO),
+        `— endereço INTEIRO (${ENDERECO.length} caracteres), onde é mostrado por extenso —`,
+        ...medir(inteiros, ENDERECO),
+        "—",
+      ]
+      medir(curtos, PRIMEIRA)
+      medir(inteiros, ENDERECO)
+      document.getElementById("resultado").textContent = linhas.join("\n")
+    </script>
+  </body>
+</html>

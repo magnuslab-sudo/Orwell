@@ -1,0 +1,69 @@
+/*
+  Unread items in rooms, and what's muted (owner's request from 27 October 2026).
+  In its own file to not mix with the call sections in `screens.css` and
+  `pele.css`.
+*/
+
+/* A room with unread items appears lighter and bolder, like the channel. */
+.room-row.unread .room {
+  color: var(--text);
+}
+
+.room-row.unread .room-name {
+  font-weight: 600;
+}
+
+/* A room's number is the same badge as the channel, a little smaller. */
+.room-unread {
+  font-size: 10px;
+  min-width: 16px;
+}
+
+.category-toggle .room-unread {
+  margin-left: var(--space-2);
+}
+
+/*
+  Muted: the name faded and the bell crossed out. The name fades, not the entire
+  line, so the mention number keeps showing in full.
+*/
+.channel-row.silenciado .channel-name,
+.room-row.silenciado .room-name,
+.direct-row.silenciado .direct-name {
+  opacity: 0.55;
+}
+
+/* In a muted room, the bell sticks to the name, like in the channel: the name
+   stops stretching and it's the bell that pushes the rest to the right. */
+.room-row.silenciado .room-name {
+  flex: 0 1 auto;
+}
+
+.room-row.silenciado .marca-silencio {
+  margin-right: auto;
+}
+
+.marca-silencio {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-left: var(--space-1);
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+
+/*
+  The broadcast indicator next to the face of whoever, in a voice room, shares
+  the screen or plays music. In the accent color, so you can see at a glance
+  that there's something to see or hear.
+*/
+.marca-transmissao {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  /* The person's row already has its spacing (`gap`); this is just padding
+     for when it's not a button and the pieces flow in a line. */
+  margin-left: 2px;
+  color: var(--accent);
+}

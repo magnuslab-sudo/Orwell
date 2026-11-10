@@ -1,0 +1,40 @@
+node_modules/
+dist/
+out/
+build/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Local server state: ciphertext blobs and routing metadata.
+data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Client identity material. Never commit, never sync.
+identity/
+*.key
+*.key.json
+*.pem
+
+# Local verification data, development profiles and logs.
+.verify-data/
+.dev-data/
+.dev-logs/
+
+# Screenshots written by the scripts in scripts/.
+capturas/
+scripts/_saida-*.png
+scripts/.saida-*
+scripts/.saida-fundo/
+scripts/.verif-*.png
+
+# Binaries built from scripts/movel-wkwebview/prova.swift.
+scripts/movel-wkwebview/prova
+scripts/movel-wkwebview/smoke
+
+.DS_Store
+*.log

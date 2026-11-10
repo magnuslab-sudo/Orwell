@@ -1,0 +1,2267 @@
+/**
+ * The Orwell site, in the "Tokyo Rain, midnight" skin.
+ *
+ * It has been the app's skin since 0.7.0, and the site wears the same by owner's
+ * request of October 20, 2026. When someone clicks "Enter", they land in the app
+ * a second later, and must land in the same place: midnight background, glass
+ * panels with 14 px corners, cyan as accent, pink only for error, fine still rain
+ * over the background, Space Grotesk.
+ *
+ * Single dark theme, on purpose: the skin is dark (`color-scheme: dark`).
+ *
+ * NO WebGL and no JavaScript. Everything is gradient, border, and `perspective()`.
+ * The security policy still does not allow a single script through.
+ *
+ * TYPOGRAPHY: Space Grotesk, the SAME file as the app,
+ * referenced here and not copied (`packages/ui/src/fontes/`, OFL 1.1, with
+ * licenses alongside). Vite copies them to `dist/assets/` with the hash in the
+ * name, and they are served from this origin: `font-src 'self'` in the policy,
+ * never a CDN.
+ */
+
+/* ----------------------------------------------------------------- fontes */
+
+/*
+  Copied from `packages/ui/src/styles/fontes.css`, with paths pointing to
+  the same folder. If the app changes its font, change it there and here.
+*/
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("../../../packages/ui/src/fontes/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("../../../packages/ui/src/fontes/space-grotesk-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+
+/* ----------------------------------------------------------------- tokens */
+
+:root {
+  /* The Ko-fi button: their color, and dark text that passes contrast. */
+  --kofi: #72a4f2;
+  --kofi-claro: #8fb7f5;
+  --kofi-texto: #0b1020;
+  /*
+    The skin, copied from `packages/ui/src/styles/tokens.css` (layer 1, "the
+    skin"). The site does not import from `packages/ui`: it is static and
+    measured in kilobytes. If a value changes there, change it here. Small text
+    contrast is checked in `testes/contraste.test.ts`, which reads THIS block.
+  */
+  --fundo: #080c1a;
+  --vidro: rgba(14, 20, 40, 0.66);
+  --vidro-contorno: rgba(139, 233, 253, 0.09);
+  --vidro-solido: #0c1123;
+  --poco: rgba(6, 9, 20, 0.6);
+  --poco-contorno: rgba(139, 233, 253, 0.14);
+
+  --texto: #e6ecff;
+  --titulo: #f1f4ff;
+  --secundario: #b9c3e0;
+  --apagado: #9aa6c8;
+  --discreto: #8591b8;
+
+  --acento: #8be9fd;
+  --indigo: #8b93e0;
+  /* Only for error and exit. The site has neither today. */
+  --rosa: #e070a8;
+  --presenca: #50fa7b;
+  /* Dark ink over the accent, the indigo, and the primary gradient. */
+  --tinta: #080c1a;
+  /* `--warning` and `--presence-busy` from `tokens.css`. */
+  --aviso: #f1fa8c;
+  --ocupado: #ffb86c;
+
+  --chuva-cor: rgba(150, 190, 255, 0.035);
+  --chuva-cor-2: rgba(139, 233, 253, 0.03);
+  --chuva-opacidade: 0.5;
+  /* The two lights in the background (`fundo.css` from the app). */
+  --luz-indigo: rgba(92, 110, 200, 0.12);
+  --luz-ciano: rgba(139, 233, 253, 0.08);
+
+  --fonte: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /*
+    The papers of the site, over the skin. The rules below use these names since
+    before the skin, and keep using them: changing the skin means changing the
+    block above.
+    */
+  --superficie: var(--vidro-solido);
+  --superficie-alta: #131a33;
+  --linha: var(--poco-contorno);
+  --texto-fraco: var(--apagado);
+  /* The accent: links, icons, mark. */
+  --neon: var(--acento);
+  /* The other end of the primary gradient. */
+  --neon-fundo: var(--indigo);
+  /* "This is protected" and "we" also shift to the accent color: the skin has one highlight color only, and green stays for presence. */
+  --menta: var(--acento);
+  --sobre-neon: var(--tinta);
+  /* The primary of the boards: from indigo to accent, with dark ink. */
+  --degrade: linear-gradient(135deg, var(--indigo), var(--acento));
+
+  --raio: 14px;
+  --raio-medio: 10px;
+  --raio-pequeno: 4px;
+  --rapido: 120ms;
+  /**
+   * Three durations and two easing curves, not just one.
+   *
+   * `--rapido` is the app default, right for a tool-heavy interface.
+   * On a page meant for reading, it feels abrupt. `--suave` is what large
+   * elements use to settle in; `--saida` decelerates at the end, which gives
+   * the impression of weight.
+   */
+  --suave: 260ms;
+  --lento: 480ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --saida: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --largura: 1120px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--neon);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--titulo);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--acento) 34%, transparent);
+  color: var(--titulo);
+}
+
+/* A focus ring for everything reachable by keyboard, and nothing can remove it. This is the single rule in `packages/ui/src/styles/base.css`, in accent color. */
+:where(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* Icons live in a hidden `<svg>` and are used by reference. */
+.desenhos {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/**
+ * Icons are stroked, and this needs to be declared once for all.
+ *
+ * SVG fills the mass by default, and the default mass is black. The icons on
+ * this page are drawn as outlines, a shield, a key, a globe, and without this
+ * rule each would appear as a black blob the size of the icon, invisible on a
+ * dark background. It was declared in `.grelha svg` only: the feature cards
+ * looked right and the "The machine is ours" globe, the platform icons, the
+ * lock on the screen and the download page icons all showed as smudges.
+ *
+ * Here at the top, once, and the next icon that arrives is born correct.
+ */
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------- sky */
+
+/**
+ * The skin background: two fixed lights and fine rain on top.
+ *
+ * This is the app's `fundo.css`, placed in a `<div>` not in `body`: `.ceu`
+ * already exists on all four pages, and `body` has the solid color for the
+ * first frame. Indigo at the top corner and cyan at the bottom corner, like on
+ * the boards. They do not move.
+ *
+ * `fixed`: the atmosphere stays still while the page scrolls on top. Everything
+ * is gradient: zero bytes of image, zero requests.
+ */
+.ceu {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  overflow: hidden;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 20% 0%, var(--luz-indigo), transparent 50%),
+    radial-gradient(ellipse at 90% 100%, var(--luz-ciano), transparent 45%);
+}
+
+/*
+  The rain. Stationary, like on the boards: the strokes are continuous, and a
+  continuous stroke sliding along itself does not appear to move.
+
+  In the app the rain goes OVER the panels. Here it sits under the content
+  (`.ceu` is at `z-index: -3`), and you see it through the glass of the cards:
+  text never goes beneath it, and the measured contrast is that of the glass.
+  `prefers-reduced-motion` turns it off, like in the app (end of sheet).
+*/
+.ceu::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--chuva-opacidade);
+  background-image:
+    repeating-linear-gradient(105deg, transparent 0 46px, var(--chuva-cor) 46px 47px, transparent 47px 91px),
+    repeating-linear-gradient(105deg, transparent 0 131px, var(--chuva-cor-2) 131px 132px);
+}
+
+/* ------------------------------------------------------------------ topo */
+
+/**
+ * The bar crosses the window; what is inside it aligns to the column.
+ *
+ * It had `max-width` and became a floating island: the frosted glass ended
+ * halfway, and below it the page scrolled on both sides. A sticky bar that does
+ * not reach the edges reads as a card that forgot to drop, not as the page top.
+ *
+ * The calculated `padding-inline` is the same trick as the dark blocks: it
+ * aligns the content with the rest of the page without locking the bar width.
+ */
+.topo {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 14px max(24px, calc((100% - var(--largura)) / 2 + 24px));
+  background: var(--vidro);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--vidro-contorno);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--titulo);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.marca:hover {
+  text-decoration: none;
+}
+
+.marca-desenho {
+  width: 26px;
+  height: 26px;
+  color: var(--acento);
+  /* The mark is the only thing on this page drawn filled, not stroked: the banners of the written O are solid. Without this it inherits the `fill: none` that serves all other icons, and appears black with a halo around it. The shape comes from `marca/gerar-marca.py`; from here comes only the color. */
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+/**
+ * The same buttons as the app, copied by hand not imported.
+ *
+ * When someone taps "Enter" they land in the app a second later, and the
+ * buttons there must be the same as here: same shape, same color, same response.
+ *
+ * **Where each value comes from**: `packages/ui/src/styles/components.css`
+ * (block `buttons`) and `packages/ui/src/styles/pele.css` (block "the controls"):
+ *
+ *   `.botao`        ← `.ghost` in the skin: dark well, outline `--poco-contorno`
+ *   `.botao-forte`  ← `.primary` in the skin: indigo to accent gradient, dark
+ *                     ink on top, short shadow at accent
+ *   10 px radius    ← `--radius-md`
+ *   120 ms + curve  ← `--dur-fast` and `--ease`
+ *   press at 0.96   ← the `.primary:active, .ghost:active` block from
+ *                     components.css
+ *   focus ring      ← `base.css`, the single `:focus-visible` rule for the
+ *                     whole app
+ *
+ * What was NOT copied: size. The app renders at 14 px because it is a tool
+ * packed with controls; a page meant for reading at 16 px with two buttons
+ * centered needs them bigger.
+ */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: 1px solid var(--poco-contorno);
+  border-radius: var(--raio-medio);
+  background: var(--poco);
+  color: var(--texto);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color var(--rapido) var(--ease), color var(--rapido) var(--ease),
+    border-color var(--rapido) var(--ease), transform var(--rapido) var(--ease);
+}
+
+/* `.ghost:hover` lights the BORDER and nothing else. It is the most subtle response that still reads, and a product selling privacy does not announce itself with halos. */
+.botao:hover {
+  border-color: color-mix(in srgb, var(--acento) 32%, transparent);
+  color: var(--titulo);
+  text-decoration: none;
+}
+
+/* The press, recognized. Instant on purpose: it is response, not choreography, the phrase is from `components.css` and the value too. It holds under reduced motion, like there: scaling on a press is not a journey. */
+.botao:active {
+  transform: scale(0.96);
+}
+
+/* A focus ring for everything, and nothing can remove it. Copied letter for letter from `base.css`, where it counts for the whole app. */
+.botao:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/**
+ * The strong one, which is the `.primary` of the skin.
+ *
+ * There it has no border (`border: none`); here the border stays and turns
+ * transparent, because the two live side by side on the same hero line and one
+ * pixel difference in height would show. The dark ink over the two gradient
+ * endpoints is measured in `testes/contraste.test.ts`.
+ */
+.botao-forte {
+  border-color: transparent;
+  background: var(--degrade);
+  color: var(--tinta);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--acento) 14%, transparent);
+}
+
+.botao-forte:hover {
+  border-color: transparent;
+  color: var(--tinta);
+  filter: brightness(1.08);
+}
+
+.botao-discreto {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------- blocos */
+
+.bloco {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 56px 24px;
+}
+
+.bloco h2 {
+  margin: 0 0 34px;
+  text-wrap: balance;
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Aligned with the h2 above it: the negative margin that was here pulled it outside the column and made the two start at different places, which is "titles misaligned" seen close up. */
+.bloco-texto {
+  max-width: 640px;
+  margin: 0 0 34px;
+  color: var(--texto-fraco);
+}
+
+/* -------------------------------------------------- features grid */
+
+/**
+ * The cards, in glass like the app panels.
+ *
+ * The feature name and one line. Nothing more: the page names, it does not
+ * explain, and a grid where each card is a paragraph reads like a manual, not
+ * like a product.
+ */
+.grelha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.grelha li {
+  position: relative;
+  padding: 22px 20px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--raio);
+  background: var(--vidro);
+  transition: border-color var(--suave) var(--saida), transform var(--suave) var(--saida),
+    box-shadow var(--suave) var(--saida), background-color var(--suave) var(--saida);
+}
+
+.grelha li:hover {
+  border-color: color-mix(in srgb, var(--acento) 32%, transparent);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px -18px color-mix(in srgb, var(--neon) 60%, transparent);
+}
+
+/* The size and color of the card icons. The stroke comes from the general rule up there, which serves these and all the others; here only the color is said to follow the page accent instead of being fixed. */
+.grelha svg {
+  width: 22px;
+  height: 22px;
+  color: var(--neon);
+}
+
+/* `text-wrap: balance`: when a title must break, it breaks with both lines the same size instead of leaving an orphan word at the bottom. */
+.grelha h3 {
+  margin: 12px 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
+.grelha p {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 14px;
+}
+
+/**
+ * Two per line, and the math that guarantees two.
+ *
+ * Here each card has a full paragraph not one line, and at 255px of
+ * `.grelha` came a column of text narrow and tall. At 330px THREE fit in 1120,
+ * and four cards in three columns leave one orphan alone on the bottom line,
+ * which is the fastest way to make a grid look broken.
+ *
+ * At 420px two fit and never three (3 × 420 + 2 × 14 = 1288 > 1120), and four
+ * cards make a square. The `min(100%, …)` is for windows narrower than 420px,
+ * where a fixed minimum would overflow.
+ */
+.grelha-larga {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+
+/* -------------------------------------------------- page header */
+
+/**
+ * The top of pages that are not the entry page.
+ *
+ * They have no hero: a gridded floor and a screen floating on a donations page
+ * would be the page selling itself instead of saying what it came to say. What
+ * stays is the large title, one line of context, and space.
+ */
+.cabeca {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 60px 24px 4px;
+}
+
+.cabeca h1 {
+  margin: 0 0 14px;
+  font-size: clamp(32px, 5.2vw, 54px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.cabeca-lead {
+  max-width: 660px;
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 18px;
+}
+
+.cabeca-selo {
+  display: inline-block;
+  margin: 0 0 18px;
+  padding: 5px 14px;
+  border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--neon) 10%, transparent);
+  color: var(--acento);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------ business */
+
+/* The steps, numbered by CSS: the number is decoration not content, and anyone listening to the page already hears an ordered list. */
+.passos {
+  counter-reset: passo;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.passos li {
+  counter-increment: passo;
+  padding: 22px 20px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--raio);
+  background: var(--vidro);
+}
+
+.passos li::before {
+  content: counter(passo, decimal-leading-zero);
+  display: block;
+  margin-bottom: 10px;
+  color: var(--neon);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+.passos h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.passos p {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 14px;
+}
+
+/**
+ * The final call, with the border lit.
+ *
+ * It is the only place on the page where neon paints an entire box. If it were
+ * in three places it would be in none.
+ *
+ * The margin is the same math as `.bloco-escuro` and `.topo`, not `auto`. With
+ * `max-width: var(--largura)` and `margin: auto` the box would be THE WIDTH OF
+ * THE COLUMN not the width of its content: 24px to the left of all page titles
+ * in a wide window, and stuck to both edges of the screen on a phone, where
+ * 1120px max never limits anything.
+ */
+.chamada {
+  margin: 20px max(24px, calc((100% - var(--largura)) / 2 + 24px)) 40px;
+  padding: 34px 28px;
+  border: 1px solid color-mix(in srgb, var(--neon) 40%, transparent);
+  border-radius: var(--raio);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--acento) 8%, transparent), transparent 62%),
+    var(--vidro);
+  box-shadow: 0 30px 70px -40px color-mix(in srgb, var(--neon) 70%, transparent);
+}
+
+.chamada h2 {
+  margin: 0 0 10px;
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.chamada p {
+  max-width: 620px;
+  margin: 0 0 22px;
+  color: var(--texto-fraco);
+}
+
+.chamada-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* The full address, below the button that opens it. A `mailto:` that exists only in the `href` is useless for people with no mail client set up, and there are more of them than you think. */
+.chamada-nota {
+  max-width: 620px;
+  margin: 18px 0 0;
+  color: var(--texto-fraco);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------- donativos */
+
+/**
+ * Where money goes. Two cards, and nothing competing with them.
+ *
+ * The number and IBAN are in monospace and large because they will be copied by
+ * hand into another app: it is the only text on this page that someone will have
+ * to read character by character.
+ */
+.doar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doar li {
+  padding: 24px 22px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--raio);
+  background: var(--vidro);
+}
+
+.doar-nome {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--texto-fraco);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.doar-valor {
+  margin: 0;
+  color: var(--texto);
+  font-family: var(--mono);
+  font-size: clamp(17px, 2.2vw, 22px);
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.doar-nota {
+  margin: 12px 0 0;
+  color: var(--texto-fraco);
+  font-size: 13px;
+}
+
+/**
+ * The name condition, next to where money goes and not at the end of the page.
+ *
+ * The donor must know BEFORE giving that the name shows only if they ask for it.
+ * Written after the act, this sentence is a warning; written before, it is a choice.
+ */
+.consentimento {
+  margin: 20px 0 0;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--menta) 30%, transparent);
+  border-radius: var(--raio);
+  background: color-mix(in srgb, var(--menta) 6%, transparent);
+  color: var(--texto);
+  font-size: 14px;
+}
+
+/* The same box, when it comes ABOVE the number and IBAN: the space moves down, which is the side where what it conditions lives. */
+.consentimento-antes {
+  margin: 0 0 20px;
+}
+
+/* The last to give, highlighted. One spot only, and empty until someone wants it. */
+.ultimo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  margin: 34px 0 0;
+  padding: 22px 24px;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  border-radius: var(--raio);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--neon) 12%, transparent), transparent 60%);
+}
+
+.ultimo-rotulo {
+  color: var(--texto-fraco);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* The empty state of the spot. It says what needs to happen to fill it, instead of vanishing: a box that only exists when someone is in it is a box nobody knows exists. */
+.ultimo-vazio {
+  color: var(--texto-fraco);
+  font-size: 14px;
+}
+
+.ultimo-nome {
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--acento);
+}
+
+/**
+ * The wall of names. A grid that does not look sparse with eight and not cramped
+ * with eighty.
+ *
+ * `auto-fill` not `auto-fit`: with few names `auto-fit` stretches each to the
+ * column width and eight names become eight huge bands. `auto-fill` keeps the
+ * empty columns and the names stay their natural size.
+ */
+.mural-nomes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mural-nomes li {
+  padding: 14px 16px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--raio-pequeno);
+  background: var(--vidro);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+  transition: border-color var(--suave) var(--saida), color var(--suave) var(--saida);
+}
+
+.mural-nomes li:hover {
+  border-color: color-mix(in srgb, var(--acento) 32%, transparent);
+  color: var(--menta);
+}
+
+/* ---------------------------------------------------------- embaixadores */
+
+/* The tribute section of the `/embaixadores.html` page. The page reuses what already exists (`.cabeca`, `.passos`, `.chamada`, `.mural-nomes`); here comes only what is missing. */
+/* The tribute zone. Empty, it says the spot exists; with names, one name per list line, without saying if it is the community or the ambassador. */
+.tributo-vazio {
+  margin: 0;
+  padding: 22px 24px;
+  border: 1px dashed color-mix(in srgb, var(--neon) 35%, transparent);
+  border-radius: var(--raio);
+  color: var(--texto-fraco);
+  font-size: 15px;
+}
+
+.tributo li strong {
+  display: block;
+}
+
+
+/* ------------------------------------------------------------- legais */
+
+/**
+ * Privacy and terms: a reading column, no neon.
+ *
+ * The entry page must convince; these must be read. Short line measure,
+ * larger type, and the only accent is the links. People who get here come to
+ * check one concrete thing, and brightness only gets in the way.
+ *
+ * The column is short but STARTS where the others start, not in the middle of
+ * the screen. Centered, the text would begin at 383px in a 1440 window while the
+ * mark at the top and at the bottom started at 184: the page would read like a
+ * document floating inside a header that was about something else. The math is
+ * the same as `.topo` and `.bloco-escuro`, and on narrow windows it gives zero,
+ * where `padding` becomes the only margin.
+ */
+.legal {
+  max-width: calc(720px + 48px);
+  margin-inline: max(0px, calc((100% - var(--largura)) / 2)) auto;
+  padding: 48px 24px 72px;
+}
+
+.legal h1 {
+  margin: 0 0 6px;
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.legal-data {
+  margin: 0 0 32px;
+  color: var(--texto-fraco);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.legal-abertura {
+  font-size: 18px;
+  color: var(--texto);
+}
+
+.legal h2 {
+  margin: 40px 0 12px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.legal p,
+.legal li {
+  color: var(--texto-fraco);
+  font-size: 16px;
+}
+
+.legal ul {
+  padding-left: 20px;
+}
+
+.legal li {
+  margin-bottom: 10px;
+}
+
+.legal strong {
+  color: var(--texto);
+  font-weight: 700;
+}
+
+/* The version that counts, in both languages (November 3, 2026): the English says it is a translation, the Portuguese says one exists. Right below the date. */
+.legal .legal-lingua {
+  margin: -20px 0 32px;
+  font-size: 14px;
+}
+
+/* The disclaimer that this is not legal advice. It is visible, not hidden in small print: it is precisely the kind of thing that gets hidden. */
+.legal-nota {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--vidro-contorno);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------- transfers */
+
+/**
+ * The downloads page, which is GENERATED and not written by hand.
+ *
+ * The markup comes from `scripts/publicar-instaladores.mjs` and the styles live here,
+ * on the same sheet as the homepage: it is the same product and must be in the same place.
+ * These styles existed in the generator and not here, and what showed was an
+ * unstyled list under a styled header.
+ */
+/**
+ * The installers are buttons (owner request on 3 November 2026): the main
+ * draw of the site, at large scale, with the version, size and checksum below.
+ *
+ * With the script (`src/sistema.ts`), the visitor's system button moves to
+ * first by `order`. Without it, the markup order applies.
+ */
+.instaladores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 28px 32px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.instalador {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.botao-instalador {
+  align-self: stretch;
+  padding: 16px 26px;
+  font-size: 18px;
+}
+
+.botao-instalador span {
+  margin-left: 2px;
+}
+
+.instalador-meta {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.instalador-meta .mono {
+  font-size: 12px;
+}
+
+:root[data-sistema="windows"] .instalador-windows,
+:root[data-sistema="macos"] .instalador-macos {
+  order: -1;
+}
+
+/* The checksum is meant to be compared character by character, so it breaks where it fits
+   instead of stretching the card off screen. */
+.descarga-soma {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--poco-contorno);
+  border-radius: var(--raio-medio);
+  background: var(--poco);
+  color: var(--texto-fraco);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.descarga-rotulo {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--texto-fraco);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* The Gatekeeper and SmartScreen warning, before the checksum steps and not in
+   small print: the downloader must know what will happen BEFORE it happens,
+   otherwise the system warning reads like a failure. No box since 3 November
+   2026: a line on the left and text, like the mobile limits on the entry page. */
+.aviso {
+  display: block;
+  max-width: 760px;
+  margin: 56px 0 0;
+  padding: 0 0 0 20px;
+  border-left: 2px solid var(--linha);
+}
+
+.aviso svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  color: var(--aviso);
+}
+
+/* `h3` as well: on the entry page the warning lives inside a section that already
+   has its `h2`, so its heading goes down one level. The design is the same. */
+.aviso h2,
+.aviso h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.aviso p {
+  margin: 0 0 10px;
+  color: var(--texto-fraco);
+  font-size: 14px;
+}
+
+.aviso p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.rodape {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+  border-top: 1px solid var(--vidro-contorno);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 30px;
+  align-items: center;
+  color: var(--texto-fraco);
+  font-size: 13px;
+}
+
+.rodape-marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.rodape-marca .marca-desenho {
+  width: 20px;
+  height: 20px;
+}
+
+.rodape-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.rodape-links a {
+  color: var(--texto-fraco);
+}
+
+.rodape-nota {
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--discreto);
+}
+
+/* The third-party notices link: subtle, in the note color. */
+.rodape-nota a {
+  color: inherit;
+}
+
+
+/**
+ * The language picker, "EN · PT", in the footer of all pages.
+ *
+ * Owner request on 3 November 2026: the site goes English first, with
+ * Portuguese at `/pt/`. Two plain links to the same page in the other
+ * language, no JavaScript and no cookie. The page language gets
+ * `aria-current`. It was also at the top until the end of that day; the owner removed it
+ * ("footer only"). The top is the brand and "Sign in", nothing else.
+ */
+.linguas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.linguas a {
+  color: var(--texto-fraco);
+}
+
+.linguas a[aria-current] {
+  color: var(--titulo);
+}
+
+.linguas a:hover {
+  color: var(--titulo);
+  text-decoration: none;
+}
+
+.linguas span {
+  color: var(--discreto);
+}
+
+/* --------------------------------------------------------------- comuns */
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--menta);
+}
+
+/* ----------------------------------------------------- página de entrada */
+
+/**
+ * The entry page, per direction "02 Editorial" (2 November 2026).
+ *
+ * Everything here lives under `.entrada` (entry page only) or `.editorial`
+ * (all pages, since 3 November 2026: entry, ambassadors, legal and downloads).
+ * Here there is a clean background, a single column, lots of white space, thin lines
+ * instead of cards, accent only on links, and the actual app screenshot as the only visual.
+ *
+ * Only the ambassador banner animates (3 November 2026). With reduced motion it keeps moving, slower.
+ */
+.editorial {
+  --margem: max(24px, calc((100% - 1200px) / 2));
+}
+
+.editorial .topo {
+  position: static;
+  padding: 28px var(--margem);
+  background: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--vidro-contorno);
+}
+
+.editorial .marca {
+  font-size: 18px;
+  letter-spacing: 0.22em;
+}
+
+.editorial .marca-desenho {
+  width: 30px;
+  height: 30px;
+}
+
+.topo-entrar {
+  margin-left: auto;
+  color: var(--secundario);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.topo-entrar:hover {
+  color: var(--titulo);
+}
+
+/* The hero: text in the column, the screenshot cropped by the right edge. */
+.entrada .heroi {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
+  gap: clamp(40px, 5vw, 88px);
+  align-items: center;
+  padding: clamp(64px, 9vw, 128px) 0 clamp(72px, 9vw, 120px) var(--margem);
+}
+
+.etiqueta {
+  margin: 0 0 28px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--apagado);
+}
+
+.entrada h1 {
+  margin: 0;
+  font-size: clamp(52px, 7vw, 112px);
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.heroi-lead {
+  max-width: 32em;
+  margin: 36px 0 0;
+  color: var(--secundario);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+/**
+ * The main button, which is a text link with arrow.
+ *
+ * Without the script it shows "Open in browser", with other paths below. With it,
+ * `src/sistema.ts` writes `data-sistema` on the `<html>` and the rules below
+ * swap the main one and remove from below what moved up.
+ */
+.accao {
+  margin-top: 36px;
+}
+
+.accao-principal {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.accao-principal a span {
+  margin-left: 6px;
+}
+
+.accao-outros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+
+.accao-outros a {
+  color: var(--apagado);
+  text-decoration: underline;
+  text-decoration-color: var(--linha);
+  text-underline-offset: 4px;
+}
+
+.accao-outros a:hover {
+  color: var(--titulo);
+}
+
+.para-windows,
+.para-macos,
+.outro-browser {
+  display: none;
+}
+
+:root[data-sistema="windows"] .para-browser,
+:root[data-sistema="macos"] .para-browser,
+:root[data-sistema="windows"] .outro-windows,
+:root[data-sistema="macos"] .outro-macos,
+:root[data-sistema="telemovel"] .outro-windows,
+:root[data-sistema="telemovel"] .outro-macos {
+  display: none;
+}
+
+:root[data-sistema="windows"] .para-windows,
+:root[data-sistema="macos"] .para-macos,
+:root[data-sistema="windows"] .outro-browser,
+:root[data-sistema="macos"] .outro-browser {
+  display: inline;
+}
+
+.heroi-captura {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--vidro-contorno);
+  border-right: 0;
+  border-radius: var(--raio) 0 0 var(--raio);
+  background: var(--vidro-solido);
+}
+
+.heroi-captura img {
+  width: 1040px;
+  max-width: none;
+  height: auto;
+}
+
+/* The four points: text and a small screenshot. No numbers (3 November 2026). */
+.pontos {
+  margin: 0;
+  padding: 0 var(--margem);
+  list-style: none;
+}
+
+.ponto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: 32px;
+  align-items: start;
+  padding: 56px 0;
+  border-top: 1px solid var(--vidro-contorno);
+}
+
+.ponto-texto h2 {
+  margin: 0 0 12px;
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.ponto-texto p {
+  max-width: 34em;
+  margin: 0;
+  color: var(--secundario);
+}
+
+.ponto-captura {
+  margin: 0;
+}
+
+.ponto-captura img {
+  width: auto;
+  max-width: 100%;
+  max-height: 280px;
+  border: 1px solid var(--vidro-contorno);
+  border-radius: var(--raio);
+  background: var(--vidro-solido);
+}
+
+/*
+  Point 04 is a diagram, not a screenshot (owner choice, 2/11/2026): it has
+  small labels that would not read at 280 px height. It spans the full line
+  below the text, up to 720 px wide, with no height cap like the screenshots.
+*/
+.ponto-esquema {
+  grid-column: 2 / -1;
+}
+
+.ponto-esquema img {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  max-height: none;
+  border: 0;
+  background: transparent;
+}
+
+.ponto-captura figcaption {
+  margin-top: 10px;
+  color: var(--discreto);
+  font-size: 13px;
+}
+
+/* The sections below: the mobile, the two questions and the note. */
+/* The lines stay in the column, like the points: the margin is outside. */
+.seccao {
+  margin-inline: var(--margem);
+  padding: 80px 0;
+  border-top: 1px solid var(--vidro-contorno);
+}
+
+.seccao h2 {
+  margin: 0 0 16px;
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.seccao-texto {
+  max-width: 40em;
+  margin: 0;
+  color: var(--secundario);
+}
+
+.movel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 32px 56px;
+  max-width: 960px;
+  margin-top: 40px;
+}
+
+.movel-sistema h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.movel-browser {
+  color: var(--apagado);
+  font-weight: 400;
+}
+
+.movel-passos {
+  margin: 0;
+  padding-left: 1.3em;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+.movel-passos li + li {
+  margin-top: 6px;
+}
+
+.movel-passos li::marker {
+  color: var(--discreto);
+}
+
+.movel-abrir {
+  margin: 32px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* The mobile warning: same as on downloads, a bit closer. */
+.entrada .aviso {
+  margin-top: 40px;
+}
+
+.entrada .aviso h3 {
+  font-size: 15px;
+}
+
+/* The two closed questions. One line each, until they open. */
+.seccao-mais {
+  padding-block: 24px;
+}
+
+.mais + .mais {
+  border-top: 1px solid var(--vidro-contorno);
+}
+
+.mais summary {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 28px 0;
+  color: var(--titulo);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mais summary::-webkit-details-marker {
+  display: none;
+}
+
+.mais summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--acento);
+  font-weight: 400;
+}
+
+.mais[open] summary::after {
+  content: "−";
+}
+
+.mais-corpo {
+  padding-bottom: 40px;
+}
+
+.tabela-rolo {
+  margin-top: 24px;
+}
+
+.versus {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.versus th,
+.versus td {
+  padding: 14px 16px 14px 0;
+  border-top: 1px solid var(--vidro-contorno);
+  text-align: left;
+  vertical-align: top;
+}
+
+.versus thead th {
+  border-top: 0;
+  color: var(--apagado);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.versus tbody th {
+  width: 30%;
+  color: var(--titulo);
+  font-weight: 600;
+}
+
+.versus td {
+  color: var(--apagado);
+}
+
+.versus .versus-nos {
+  color: var(--texto);
+}
+
+.versus thead .versus-nos {
+  color: var(--acento);
+}
+
+.versus-canto {
+  color: var(--discreto);
+}
+
+.versus-nota {
+  max-width: 40em;
+  margin: 24px 0 0;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+.colunas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 28px 48px;
+}
+
+.colunas h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.colunas p {
+  margin: 0;
+  color: var(--apagado);
+  font-size: 14px;
+}
+
+.seccao-nota p {
+  max-width: 40em;
+  margin: 0;
+  color: var(--secundario);
+}
+
+.seccao-nota p + p {
+  margin-top: 12px;
+}
+
+/* The ambassadors: their own editorial block, no cards. */
+.seccao .seccao-titulo {
+  font-size: clamp(40px, 5.4vw, 76px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.seccao.embaixadores .seccao-titulo {
+  margin-bottom: 28px;
+}
+
+.embaixadores-colunas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 28px 56px;
+  max-width: 960px;
+  margin-top: 40px;
+}
+
+.embaixadores-colunas h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.embaixadores-colunas p {
+  margin: 0;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+.embaixadores-como {
+  max-width: 40em;
+  margin: 36px 0 0;
+  color: var(--texto);
+}
+
+.embaixadores-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  margin: 20px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/**
+ * The ambassador banner: names in a loop, right to left.
+ *
+ * Owner request on 3 November 2026. It is the ONLY thing that animates on the
+ * entry page. CSS only: the track holds the list twice (`src/tributo.ts`) and moves
+ * half its length, and the restart lands on the seam. The `overflow: hidden` on
+ * the banner prevents horizontal scroll at 390 px.
+ *
+ * Stops on hover and on focus (the `tabindex` is in the markup). With reduced motion
+ * it does NOT stop: it moves three times slower (owner rule; see the end of the sheet,
+ * where the general rule takes everything to 0.01 ms and this one wins).
+ */
+.tributo-linha {
+  margin: 44px 0 0;
+}
+
+.tributo-frase {
+  margin: 0 0 16px;
+  color: var(--apagado);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.faixa {
+  overflow: hidden;
+  padding-block: 18px;
+  border-block: 1px solid var(--vidro-contorno);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.faixa:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 4px;
+}
+
+.faixa-pista {
+  display: flex;
+  width: max-content;
+  animation: faixa-andar 70s linear infinite;
+}
+
+.faixa:hover .faixa-pista,
+.faixa:focus-within .faixa-pista {
+  animation-play-state: paused;
+}
+
+.faixa-nomes {
+  display: flex;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.faixa-nomes li {
+  display: flex;
+  align-items: center;
+  color: var(--titulo);
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* The separator is a design element not text: a screen reader does not read it. It comes after
+   EVERY name, the last one too, so the seam spacing matches the others. */
+.faixa-nomes li::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-inline: clamp(20px, 2.6vw, 36px);
+  border-radius: 50%;
+  background: var(--acento);
+}
+
+@keyframes faixa-andar {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.embaixadores-versao {
+  margin: 28px 0 0;
+  color: var(--discreto);
+  font-size: 13px;
+}
+
+/* Support Orwell: a short section before the close, with one link only. */
+.seccao-apoio h2 {
+  margin: 12px 0 0;
+  color: var(--titulo);
+  font-size: clamp(28px, 3.4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.apoio-ligacao {
+  margin: 20px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.apoio-ligacao a {
+  color: var(--acento);
+  text-decoration: none;
+}
+
+.apoio-ligacao a:hover,
+.apoio-ligacao a:focus-visible {
+  text-decoration: underline;
+}
+
+/* The campaign meter (`src/apoio.ts`). The space always exists, with reserved
+   height and hidden: when numbers arrive, nothing shifts. No numbers, stays hidden,
+   and the section is just text and button. */
+.apoio-medidor {
+  max-width: 520px;
+  margin: 24px 0 0;
+  visibility: hidden;
+}
+
+.apoio-medidor[data-estado="pronto"] {
+  visibility: visible;
+}
+
+.apoio-barra {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--poco-contorno);
+  border-radius: 999px;
+  background: var(--poco);
+}
+
+.apoio-enchimento {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--degrade);
+  transition: width 1.6s var(--saida);
+}
+
+.apoio-numeros {
+  min-height: 1.5em;
+  margin: 10px 0 0;
+  color: var(--secundario);
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Those who cannot donate: one sentence, no button. */
+.apoio-partilha {
+  margin: 20px 0 0;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+/* The support banner, right below the header (9 November 2026). Thin and subtle: one line
+   of small text and the Ko-fi link. On narrow windows the link goes to the next line. */
+.faixa-apoio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  padding: 10px var(--margem);
+  border-bottom: 1px solid var(--vidro-contorno);
+  color: var(--secundario);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.faixa-apoio p {
+  margin: 0;
+}
+
+.faixa-apoio-links {
+  font-weight: 600;
+}
+
+.faixa-apoio-links a {
+  color: var(--acento);
+  text-decoration: none;
+}
+
+.faixa-apoio-links a:hover,
+.faixa-apoio-links a:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 560px) {
+  .faixa-apoio {
+    padding-block: 8px;
+    font-size: 13px;
+  }
+}
+
+.editorial .rodape {
+  max-width: none;
+  padding: 32px var(--margem) 48px;
+}
+
+/**
+ * The ambassador program page, in the same style (2 November 2026). Style only:
+ * the text and markup stay as they were. Cards become lines, badge becomes label,
+ * button becomes arrow link, and the background goes away.
+ */
+.editorial .cabeca {
+  max-width: none;
+  margin: 0;
+  padding: clamp(64px, 9vw, 120px) var(--margem) 56px;
+}
+
+.editorial .cabeca-selo {
+  display: block;
+  margin: 0 0 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--apagado);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+}
+
+.editorial .cabeca h1 {
+  margin-bottom: 32px;
+  font-size: clamp(48px, 7vw, 104px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+}
+
+.editorial .cabeca-lead {
+  max-width: 34em;
+  color: var(--secundario);
+}
+
+.editorial .bloco {
+  max-width: none;
+  margin-inline: var(--margem);
+  padding: 72px 0;
+  border-top: 1px solid var(--vidro-contorno);
+}
+
+.editorial .bloco h2,
+.editorial .chamada h2 {
+  margin: 0 0 16px;
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.editorial .bloco-texto {
+  color: var(--secundario);
+}
+
+.editorial .grelha,
+.editorial .passos {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 0 56px;
+  margin-top: 24px;
+}
+
+.editorial .grelha li,
+.editorial .passos li {
+  padding: 28px 0;
+  border: 0;
+  border-top: 1px solid var(--vidro-contorno);
+  border-radius: 0;
+  background: none;
+}
+
+.editorial .grelha li:hover {
+  border-color: var(--vidro-contorno);
+  transform: none;
+  box-shadow: none;
+}
+
+.editorial .grelha svg {
+  display: none;
+}
+
+.editorial .grelha h3,
+.editorial .passos h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.editorial .grelha p,
+.editorial .passos p {
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+/* No numbers, like the entry page since 3 November 2026: the ordered list still tells
+   the count to someone listening to the page. */
+.editorial .passos li::before {
+  content: none;
+}
+
+.editorial .chamada {
+  margin: 0 var(--margem);
+  padding: 72px 0;
+  border: 0;
+  border-top: 1px solid var(--vidro-contorno);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.editorial .chamada p {
+  max-width: 40em;
+  color: var(--secundario);
+}
+
+.editorial .chamada .botao-forte {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--acento);
+  font-size: 18px;
+}
+
+.editorial .chamada .botao-forte::after {
+  content: "→";
+  margin-left: 6px;
+}
+
+.editorial .chamada .botao-forte:hover {
+  filter: none;
+  text-decoration: underline;
+}
+
+.editorial .chamada-nota {
+  color: var(--discreto);
+}
+
+.editorial .mural-nomes li {
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  background: none;
+}
+
+.editorial .tributo-vazio {
+  padding: 4px 0 4px 20px;
+  border: 0;
+  border-left: 1px solid var(--linha);
+  border-radius: 0;
+}
+
+/**
+ * The legal pages, in the same style (3 November 2026). Style only: the legal
+ * text is the owner's. Large title, date as label, a reading column, and each
+ * section opened by a thin line.
+ */
+.editorial .legal {
+  max-width: none;
+  margin: 0;
+  padding: clamp(64px, 9vw, 120px) var(--margem) 96px;
+}
+
+.editorial .legal > * {
+  max-width: 44rem;
+}
+
+.editorial .legal h1 {
+  max-width: none;
+  margin: 0 0 28px;
+  font-size: clamp(48px, 7vw, 104px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+}
+
+.editorial .legal .legal-data {
+  margin: 0 0 12px;
+  color: var(--apagado);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.editorial .legal .legal-lingua {
+  margin: 0 0 48px;
+  font-size: 14px;
+}
+
+.editorial .legal .legal-abertura {
+  margin: 0;
+  color: var(--texto);
+  font-size: 20px;
+  line-height: 1.55;
+}
+
+.editorial .legal h2 {
+  margin: 56px 0 16px;
+  padding-top: 28px;
+  border-top: 1px solid var(--vidro-contorno);
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.editorial .legal p,
+.editorial .legal li {
+  color: var(--secundario);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.editorial .legal .legal-nota {
+  margin-top: 56px;
+  padding: 0 0 0 20px;
+  border-top: 0;
+  border-left: 2px solid var(--linha);
+  font-size: 14px;
+}
+
+/**
+ * The downloads page, in the same style (3 November 2026). Each button is a wide
+ * line with an arrow, like the questions on the entry page. Version, size and
+ * checksum sit below it, no box.
+ */
+.editorial .instaladores {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 56px;
+  margin: 0;
+}
+
+.editorial .instalador {
+  gap: 14px;
+}
+
+.editorial .botao-instalador {
+  justify-content: space-between;
+  padding: 0 0 20px;
+  border: 0;
+  border-bottom: 1px solid var(--linha);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--titulo);
+  font-size: clamp(26px, 2.8vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.editorial .botao-instalador span {
+  color: var(--acento);
+}
+
+.editorial .botao-instalador:hover {
+  border-color: var(--acento);
+  color: var(--titulo);
+  filter: none;
+}
+
+.editorial .instalador-meta {
+  color: var(--secundario);
+  font-size: 14px;
+}
+
+.editorial .descarga-soma {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--apagado);
+  font-size: 12px;
+}
+
+/* Mobile and browser: two columns no box, below the buttons. */
+.caminhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 40px 56px;
+  margin: 72px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caminhos h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.caminho-meta {
+  color: var(--apagado);
+  font-weight: 400;
+}
+
+.caminhos p {
+  max-width: 32em;
+  margin: 0;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+.caminhos .caminho-ligacao {
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.editorial .aviso h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* The checksum steps: one line per system, no numbers no cards. */
+.confirmar-passos {
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.confirmar-passos li {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  gap: 8px 56px;
+  padding: 24px 0;
+  border-top: 1px solid var(--vidro-contorno);
+}
+
+.confirmar-passos h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.confirmar-passos p {
+  max-width: 40em;
+  margin: 0;
+  color: var(--secundario);
+  font-size: 15px;
+}
+
+.confirmar-passos .descarga-soma {
+  margin-top: 10px;
+  color: var(--texto);
+  font-size: 14px;
+}
+
+@media (max-width: 1000px) {
+  .entrada .heroi {
+    grid-template-columns: minmax(0, 1fr);
+    padding-right: 0;
+  }
+
+  .heroi-texto {
+    padding-right: var(--margem);
+  }
+
+  .heroi-captura img {
+    width: 720px;
+  }
+
+  .ponto {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .editorial .topo {
+    padding-block: 20px;
+  }
+
+  .confirmar-passos li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etiqueta {
+    letter-spacing: 0.14em;
+  }
+
+  .heroi-lead {
+    font-size: 17px;
+  }
+
+  .ponto {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 44px 0;
+  }
+
+
+
+  /* The table is no longer a table: each row a block, with the label written
+     by CSS from `data-rotulo`. The `<table>` stays in the document. */
+  .versus,
+  .versus tbody,
+  .versus tr,
+  .versus th,
+  .versus td {
+    display: block;
+    width: auto;
+  }
+
+  .versus thead {
+    display: none;
+  }
+
+  .versus tr {
+    padding: 14px 0;
+    border-top: 1px solid var(--vidro-contorno);
+  }
+
+  .versus tbody th,
+  .versus td {
+    padding: 4px 0;
+    border-top: 0;
+  }
+
+  .versus tbody th {
+    width: auto;
+  }
+
+  .versus td::before {
+    content: attr(data-rotulo);
+    display: block;
+    color: var(--discreto);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+}
+
+/**
+ * Reduced motion, on other pages.
+ *
+ * What turns off is motion and nothing else (the base rule is in
+ * `packages/ui/src/styles/base.css`). On the entry page only the ambassador
+ * banner animates, and it slows down instead of stopping.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .grelha li:hover {
+    transform: none;
+  }
+
+  /* The rain goes away, like in the app (`fundo.css`). */
+  .ceu::after {
+    display: none;
+  }
+
+  /* The ambassador banner does NOT stop: it moves slower (owner rule, 3 November
+     2026). The class beats the `*` above by specificity, and both use `!important`. */
+  .faixa-pista {
+    animation-duration: 210s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* The campaign meter also does NOT stop: it fills slower and straight, by the
+     same rule. */
+  .apoio-enchimento {
+    transition-duration: 4.8s !important;
+    transition-timing-function: linear !important;
+  }
+}
+
+/* The Ko-fi button, built here not with their script (Widget_2.js): the page
+   loads nothing from outside. Ko-fi color (#72a4f2), dark text for contrast to pass. */
+.faixa-apoio-links a.botao-kofi,
+.apoio-ligacao a.botao-kofi {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--kofi);
+  color: var(--kofi-texto);
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.faixa-apoio-links a.botao-kofi:hover,
+.faixa-apoio-links a.botao-kofi:focus-visible,
+.apoio-ligacao a.botao-kofi:hover,
+.apoio-ligacao a.botao-kofi:focus-visible {
+  background: var(--kofi-claro);
+  text-decoration: none;
+}
+
+.botao-kofi-chavena {
+  flex: none;
+}
+
+/* The "Support us" at the top, next to "Sign in" (owner request, 9/11/2026). */
+.topo-apoio {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--kofi);
+  color: var(--kofi-texto);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.topo-apoio:hover,
+.topo-apoio:focus-visible {
+  background: var(--kofi-claro);
+}
+
+.topo-apoio + .topo-entrar {
+  margin-left: 0;
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@enclave/crypto",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@enclave/protocol": "*",
+    "ts-mls": "1.6.2",
+    "@hpke/chacha20poly1305": "1.7.1",
+    "@hpke/core": "1.8.0",
+    "@hpke/dhkem-x448": "1.7.0",
+    "@hpke/hybridkem-x-wing": "0.6.1",
+    "@hpke/ml-kem": "0.2.1",
+    "@noble/ciphers": "2.1.1",
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "@noble/post-quantum": "0.5.2"
+  },
+  "license": "AGPL-3.0-only"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@enclave/server",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@enclave/protocol": "*",
+    "@fastify/websocket": "^11.2.0",
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "fastify": "^5.10.0",
+    "mediasoup": "^3.24.2",
+    "ws": "^8.18.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
+  },
+  "license": "AGPL-3.0-only"
+}

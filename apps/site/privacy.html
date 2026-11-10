@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Orwell · Privacy</title>
+    <meta name="description" content="What Orwell stores about you, for how long, and what the server sees even with encryption." />
+    <link rel="icon" href="/marca.04656517.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://orwell.pt/privacy.html" />
+    <link rel="alternate" hreflang="en" href="https://orwell.pt/privacy.html" />
+    <link rel="alternate" hreflang="pt" href="https://orwell.pt/pt/privacidade.html" />
+    <link rel="alternate" hreflang="x-default" href="https://orwell.pt/privacy.html" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:locale:alternate" content="pt_PT" />
+    <link rel="stylesheet" href="/src/estilo.css" />
+  </head>
+
+  <body class="editorial">
+    <!-- The `i-marca` is written by `marca/gerar-marca.py`. Don't edit it here. -->
+    <svg class="desenhos" aria-hidden="true">
+      <defs>
+        <symbol id="i-marca" viewBox="0 0 24 24">
+          <path d="M4.59865 1.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V3.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V2.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.51329 6H7.70308a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H2.51329a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M14.6969 6H19.8867a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H14.6969a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.35 10.5H7.15a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H2.35a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M15.25 10.5H20.05a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H15.25a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.11329 15H9.30308a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H4.11329a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M16.2969 15H21.4867a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H16.2969a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.59865 19.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V21.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V20.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="topo">
+      <a class="marca" href="/">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell</span>
+      </a>
+      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Support us</a>
+      <a class="topo-entrar" href="/app/">Sign in</a>
+    </header>
+
+    <!-- Translation of `pt/privacidade.html`, which is the authoritative version. -->
+    <main class="legal">
+      <h1>Privacy</h1>
+      <p class="legal-data">In force since 4 November 2026.</p>
+      <p class="legal-lingua">
+        This is a translation. <a href="/pt/privacidade.html" hreflang="pt">The Portuguese version</a> is the legally
+        binding one.
+      </p>
+
+      <p class="legal-abertura">
+        Here we say what the <span class="mono">orwell.pt</span> server stores and what it can see even with
+        encryption.
+      </p>
+
+      <h2>Who is responsible</h2>
+      <p>
+        The controller of your data is Duarte Bivar. For anything about your data, write to
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>, in Portuguese or in English.
+      </p>
+
+      <h2>What we do not ask for</h2>
+      <p>
+        To create an account we do not ask for your email, phone number, real name, age, address or a payment
+        method. Your password never leaves your device.
+      </p>
+
+      <h2>What the server stores</h2>
+      <ul>
+        <li>
+          <strong>Messages, posts and files, encrypted, for 30 days.</strong> The server stores them without being
+          able to open them, so they reach whoever was offline. After 30 days, it deletes them.
+        </li>
+        <li><strong>Your public key</strong> and the keys that let others invite you.</li>
+        <li><strong>Your profile, encrypted</strong>, for the channels you are in.</li>
+      </ul>
+
+      <h2>What the server sees, despite the encryption</h2>
+      <ul>
+        <li>
+          <strong>IP addresses.</strong> The server sees the address of whoever connects to it. By default, it does
+          not keep an access log.
+        </li>
+        <li><strong>When you are connected, and which channels you are in.</strong> It does not know what was said.</li>
+        <li><strong>The approximate size of what you send.</strong></li>
+        <li><strong>In a call</strong>, who is talking to whom. Sound and picture are encrypted.</li>
+      </ul>
+
+      <h2>When you report</h2>
+      <p>
+        A report is the exception to the encryption: the person who reports gives us, already decrypted, the text of
+        other people. If you were reported, your data came from the person who reported you.
+      </p>
+      <p><strong>What we keep.</strong></p>
+      <ul>
+        <li>The reason and the note.</li>
+        <li>
+          The reported messages and their context, with the author, the day, the time and the author's signature. Of
+          attachments, only the name, type and size.
+        </li>
+        <li>The address of the account that reports and of the reported account, and the channel and the room.</li>
+        <li>The app version, and the day and time of the report.</li>
+        <li>Your name and your email, if you give them. They are optional.</li>
+        <li>Your confirmation that you report in good faith.</li>
+        <li>The address of the channel founder, when there is a copy for them.</li>
+        <li>The decision and the review requests.</li>
+      </ul>
+      <p><strong>Legal bases.</strong></p>
+      <ul>
+        <li>
+          For what the Digital Services Act (DSA) obliges us to do, the basis is Article 6(1)(c) GDPR: compliance with
+          a legal obligation.
+        </li>
+        <li>
+          To keep the report for 90 days after it is closed, and for the copy to the founder, the basis is Article
+          6(1)(f) GDPR: legitimate interest.
+        </li>
+      </ul>
+      <p><strong>Who receives it.</strong></p>
+      <ul>
+        <li>
+          The founder of the channel, when they are in the channel, gets a copy without the name of the person who
+          reported. In a small conversation, they can guess who it was.
+        </li>
+        <li>
+          The authorities, only when the law obliges us: with a court order, or when there is a danger to the life or
+          safety of someone.
+        </li>
+      </ul>
+      <p><strong>For how long.</strong></p>
+      <p>
+        We keep each report for 90 days after we close it, or while a suspension or a review is open. After that, the
+        server deletes it.
+      </p>
+
+      <h2>Your rights</h2>
+      <p>
+        You can ask for access to your data, its correction and its deletion, as far as no legal obligation forbids
+        it. You can object to what we do on the basis of legitimate interest. Write to
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>. You can complain to the CNPD, the Portuguese data
+        protection authority (<span lang="pt">Comissão Nacional de Protecção de Dados</span>). About decisions on
+        reports, you can also complain to ANACOM.
+      </p>
+
+      <h2>Third parties</h2>
+      <p>
+        There is no advertising, no traffic analytics and no tracking cookies. When you click a YouTube video inside a
+        conversation, the player comes from Google, and Google learns your IP address. Before you click, nothing is
+        requested.
+      </p>
+
+      <h2>What you can delete</h2>
+      <p>
+        When you delete your account, the app deletes it from your device. When you delete a message, the app asks
+        the devices of the people who received it to delete it. Whoever already read it, already read it.
+      </p>
+      <p class="legal-nota">
+        If your community uses its own server, run by another entity, this page does not speak for it.
+      </p>
+    </main>
+
+    <footer class="rodape">
+      <div class="rodape-marca">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      </div>
+      <nav class="rodape-links">
+        <a href="/">Home</a>
+        <a href="/transferencias/">Download</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/ambassadors.html">Ambassadors</a>
+        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Support</a>
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+      </nav>
+      <nav class="linguas" aria-label="Language">
+        <a href="/privacy.html" hreflang="en" aria-current="page">EN</a>
+        <span aria-hidden="true">·</span>
+        <a href="/pt/privacidade.html" hreflang="pt" lang="pt">PT</a>
+      </nav>
+      <p class="rodape-nota">
+        This page runs no JavaScript at all, sets no cookies and asked nothing of any server but this one. Made in
+        Portugal.
+      </p>
+      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Source code</a></p>
+      <p class="rodape-nota"><a href="/terceiros.txt">Third-party notices</a></p>
+    </footer>
+  </body>
+</html>

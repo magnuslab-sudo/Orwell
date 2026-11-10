@@ -1,0 +1,258 @@
+/*
+  Game overlay, proposal 4 (`~/Downloads/Orwell-overlays-jogo/jogo-4.png`).
+
+  The window is transparent: only the pill and the alert have a background, and
+  that background is translucent (`--fundo-alfa`, from Settings). Blur of what
+  lies behind does not exist here: `backdrop-filter` on a transparent window only
+  blurs the page itself, not the game. Text gets a shadow instead, and reads
+  over any scene with opacity at its minimum.
+
+  Measurements match `main/overlay.ts` (ALTURA_DA_PILULA, ALTURA_DO_AVISO,
+  INTERVALO, MARGEM_DA_JANELA, LARGURA_DO_AVISO).
+*/
+
+:root {
+  --presenca: #50fa7b;
+  --rosa: #e070a8;
+  --tinta: #080c1a;
+  --texto: #eef1fb;
+  --borda: rgb(255 255 255 / 0.12);
+  /* No `color-scheme` on purpose: with it, Chromium paints the page with the
+     scheme color, and the window would stop being transparent. */
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--texto);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.overlay {
+  --fundo-alfa: 0.45;
+  position: fixed;
+  inset: 0;
+}
+
+.pilula,
+.aviso {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: rgb(8 12 26 / var(--fundo-alfa));
+  border: 1px solid var(--borda);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.85);
+}
+
+.pilula {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  width: max-content;
+  padding: 0 10px 0 16px;
+  border-radius: 16px;
+  cursor: grab;
+}
+.pilula:active {
+  cursor: grabbing;
+}
+
+.overlay[data-lado="abaixo"] .pilula {
+  top: 8px;
+}
+.overlay[data-lado="acima"] .pilula {
+  bottom: 8px;
+}
+
+.ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presenca);
+  flex: none;
+}
+
+.sala {
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.caras {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cara {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+
+.rosto {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1c2440;
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.18);
+}
+.rosto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.inicial {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* The ring of who speaks: green, a bit off the face. Fades in and out with
+   a transition; with reduced motion the transition is slower (see `duracoes`). */
+.anel {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2.5px solid var(--presenca);
+  box-shadow: 0 0 10px 1px rgb(80 250 123 / 0.55);
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    opacity var(--dur-anel) ease-out,
+    transform var(--dur-anel) ease-out;
+  pointer-events: none;
+}
+.cara[data-fala] .anel {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* The muted microphone (or sound off), over the face. */
+.marca {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--rosa);
+  color: var(--tinta);
+  box-shadow: 0 0 0 2px rgb(8 12 26 / 0.9);
+}
+.marca svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mais {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* The alert for who joins and leaves: next to the pill, wherever it is. */
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  max-width: 300px;
+  width: max-content;
+  padding: 0 16px 0 6px;
+  border-radius: 14px;
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.aviso[hidden] {
+  display: none;
+}
+.overlay[data-lado="abaixo"] .aviso {
+  top: calc(8px + 56px + 8px);
+}
+.overlay[data-lado="acima"] .aviso {
+  bottom: calc(8px + 56px + 8px);
+}
+.aviso .rosto {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.aviso-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aviso-nome {
+  font-weight: 600;
+  color: var(--rosa);
+}
+.aviso[data-tipo="saiu"] .aviso-nome {
+  color: var(--texto);
+}
+/* A name drawn from the address, not chosen: italic and faded. */
+.aviso-nome.do-endereco {
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Alert entry: slides down (or up) a few pixels and appears. With reduced
+   motion the shift is smaller and the duration longer, but it still moves. */
+.aviso[data-a-entrar] {
+  animation: aviso-entra var(--dur-aviso) ease-out both;
+}
+.overlay[data-lado="acima"] .aviso[data-a-entrar] {
+  animation-name: aviso-sobe;
+}
+@keyframes aviso-entra {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-1 * var(--desloca-aviso)));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes aviso-sobe {
+  from {
+    opacity: 0;
+    transform: translate(-50%, var(--desloca-aviso));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

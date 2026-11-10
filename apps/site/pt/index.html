@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      Nothing from outside. Nothing at all.
+      
+      `default-src 'none'` locks everything down and then opens only the minimum: the style from this
+      origin, the fonts from this origin and images from this origin. `script-src
+      'self'` is only for `src/sistema.ts`, the script that picks the button based on the
+      visitor's system (request from the owner on 2 November 2026). Nothing inline,
+      nothing external: the other three pages still have no JavaScript. `font-src 'self'` is the one for the
+      midnight theme: Space Grotesk and Noto Sans JP kana come from this origin, in the same
+      files as the app. `connect-src 'self'` is only for the meter in the "Support" section (3 de
+      November 2026): the script fetches `/_enclave/apoiar.json` from this origin, and
+      our server reads the GoFundMe. Visitors never talk to it.
+      
+      A page that sells privacy and calls Google to fetch a typeface is
+      contradicting itself before the first sentence. A test in
+      `testes/` rejects any external origin that shows up here, and a
+      weight check rejects the page getting heavier without notice.
+      -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+
+    <title>Orwell · Uma alternativa europeia ao Discord</title>
+    <meta
+      name="description"
+      content="Conversa com a tua comunidade sem dares o teu email nem o teu número. Canais, categorias, salas de voz e partilha de ecrã, com cifra de ponta a ponta. Sem anúncios e sem algoritmo."
+    />
+    <link rel="icon" href="/marca.04656517.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://orwell.pt/pt/" />
+    <link rel="alternate" hreflang="en" href="https://orwell.pt/" />
+    <link rel="alternate" hreflang="pt" href="https://orwell.pt/pt/" />
+    <link rel="alternate" hreflang="x-default" href="https://orwell.pt/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://orwell.pt/pt/" />
+    <meta property="og:title" content="Orwell · Uma alternativa europeia ao Discord" />
+    <meta
+      property="og:description"
+      content="Conversa com a tua comunidade sem dares o teu email nem o teu número. Sem anúncios e sem algoritmo."
+    />
+    <meta property="og:image" content="https://orwell.pt/cartao.png" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="stylesheet" href="/src/estilo.css" />
+    <script type="module" src="/src/sistema.ts"></script>
+  </head>
+
+  <body class="entrada editorial">
+    <!--
+      The images, once, and used by reference. The landing page now uses only
+      the logo. The other three stay because `scripts/publicar-instaladores.mjs`
+      reads them FROM HERE for the downloads page. The `i-marca` is WRITTEN by
+      `marca/gerar-marca.py`: do not edit it here.
+    -->
+    <svg class="desenhos" aria-hidden="true">
+      <defs>
+        <symbol id="i-marca" viewBox="0 0 24 24">
+          <path d="M4.59865 1.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V3.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V2.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.51329 6H7.70308a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H2.51329a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M14.6969 6H19.8867a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H14.6969a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.35 10.5H7.15a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H2.35a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M15.25 10.5H20.05a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H15.25a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.11329 15H9.30308a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H4.11329a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M16.2969 15H21.4867a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H16.2969a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.59865 19.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V21.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V20.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+        </symbol>
+        <symbol id="i-secretaria" viewBox="0 0 24 24">
+          <rect x="3" y="5" width="18" height="12" rx="2" />
+          <path d="M2 20h20" />
+        </symbol>
+        <symbol id="i-browser" viewBox="0 0 24 24">
+          <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+          <path d="M3 9h18" />
+          <circle cx="6.4" cy="6.8" r="0.6" />
+          <circle cx="8.8" cy="6.8" r="0.6" />
+        </symbol>
+        <symbol id="i-escudo" viewBox="0 0 24 24">
+          <path d="M12 3.2 5 6v5.5c0 4.2 2.9 7.6 7 9.3 4.1-1.7 7-5.1 7-9.3V6Z" />
+          <path d="M9.2 11.8 11.3 14l3.7-4.2" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="topo">
+      <a class="marca" href="/pt/">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell</span>
+      </a>
+      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
+      <a class="topo-entrar" href="/app/">Entrar</a>
+    </header>
+
+    <!--
+      The support banner (owner's request on 9 November 2026: "põe no início e
+      no fim, preciso mesmo de doações"). Thin and discreet, right below the
+      header. Ko-fi only, no GoFundMe and no measure (owner's decision the same
+      day; see `MEDIDOR_LIGADO` in src/apoio.ts).
+    -->
+
+    <!--
+      Direction "02 Editorial", chosen by the owner on November 2, 2026
+      (`docs/planos/site-editorial-direccao-02.png`, and the report alongside).
+      Less is more: a headline with a real screenshot of the app, the phone, and
+      everything else wrapped in two questions. The four bullet points came out on
+      November 3, 2026, by owner's request. No animated background, no grid of
+      cards. The screenshot is the only visual.
+
+      The main button changes with the system (`src/sistema.ts`). Without the
+      script, it says "Open in browser" and other paths show below it.
+    -->
+    <main>
+      <section class="heroi">
+        <div class="heroi-texto">
+          <p class="etiqueta">Alternativa europeia ao Discord e redes sociais</p>
+          <h1>Joga, fala<br />e partilha.</h1>
+          <p class="heroi-lead">
+            Salas de voz, partilha de ecrã e comunidades, como já conheces. Tudo vai
+            cifrado de ponta a ponta, com criptografia pós-quântica: protegido hoje, e também contra os
+            computadores quânticos de amanhã. Sem anúncios, sem algoritmo, sem email.
+          </p>
+        <div class="accao">
+          <p class="accao-principal">
+            <a class="para-browser" href="/app/">Abrir no browser <span aria-hidden="true">→</span></a>
+            <a class="para-windows" href="/pt/transferencias/">Descarregar para Windows <span aria-hidden="true">→</span></a>
+            <a class="para-macos" href="/pt/transferencias/">Descarregar para macOS <span aria-hidden="true">→</span></a>
+          </p>
+          <p class="accao-outros">
+            <a class="outro-browser" href="/app/">Abrir no browser</a>
+            <a class="outro-macos" href="/pt/transferencias/">macOS</a>
+            <a class="outro-windows" href="/pt/transferencias/">Windows</a>
+            <a class="outro-telemovel" href="#telemovel">No telemóvel, sem loja</a>
+          </p>
+        </div>
+        </div>
+        <figure class="heroi-captura">
+          <img
+            src="/capturas/aplicacao-0c3bf101.webp"
+            alt="A aplicação do Orwell: a lista de salas à esquerda, uma conversa ao centro e quem está no canal à direita"
+            width="1280"
+            height="800"
+          />
+        </figure>
+      </section>
+
+      <!--
+        We are recruiting ambassadors. Owner's request of October 27, 2026, and
+        again on November 2: the ambassador figure shows up on the landing page,
+        in its own block, not just a link.
+        
+        For people who have a community elsewhere and can bring it here. The
+        `/embaixadores.html` page has the full program and the tribute zone.
+        Applications happen INSIDE the app, in the Orwell channel, not by email:
+        so the link goes to `/app/`. The names come from `src/embaixadores.json`,
+        at build time, via the TRIBUTO_LINHA marker; with an empty list the banner
+        does not appear.
+        -->
+      <section id="embaixadores" class="seccao embaixadores">
+        <p class="etiqueta">Embaixadores</p>
+        <h2 class="seccao-titulo">Traz a tua comunidade.</h2>
+        <p class="seccao-texto">
+          Tens uma comunidade no Discord, no TeamSpeak, no Root, num servidor próprio ou noutra app? Traz o
+          administrador e a comunidade para o Orwell, e testem a app connosco. Tu testas, e quem faz a app ouve-te.
+        </p>
+        <div class="embaixadores-colunas">
+          <div>
+            <h3>O que a comunidade recebe</h3>
+            <p>
+              Contacto directo com quem faz o Orwell, num canal privado. Um canal próprio, e os vossos pedidos entram
+              primeiro. O nome na zona de tributo do site. O distintivo de embaixador na app, ao lado do nome.
+            </p>
+          </div>
+          <div>
+            <h3>O que pedimos</h3>
+            <p>
+              Trazer a comunidade, ou uma parte dela. Usar a app a sério durante um mês. Dizer o que falha e o que
+              falta, sem filtro.
+            </p>
+          </div>
+        </div>
+        <p class="embaixadores-como">
+          Cria conta, entra no canal Orwell e escreve "quero ser embaixador" com o nome da tua comunidade. Respondemos
+          lá.
+        </p>
+        <p class="embaixadores-links">
+          <a href="/app/">Candidatar a minha comunidade</a>
+          <a href="/pt/embaixadores.html">Ver o programa <span aria-hidden="true">→</span></a>
+        </p>
+        %TRIBUTO_LINHA%
+        <p class="embaixadores-versao">
+          O Orwell está na versão %VERSAO%. Ainda há coisas por fazer, e é por isso que os embaixadores contam.
+        </p>
+      </section>
+
+      <section class="seccao seccao-mais">
+        <!--
+          The phone: the browser app on the main screen, and the limits before steps run out.
+          
+          A drawer, like the other two, since November 3, 2026 (owner's request).
+          The `id="telemovel"` is in the `<details>`, and the hero link goes there
+          and opens it (`src/gaveta.ts`; without the script, it goes there and the
+          visitor opens it).
+          
+          No app store. What exists is the manifest and the Service Worker from
+          `apps/web`, which let Chrome and Safari install `orwell.pt/app`. The
+          Chrome and Safari labels come from Google's help and the iPhone manual
+          in pt-PT. Step 5 on iPhone exists because iOS stores icon data separately
+          from Safari data (WebKit, bug 181849). Pairing is from slice 4
+          (`docs/PLANO_MULTIDISPOSITIVO.md`, section 10). iOS 15.4 and Extreme
+          Security Mode come from `docs/PLANO_MOVEL.md` §1.6 and §9.6.
+          
+          Both systems always stay visible, even with the system script: the
+          instructions do not depend on guessing correctly.
+          -->
+        <details id="telemovel" class="mais">
+          <summary>Usar no telemóvel, sem loja de apps</summary>
+          <div class="mais-corpo">
+            <p class="seccao-texto">
+              Não há aplicação nas lojas. Pões a do browser no ecrã principal. Fica com ícone próprio, abre numa janela
+              sua e recebes sempre a versão mais recente. É a mesma de <span class="mono">orwell.pt/app</span>.
+            </p>
+
+            <div class="movel">
+              <div class="movel-sistema">
+                <h3>Android <span class="movel-browser">no Chrome</span></h3>
+                <ol class="movel-passos">
+                  <li>Abre <span class="mono">orwell.pt/app</span> no Chrome.</li>
+                  <li>Toca nos três pontos, ao lado da barra de endereço.</li>
+                  <li>
+                    Escolhe "Adicionar ao ecrã principal". Em algumas versões do Chrome, esta opção chama-se "Instalar
+                    aplicação" ou "Instalar e criar atalho".
+                  </li>
+                  <li>Confirma em "Instalar". A conta que já tinhas no Chrome continua lá.</li>
+                </ol>
+              </div>
+              <div class="movel-sistema">
+                <h3>iPhone e iPad <span class="movel-browser">no Safari</span></h3>
+                <ol class="movel-passos">
+                  <li>
+                    Abre <span class="mono">orwell.pt/app</span> no Safari. Noutros browsers a opção pode não existir.
+                  </li>
+                  <li>
+                    Toca em Partilhar, o quadrado com a seta para cima. No iOS 26 pode estar dentro do botão dos três
+                    pontos.
+                  </li>
+                  <li>
+                    Desce na lista e escolhe "Adicionar ao ecrã principal". Se aparecer a opção de abrir como aplicação
+                    web, deixa-a ligada.
+                  </li>
+                  <li>Toca em "Adicionar".</li>
+                  <li>
+                    Cria ou importa a conta já dentro do ícone novo. O iOS guarda os dados do ícone à parte dos do
+                    Safari, e uma conta criada no Safari não aparece lá.
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <p class="movel-abrir"><a href="/app/">Abrir orwell.pt/app <span aria-hidden="true">→</span></a></p>
+
+            <div class="aviso movel-limites">
+              <div>
+                <h3>Antes de instalares</h3>
+                <p>
+                  <strong>Sem notificações com a aplicação fechada.</strong> Para chegarem ao telemóvel nessa altura,
+                  teriam de passar pela Apple ou pela Google. É uma decisão de privacidade que ainda não tomámos. Com a
+                  aplicação aberta, os avisos chegam como no browser.
+                </p>
+                <p>
+                  <strong>A conta do computador junta-se ao telemóvel a partir do computador.</strong> No computador,
+                  vai a Configurações, "Aparelhos", "Acrescentar aparelho". Aparece um código. No telemóvel, no ecrã de
+                  entrada, escolhe "Sim, emparelhar este aparelho" e lê o código com a câmara, ou cola o link. Os
+                  dois ecrãs mostram seis palavras. Continua só se forem iguais. O telemóvel vê as conversas a partir
+                  desse momento e não tem a chave da conta: acrescentar ou tirar aparelhos faz-se sempre no computador.
+                  Não importes no telemóvel o ficheiro <span class="mono">.enclave</span> do computador para o
+                  continuares a usar nos dois. Uma conta aberta em dois sítios parte a cifra dos canais, de vez.
+                </p>
+                <p>
+                  <strong>No iPhone, iOS 15.4 ou mais recente.</strong> Nas versões anteriores não há chamadas cifradas.
+                  Com o Modo de Segurança Extrema ligado, o Orwell não funciona, porque esse modo desliga o sítio onde a
+                  conta se guarda e as chamadas.
+                </p>
+                <p>
+                  <strong>O desenho nasceu no computador.</strong> No telemóvel funciona, mas alguns ecrãs ainda ficam
+                  apertados. Estamos a adaptá-los.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!--
+          Orwell vs Discord, line by line, wrapped in one question.
+
+          Comparative advertising: each line is defensible on its own, and the
+          Discord side comes from what Discord publishes about itself (verified
+          August 14, 2026: sponsored Quests; selfie or document in the UK and
+          Australia; DAVE since 2024 only for voice and video; the October 2025
+          breach by a customer support vendor; the policy says it does NOT sell
+          data). Name only, never the logo. The `id="versus"` stays, because other
+          pages link to `/#versus`.
+        -->
+        <details id="versus" class="mais">
+          <summary>Orwell vs Discord, ponto por ponto</summary>
+          <div class="mais-corpo">
+            <p class="seccao-texto">Na coluna da direita está o que o próprio Discord publica sobre si.</p>
+            <div class="tabela-rolo">
+              <table class="versus">
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="versus-canto">Em concreto</span></th>
+                    <th scope="col" class="versus-nos">Orwell</th>
+                    <th scope="col">Discord</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Email para criar conta</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Não se pede.</td>
+                    <td data-rotulo="Discord">Obrigatório.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Número de telefone</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Nunca. Não existe campo para isso.</td>
+                    <td data-rotulo="Discord">Pedido para verificar a conta, e exigido por comunidades com verificação alta.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Documento ou selfie para provar a idade</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Nunca.</td>
+                    <td data-rotulo="Discord">Onde a lei obriga, com selfie ou documento, e para espaços com restrição de idade.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Anúncios</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Nenhum, em lado nenhum.</td>
+                    <td data-rotulo="Discord">Quests patrocinadas e anúncios em vídeo, no computador e no telemóvel.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Algoritmo a decidir o que vês</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Nenhum. O mural é por ordem de chegada.</td>
+                    <td data-rotulo="Discord">Recomendações e conteúdo patrocinado à frente do resto.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Cifra de ponta a ponta no texto</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Sempre. Não há maneira de a desligar.</td>
+                    <td data-rotulo="Discord">Não, e diz não ter planos para isso.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Cifra de ponta a ponta nas chamadas</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Sim. Voz, vídeo e ecrã partilhado.</td>
+                    <td data-rotulo="Discord">Sim, desde 2024.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Quem tem as chaves</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Só os aparelhos de quem conversa. Nós não temos nenhuma.</td>
+                    <td data-rotulo="Discord">O Discord, para tudo o que é texto.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">O que o servidor consegue ler</th>
+                    <td class="versus-nos" data-rotulo="Orwell">
+                      Nada do que dizes. Guarda as mensagens cifradas, e uma resposta de duas letras tem o mesmo tamanho
+                      que um parágrafo.
+                    </td>
+                    <td data-rotulo="Discord">As mensagens todas. É assim que a moderação de conteúdo funciona.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Vender os teus dados a terceiros</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Não temos dados para vender.</td>
+                    <td data-rotulo="Discord">Diz que não os vende, e usa-os para escolher a publicidade que te mostra.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Numa fuga de dados, o que sai</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Não guardamos emails, números nem documentos.</td>
+                    <td data-rotulo="Discord">
+                      Em Outubro de 2025 saíram cerca de 70 000 fotografias de documentos de identificação, por um
+                      fornecedor de apoio ao cliente.
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Quem decide o que podes dizer</th>
+                    <td class="versus-nos" data-rotulo="Orwell">A tua comunidade, pelos cargos que criar. Nós não conseguimos ler para decidir.</td>
+                    <td data-rotulo="Discord">O Discord, com regras globais aplicadas ao conteúdo.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Onde vive, e que lei se aplica</th>
+                    <td class="versus-nos" data-rotulo="Orwell">União Europeia (Paris). Lei portuguesa e RGPD.</td>
+                    <td data-rotulo="Discord">Estados Unidos.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Preço</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Grátis. Não há versão paga nem função fechada.</td>
+                    <td data-rotulo="Discord">Grátis, com o Nitro a pagar.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="versus-nota">
+              Então como pagamos isto? Montamos este sistema para quem o quer só seu. É desse trabalho que vivemos,
+              e não da tua atenção.
+            </p>
+          </div>
+        </details>
+
+        <!--
+          The technical layer, collapsible. `<details>` opens without JavaScript. The two
+          encryption promises are pinned to the letter in `testes/pagina.test.ts`.
+        -->
+        <details class="mais">
+          <summary>Queres saber como?</summary>
+          <div class="mais-corpo">
+            <div class="colunas">
+              <div>
+                <h3>Cifra feita para grupos</h3>
+                <p>
+                  Usamos a norma aberta <span class="mono">RFC 9420</span>, feita para grupos grandes. Quando alguém
+                  entra ou sai, as chaves mudam. Quem sai deixa de ler o que vier a seguir. Quem entra não lê as
+                  mensagens de antes de entrar. Recebe o mural, as publicações, as salas e os cargos do canal.
+                </p>
+              </div>
+              <div>
+                <h3>Pós-quântico por omissão</h3>
+                <p>
+                  A troca de chaves junta o método clássico ao <span class="mono">ML-KEM</span>, que resiste a
+                  computadores quânticos. Quem guardar hoje as tuas mensagens para as abrir no futuro com um desses
+                  computadores não consegue ler nada.
+                </p>
+              </div>
+              <!--
+                "All the same size" and "does not know the size of what they say"
+                used to be here, and both were false above 512 bytes.
+
+                The padding is `padUntilLength: 512` (`packages/crypto/src/suite.ts`,
+                and the implementation in `ts-mls/paddingConfig.js`): it pads up to
+                512, not in multiples. A short reply and a paragraph come out the
+                same size, which is the property that matters and is true; a long
+                message shows its actual length, and saying otherwise was promising
+                a defense against network observers that does not exist.
+              -->
+              <div>
+                <h3>Um servidor que não lê</h3>
+                <p>
+                  O servidor guarda as mensagens cifradas durante 30 dias e entrega-as a quem tem a chave. Não sabe
+                  o que dizem. Uma resposta de duas letras tem o mesmo tamanho que um parágrafo. As horas ficam
+                  guardadas ao minuto, e não ao milissegundo.
+                </p>
+              </div>
+              <div>
+                <h3>A conta é um par de chaves</h3>
+                <p>
+                  Não guardamos palavras-passe, por isso não há nenhuma para roubar. A palavra-passe que escolhes
+                  abre a conta no teu aparelho e nunca sai de lá. Não há email para cruzar com outros dados, nem
+                  reposição de palavra-passe que alguém possa enganar.
+                </p>
+              </div>
+              <div>
+                <h3>As chamadas passam por nós cifradas</h3>
+                <p>
+                  A voz, o vídeo e o ecrã passam por uma máquina nossa que os encaminha. A cifra usa uma chave do
+                  próprio canal, e essa máquina não tem chave nenhuma. Só entra na chamada quem já podia ler as
+                  mensagens do canal. A voz cifrada já funciona no Chrome, no Firefox e no Safari. Um browser que
+                  não consiga cifrar a chamada liga-se directamente aos outros, sem passar pela nossa máquina.
+                </p>
+              </div>
+              <div>
+                <h3>Vários aparelhos, uma conta</h3>
+                <p>
+                  Cada aparelho que juntas à conta recebe chaves suas. O que não pode acontecer é o mesmo ficheiro
+                  da conta ser aberto em dois aparelhos ao mesmo tempo. As chaves dos canais deixam de bater certo e
+                  não há maneira de as reparar depois. Por isso a aplicação avisa-te antes de deixar tentar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="seccao seccao-nota">
+        <p>
+          São users como tu que criaram e operam o Orwell. Não temos empresas à espera dos teus dados.
+          <strong>Nem precisas de e-mail para entrar.</strong>
+        </p>
+      </section>
+
+      <!--
+        Support Orwell: as of November 9, 2026, only through Ko-fi (owner's decision).
+        A link to an external site. GoFundMe stays only in the footer.
+
+        The meter (src/apoio.ts) shows the amount raised on GoFundMe. It is
+        SWITCHED OFF, to be confirmed by the owner: next to a Ko-fi button, a
+        GoFundMe amount confuses donors. The spot comes with `hidden` and the
+        script does not request the JSON (`MEDIDOR_LIGADO`).
+      -->
+      <section class="seccao seccao-apoio" id="apoiar">
+        <p class="etiqueta">Apoiar</p>
+        <h2>Ajuda a manter o Orwell no ar.</h2>
+        <p class="bloco-texto">
+          Sou um programador independente, em Portugal, e faço o Orwell sozinho. Sem empresa, sem investidores,
+          sem anúncios: só eu e as pessoas que o usam todos os dias. Alguns colaboradores revêem o código. Cada
+          euro vai para o servidor, as licenças e as custas legais, e dá-me tempo para continuar a melhorar o
+          Orwell e outros projectos de interesse público. A primeira meta é de 2 200 €.
+        </p>
+        <p class="apoio-ligacao">
+          <a class="botao-kofi" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer"><svg class="botao-kofi-chavena" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 5h13a3 3 0 0 1 0 6h-.6A6 6 0 0 1 10.5 16h-1A6 6 0 0 1 3.5 10V6a1 1 0 0 1 .5-1Zm13 2v2a1 1 0 0 0 0-2Zm-7.3 1.1c-.8-.8-2.1 0-1.7 1 .4.9 1.7 2 2.5 2.6.8-.6 2.1-1.7 2.5-2.6.4-1-.9-1.8-1.7-1l-.8.7Z"/><path fill="currentColor" d="M3 18h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2Z"/></svg>Apoia-me no Ko-fi</a>
+        </p>
+        <div class="apoio-medidor" id="apoio-medidor" hidden>
+          <div class="apoio-barra" aria-hidden="true"><div class="apoio-enchimento"></div></div>
+          <p class="apoio-numeros" aria-live="polite"></p>
+        </div>
+        <p class="apoio-partilha">Se não puderes doar, partilha o Orwell.</p>
+      </section>
+    </main>
+
+    <footer class="rodape">
+      <div class="rodape-marca">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      </div>
+      <!--
+        IDENTICAL footer on all pages, link by link and in the same order.
+
+        Each page had its own: this one had seven entries, the business page five,
+        the legal ones four, and none of them the house signature or the promise
+        that the page does not keep. A footer that changes page by page reads like
+        five different sites in the same color.
+
+        "Enter" left this spot: it is now in the lit button at the top, on every
+        page, and repeating it below only stole the line from "Home", which on the
+        landing page is the only one of these links that was missing.
+      -->
+      <nav class="rodape-links">
+        <a href="/pt/">Início</a>
+        <a href="/pt/transferencias/">Descarregar</a>
+        <a href="/pt/privacidade.html">Privacidade</a>
+        <a href="/pt/termos.html">Termos</a>
+        <a href="/pt/embaixadores.html">Embaixadores</a>
+        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+      </nav>
+      <nav class="linguas" aria-label="Língua">
+        <a href="/" hreflang="en" lang="en">EN</a>
+        <span aria-hidden="true">·</span>
+        <a href="/pt/" hreflang="pt" aria-current="page">PT</a>
+      </nav>
+      <p class="rodape-nota">
+        Esta página corre um só guião, desta origem. Escolhe o botão do teu sistema e abre a secção para onde um link
+        aponta. Não põe cookies e não pediu nada a servidor nenhum além deste.
+        Feita em Portugal.
+      </p>
+      <p class="rodape-nota">Discord é uma marca da Discord Inc. O Orwell não tem ligação ao Discord.</p>
+      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
+      <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+    </footer>
+  </body>
+</html>

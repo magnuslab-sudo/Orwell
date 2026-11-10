@@ -1,0 +1,42 @@
+/* Entry point for the app's styles-both hosts import "@enclave/ui/styles.css".
+   Vite inlines these @imports at build time, so the export path is unchanged.
+   Order matters: fonts and tokens first, then resets, then components,
+   screens, overlays.
+
+   `pele.css` comes after the screen sheets: it is the composition of the
+   midnight skin (glass, spacing, buttons), and it wins by coming after. Skin
+   colors live in `tokens.css`.
+
+   `fundo.css` stays LAST, and it is not housekeeping. The `background-image`
+   of the lights must come after the `background:` shorthand that `screens.css`
+   gives to the gate (the shorthand erases the image), and the exception for
+   `prefers-reduced-motion` must come after the universal rule in `base.css`.
+
+   `painel.css` (the control panel at the bottom of the column) comes right
+   after the skin: it composes the account banner from `screens.css` and the
+   side dock, and it wins by coming after.
+
+   `paineis.css` comes after the skin and panel: the color of all surfaces
+   (panels, cards, sheets, menus) over the dawn, in one place.
+
+   `movel.css` comes after the sheets it adds the notch margin to, which it
+   wins by coming after, and before `fundo.css`, which stays last. */
+
+@import "./styles/fontes.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/components.css";
+@import "./styles/screens.css";
+@import "./styles/overlays.css";
+@import "./styles/vozes.css";
+@import "./styles/pele.css";
+@import "./styles/painel.css";
+@import "./styles/paineis.css";
+@import "./styles/movel.css";
+@import "./styles/fundo.css";
+@import "./styles/porLer.css";
+@import "./styles/salaAfk.css";
+@import "./styles/propriedadesDoCanal.css";
+@import "./styles/denunciasDoCanal.css";
+@import "./styles/folhaDeDenunciar.css";
+@import "./styles/cargosEPermissoes.css";

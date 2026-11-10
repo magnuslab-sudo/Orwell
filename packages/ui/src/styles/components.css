@@ -1,0 +1,2200 @@
+/* ------------------------------------------------------------ components */
+
+/* --------------------------------------------------------------- buttons */
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.action:hover {
+  border-color: var(--accent-deep);
+}
+
+.primary {
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent-deep);
+  color: var(--on-accent);
+  padding: var(--space-3) var(--space-5);
+  /* The size is the button's, as in `.ghost`. Without this it inherited from
+     wherever it was: inside a `Field`, which is a `<label>`, it got the small
+     letter of the label, and in "New room" the chosen type read smaller than
+     the other two. */
+  font-size: var(--font-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 53%, black);
+}
+
+.primary:disabled,
+.ghost:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.ghost:hover:not(:disabled) {
+  border-color: var(--accent-deep);
+}
+
+.ghost.wide {
+  width: 100%;
+}
+
+/* The primary at full width, with icon and text side by side, like the ghost
+   (the "Invite..." in the people panel). */
+.primary.wide {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* A ghost button whose action destroys something: quiet until you look at it. */
+.ghost.danger {
+  color: var(--danger);
+}
+
+.ghost.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+/* The filled danger button, for the confirmed, irreversible act itself.
+   The fill is --danger darkened: raw #e5534b puts --on-danger at 3.5:1, below
+   AA for its 14px label; the 80% mix reads 5.1:1, the hover 6.9:1.
+   :not(.ghost) because "ghost danger" is a real combination (quiet destructive
+   buttons) and this later block must not repaint those with the filled style. */
+.danger:not(.ghost) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 80%, black);
+  color: var(--on-danger);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.danger:not(.ghost):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 65%, black);
+}
+
+.danger:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.ghost.file {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hidden from view but still focusable, so the file picker is reachable by
+   keyboard; the label paints the ring on the input's behalf. */
+.ghost.file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ghost.file:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.header-add {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.header-add:hover {
+  background: var(--bg-hover);
+}
+
+/* ----------------------------------------------------------------- chips */
+
+.chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent-deep);
+}
+
+.chip.on {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--on-accent);
+}
+
+/* `.live` and `.live.ringing` lived here: the "on call" pill and the pill with
+   a pulsing number. Now it is a drawing, see `vozes.css`. */
+
+/* Unread count on a channel row. Accent-tinted: news, not an alarm. */
+.badge {
+  margin-left: auto;
+  min-width: 18px;
+  text-align: center;
+  background: var(--accent-deep);
+  color: var(--on-accent);
+  border-radius: var(--radius-full);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.6;
+  padding: 0 var(--space-2);
+  flex: none;
+}
+
+/* The rail's "something is unread somewhere" dot. */
+.rail-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-rail);
+  box-sizing: content-box;
+}
+
+.sealed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-size: var(--font-xs);
+  color: var(--accent);
+  border: 1px solid var(--accent-deep);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-4);
+  cursor: help;
+}
+
+/* --------------------------------------------------------------- avatars */
+
+.avatar,
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  flex: none;
+  overflow: hidden;
+}
+
+/* With a photo, the accent background goes away. Behind the round crop it
+   peeked at the edge, under the antialiasing of the image, like a jagged light
+   line: on a 1x screen (1920×1080) you saw it on all avatars. Owner request on
+   October 27, 2026. The background stays only for the initial. */
+.avatar:has(img),
+.message-avatar:has(img),
+.avatar-preview:has(img) {
+  background: transparent;
+}
+
+.avatar img,
+.message-avatar img,
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 600;
+  overflow: hidden;
+  flex: none;
+}
+
+.avatar-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ------------------------------------------------------ status indicators */
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--presence-offline);
+}
+
+.dot.online {
+  background: var(--presence-online);
+}
+
+/* Busy is a state the person chose, not a fault: distinct from the amber of
+   "connecting" and from the grey of absence. */
+.dot.busy {
+  background: var(--presence-busy);
+}
+
+/* Away: chosen by hand, and the same yellow as the ring (`[data-anel="ausente"]`). */
+.dot.away {
+  background: var(--presence-away);
+}
+
+.dot.invisible {
+  background: var(--presence-offline);
+}
+
+.dot.connecting,
+.dot.reconnecting {
+  background: var(--warning);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dot.offline {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* The " · " separators between inline metadata. */
+.sep,
+.you {
+  color: var(--text-faint);
+  margin: 0 var(--space-1);
+}
+
+/* ---------------------------------------------------------------- fields */
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/*
+  A `<label>` that is a button (the "Choose image", which opens the file)
+  renders as a button, not as a field label. The rule above put it in spaced
+  capitals: "CHOOSE IMAGE" next to buttons in regular letter.
+*/
+label:is(.ghost, .primary, .action, .chip) {
+  flex-direction: row;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--font-base);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------ interruptor */
+
+/* On/off, with the label to the side. It is a button with `role="switch"`.
+   The click target is the whole line and measures at least 24px (WCAG 2.2, 2.5.8). */
+.interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.interruptor:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.interruptor-pista {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--line);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.interruptor-botao {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.interruptor[aria-checked="true"] .interruptor-pista {
+  background: var(--accent);
+}
+
+.interruptor[aria-checked="true"] .interruptor-botao {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.interruptor:focus-visible .interruptor-pista {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.interruptor-rotulo {
+  min-width: 0;
+}
+
+.sheet-body input,
+.sheet-body textarea,
+.prompt input,
+.gate-card input {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Every select in the app, drawn by us: the native arrow ignores the theme in
+   most engines, and Windows renders the closed control in its own idea of a
+   form colour. Same border, radius and padding as the text inputs beside it,
+   plus room for the chevron. */
+select {
+  appearance: none;
+  background-color: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) calc(var(--space-4) + 16px) var(--space-3) var(--space-4);
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  /* The chevron. A data: URI cannot read custom properties, so the stroke is
+     --text-dim (#9aa6c8) as a literal; change both together. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa6c8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 14px;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+/* The dropdown list itself is native; keep it dark where engines allow. */
+select option {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* Checkboxes, drawn by us for the same reason as the selects: one look in
+   every engine, in the app's own colours. The glyph is a masked check on
+   the ::before, scaled in — accent-deep behind --on-accent, the same pairing
+   as every other filled control. */
+input[type="checkbox"] {
+  appearance: none;
+  /* Without this, `.gate-card input` (and `.prompt`, `.sheet-body`) left the
+     padding of text fields square: the checkmark came out offset, more visible
+     on Windows (November 3, 2026). */
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+/* The checkmark takes the whole box and is a mask centered in it (November 4,
+   2026). It was an 11 px `::before` with a `clip-path`: the polygon ran from
+   13% to 93% in the vertical (the center at 53%, one-third of a pixel below the
+   middle), and a separate box rounds to screen pixels on its own. At 125% and
+   150%, at a fractional position, the checkmark dropped to 1.5 screen pixels.
+   Taking the box, the rounding is its own; the mask is the color of
+   `--on-accent`. The measurement is `scripts/medir-caixas.mjs`; the test is
+   `caixas.test.ts`. */
+input[type="checkbox"]::before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='13,44 33,64 87,10 100,23 33,90 0,57'/%3E%3C/svg%3E") center / 11px 11px no-repeat;
+  background: var(--on-accent);
+  transform: scale(0);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.prompt input:focus,
+.gate-card input:focus,
+.sheet-body input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent-deep);
+}
+
+.optional {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-faint);
+  font-size: var(--font-xs);
+}
+
+.field-note {
+  font-size: var(--font-xs);
+  line-height: 1.6;
+  color: var(--text-faint);
+  margin-top: -4px;
+}
+
+.field-note.warn {
+  color: var(--danger);
+  /* Receives errors with code, in two lines (see `TextoDeErro`). */
+  white-space: pre-line;
+}
+
+.error {
+  font-size: var(--font-base);
+  color: var(--danger);
+  padding: 0 var(--space-6);
+  /* An error is two lines: "Error 104" and, below, the phrase. The text comes
+     with the line break already in it (see `translateError` and `TextoDeErro`). */
+  white-space: pre-line;
+}
+
+/* ---------------------------------------------------------------- toasts */
+
+.toast-stack {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  max-width: min(360px, calc(100vw - 2 * var(--space-5)));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  color: var(--text);
+  /* Shadows are pure black at partial alpha on purpose — they are darkness,
+     not a colour, and stay correct under every accent. */
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
+  animation: toast-in var(--dur) var(--ease);
+}
+
+.toast.error {
+  border-left-color: var(--danger);
+}
+
+.toast p {
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* The third line of "Error 900": the raw message, to be able to report.
+   Smaller and more faded than the phrase, so it does not read like it. */
+.erro-em-cru {
+  font-size: var(--font-xs);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.toast-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0 var(--space-1);
+  font-size: var(--font-md);
+  line-height: 1.3;
+  border-radius: var(--radius-sm);
+  flex: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.toast-dismiss:hover {
+  color: var(--text);
+}
+
+/*
+  The back button for a reversible action ("Undo", "Show again").
+
+  A real button, not an underlined link: it is the only gesture on the banner,
+  and must be hit correctly on the first try, by mouse or finger. 32px tall on
+  desktop, 44px with a finger, like all touch targets in the app.
+*/
+.toast.com-accao {
+  align-items: center;
+}
+
+.toast-accao {
+  flex: none;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.toast-accao:hover {
+  border-color: var(--accent-deep);
+}
+
+.toast.com-accao .toast-dismiss {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+@media (pointer: coarse) {
+  .toast-accao,
+  .toast.com-accao .toast-dismiss {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/*
+  The confirmation dialog: the title is the question, the body explains what
+  happens and what does not happen. Buttons drop to the next line on a narrow
+  screen instead of squeezing the verb.
+*/
+.confirmar-corpo {
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.confirmar .prompt-actions {
+  flex-wrap: wrap;
+}
+
+/* Paragraphs on the sheet match the spacing of the body text. */
+.confirmar-avisos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------ friend cards (MSN style) */
+
+/*
+  "Ana is online", MSN-style (design chosen by the owner on November 3, 2026).
+  Below the banners, in the same corner (`.toast-stack`): avatar with green ring,
+  text in bold, "just now" in gray, cyan button, and a thin line that empties
+  over 2 s of card lifetime (`--vida-do-aviso`).
+
+  The line is visual only: the timer in `useAvisosDeAmigos` closes the card.
+  Paused (mouse over or focused on the card), the line pauses with it.
+*/
+.avisos-amigos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  /* The card width, not the narrower banner width: the banner stack
+     (`.toast-stack`) measures itself by its content. */
+  width: min(360px, calc(100vw - 2 * var(--space-5)));
+}
+
+.avisos-amigos:not(:has(.aviso-amigo)) {
+  display: contents;
+}
+
+.avisos-amigos-mais {
+  font-size: var(--font-xs);
+  color: var(--text-dim);
+  padding: 0 var(--space-3);
+}
+
+.aviso-amigo {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "cara corpo"
+    "cara accao";
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) calc(var(--space-4) + 6px);
+  background: var(--painel-flutuante);
+  border: 1px solid var(--painel-borda);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--painel-sombra);
+  color: var(--text);
+  overflow: hidden;
+  animation: aviso-amigo-entra 260ms var(--ease) both;
+}
+
+.aviso-amigo-cara {
+  grid-area: cara;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  /* The green ring is the "online" state across the app (`--presenca`). */
+  box-shadow:
+    0 0 0 2px var(--presenca),
+    0 0 12px color-mix(in srgb, var(--presenca) 35%, transparent);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  overflow: hidden;
+  flex: none;
+}
+
+.aviso-amigo-cara img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aviso-amigo-iniciais {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.aviso-amigo-corpo {
+  grid-area: corpo;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aviso-amigo-titulo {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--titulo);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.aviso-amigo-onde,
+.aviso-amigo-quando {
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.aviso-amigo-accao {
+  grid-area: accao;
+  justify-self: end;
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.aviso-amigo-accao:hover,
+.aviso-amigo-accao:focus-visible {
+  background: var(--accent-soft);
+}
+
+.aviso-amigo-vida {
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-3);
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  overflow: hidden;
+}
+
+.aviso-amigo-vida > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: aviso-amigo-vida var(--vida-do-aviso, 2000ms) linear both;
+}
+
+.aviso-amigo.parado .aviso-amigo-vida > span {
+  animation-play-state: paused;
+}
+
+@media (pointer: coarse) {
+  .aviso-amigo-accao {
+    min-height: 44px;
+  }
+}
+
+@keyframes aviso-amigo-entra {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes aviso-amigo-esvanece {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes aviso-amigo-vida {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/*
+  Reduced motion: the card fades in instead of sliding, and the line empties
+  in the same 2 s, because that is the card lifetime, not decoration (house
+  rule: with reduced motion nothing pauses).
+*/
+@media (prefers-reduced-motion: reduce) {
+  .aviso-amigo {
+    animation-name: aviso-amigo-esvanece;
+    animation-duration: 400ms;
+  }
+}
+
+/* --------------------------------------------------- new version banner */
+
+/*
+  The card announcing a new version, shown only by the installed app.
+  
+  Bottom LEFT, to avoid competing for the corner with the banner stack
+  (`.toast-stack`, bottom right). Both appear at the same time easily: the
+  stack fills on startup with session data, exactly when this card arrives.
+  
+  Fixed and outside the `.app` grid by design. The `.connection-banner` takes a
+  grid track (`grid-area: banner`) because it is a screen state that takes
+  priority; this is APPLICATION state, it does not change with the active
+  destination, and placing it in the grid would require a track on every screen.
+  */
+.aviso-versao {
+  position: fixed;
+  left: var(--space-5);
+  bottom: var(--space-5);
+  /* Below the toasts: a version banner never covers an error message. */
+  z-index: calc(var(--z-toast) - 1);
+  width: min(340px, calc(100vw - 2 * var(--space-5)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
+}
+
+.aviso-versao-titulo {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--text);
+}
+
+.aviso-versao-versoes {
+  margin: 0;
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.aviso-versao-nota {
+  margin: 0;
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.aviso-versao-soma {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-main);
+  border-radius: var(--radius-sm);
+}
+
+.aviso-versao-rotulo {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.aviso-versao-soma code {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+  /* 64 characters without a space. Without this, it pushes the card off screen. */
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.aviso-versao-gestos {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ----------------------------------------------------- connection banner */
+
+.connection-banner {
+  grid-area: banner;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-sm);
+  color: var(--text);
+  background: color-mix(in srgb, var(--danger) 16%, var(--bg-main));
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 32%, var(--bg-main));
+}
+
+.connection-banner .detail {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- skeleton */
+
+.skeleton {
+  display: block;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.6s var(--ease) infinite;
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.skeleton-line {
+  width: 96px;
+  height: 10px;
+}
+
+.skeleton-line.short {
+  width: 64px;
+}
+
+/* ----------------------------------------------------------------- motion */
+
+/*
+ * Motion with restraint: entrances announce, presses acknowledge, hovers
+ * lift — and none of it carries information, so prefers-reduced-motion can
+ * kill all of it in base.css without anything becoming unusable.
+ */
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.main {
+  animation: view-in var(--dur) var(--ease);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.overlay {
+  animation: overlay-in var(--dur-fast) var(--ease);
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+
+.sheet,
+.prompt,
+.lightbox {
+  animation: sheet-in var(--dur) var(--ease);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.context-menu {
+  transform-origin: top left;
+  animation: menu-in var(--dur-fast) var(--ease);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.badge,
+.rail-dot,
+.rail-count,
+.filter-chip,
+.tag-preview .tag-pill {
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+/* A press acknowledged. Instant on purpose: feedback, not choreography. */
+.primary:active:not(:disabled),
+.ghost:active:not(:disabled),
+.action:active,
+.chip:active,
+.rail-btn:active,
+.call-btn:active,
+.header-add:active,
+button.tag-pill:active,
+.filter-chip:active,
+.post-more:active,
+.person-copy:active {
+  transform: scale(0.96);
+}
+
+/* --------------------------------------------------------------- tooltips */
+
+/*
+ * Styled tooltips for icon-only buttons, replacing native title= (which is
+ * unstyled, slow, and invisible to keyboard focus). Pure CSS: the text rides
+ * in data-tip, the delay lives in transition-delay, and aria-labels remain
+ * the accessible name — this layer is presentation only.
+ */
+
+[data-tip] {
+  position: relative;
+}
+
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.45);
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--z-menu);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+/* The arrow: a rotated square peeking from under the bubble. */
+[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--bg-raised);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--z-menu);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+[data-tip]:hover::after,
+[data-tip]:hover::before,
+[data-tip]:focus-visible::after,
+[data-tip]:focus-visible::before {
+  opacity: 1;
+  transition-delay: 300ms;
+}
+
+/*
+  A button tucked into the right corner of the column: the balloon grows inward.
+  
+  By default the balloon is centered on the button, and on a NARROW button at
+  the end of a narrow column this puts half off the bar. Measured at 390px: the
+  volume arrow ends at 331 and its balloon reached 374, with the column ending
+  at 340, leaving 35px off-screen, which made the bar scrollable to reveal it.
+  Anchored to the button's right corner, the balloon grows inward and the
+  problem is gone.
+  
+  This works for any button in this situation, not just arrows: that is why it
+  is a variant, not a rule written into them.
+  */
+[data-tip][data-tip-side="end"]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+[data-tip][data-tip-side="end"]::before {
+  left: auto;
+  /* Aligned with the center of the narrow button, not the balloon center: the
+     pointer must aim at the button. */
+  right: 6px;
+  transform: rotate(45deg);
+}
+
+/*
+  The mirror of `end`: a target near the LEFT edge of the column. The balloon
+  starts at the target and grows right. Built for the presence dot on the
+  account bar, 40 px from the edge, where a centered balloon came out half off.
+*/
+[data-tip][data-tip-side="start"]::after {
+  left: 0;
+  transform: none;
+}
+
+[data-tip][data-tip-side="start"]::before {
+  left: 1px;
+  transform: rotate(45deg);
+}
+
+/* Rail buttons sit on the left edge: their tooltips open to the right. */
+[data-tip][data-tip-side="right"]::after {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+}
+
+[data-tip][data-tip-side="right"]::before {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 9px);
+  transform: translateY(-50%) rotate(135deg);
+}
+
+/* ------------------------------------------------- request within a chat */
+
+/* A channel invite or friend request, with the response where it arrived.
+   It stands out from the chat by having its own border and background: it is
+   something you answer, not something you read. But it stays in the message
+   body, aligned with the text, because it is part of that message. */
+.pedido-card {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent, var(--line));
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  max-width: 34rem;
+}
+
+.pedido-titulo {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pedido-estado {
+  margin: var(--space-1) 0 0;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+
+.pedido-accoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ------------------------------------------------- message action bar */
+
+/* Discord-style: quiet icon actions surface at the message's top-right on
+   hover or keyboard focus, floating over the text without reflowing it. */
+.msg-actions {
+  position: absolute;
+  top: -12px;
+  right: var(--space-4);
+  display: flex;
+  gap: 1px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sombra-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.message {
+  position: relative;
+}
+
+.message:hover .msg-actions,
+.message:focus-within .msg-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-actions button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.msg-actions button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/**
+ * The mark for a pinned message, in the top right corner.
+ *
+ * `--text-faint` and twelve pixels: it is a label, not a banner. What makes a
+ * pinned message different is already shown large in the room header; this
+ * just links the header to the line it came from, so you know without opening
+ * anything when you scan the chat.
+ *
+ * `pointer-events: none` because the mark falls over the message: without it,
+ * right-click on these twelve pixels would not open the menu, and the menu is
+ * where you unpin. A mark that blocks the gesture it announces.
+ */
+.message-fixada {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-4);
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+/* The action bar starts in this same corner, opaque with a shadow: both would
+   fight for the same pixels, and whichever draws last wins. The mark yields,
+   fading out as the bar enters. The user hovering over the message is reaching
+   for an action, not reading its state. */
+.message:hover .message-fixada,
+.message:focus-within .message-fixada {
+  opacity: 0;
+}
+
+/* Message removed by moderation (phase 3): the line stays in place, and the
+   replacement text reads as a note, not as the person's words. */
+.message-moderada {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* The channel nickname before the name (phase 3): the nickname reads first,
+   with the weight the name had, and the account name follows, dimmer, so you
+   always know who it is underneath. In the member list and in messages. */
+.nome-sob-apelido {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* A name drawn from the address, not chosen (`NomeDePessoa`): subtle, so it
+   does not read like a real name. Color is secondary text. */
+.nome-do-endereco {
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* The "⋯" menu for the person on the call card (phase 3): in the corner, on
+   top of everything, visible only on hover or focus, like message "⋯". On a
+   touch screen it is always visible: there is no hover. */
+.call-chip-mais {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.call-chip:hover .call-chip-mais,
+.call-chip:focus-within .call-chip-mais {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .call-chip-mais {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------- presence dots */
+
+/* A grid scaled to the avatar, not `inline-flex`: from the presence ring on,
+   all faces are wrapped, and an inline box inside a block (the avatar button
+   in a message) would gain an extra line below. */
+.avatar-wrap {
+  position: relative;
+  display: grid;
+  width: fit-content;
+  flex: none;
+}
+
+/* ------------------------------------------------------ presence ring */
+
+/*
+  The presence ring (owner request October 27, 2026): 2 px around each avatar,
+  in the color of the state. It is a `box-shadow`, not a `border`: it takes no
+  space, and no list shifts when it appears.
+
+  The rule lives here, not in `Avatar`, so custom avatar drawers (the account
+  bar, call cards) can paint the same ring with `atributosDoAnel()`. Users must
+  make it round and the size of the avatar.
+*/
+[data-anel] {
+  --anel-cor: var(--presence-offline);
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--anel-cor);
+}
+
+[data-anel="online"] {
+  --anel-cor: var(--presence-online);
+}
+
+[data-anel="ausente"] {
+  --anel-cor: var(--presence-away);
+}
+
+[data-anel="ocupado"] {
+  --anel-cor: var(--presence-busy);
+}
+
+/*
+  On a call, the ring pulses: a copy grows and fades. Only `transform` and
+  `opacity` in the frames, no `var()` inside, so Chromium passes them to the
+  compositor (same rule as `vozes.css`). Color comes from the shadow, which
+  does not animate. 1.6 s is the calm rhythm of breathing, not an alarm.
+*/
+[data-anel][data-em-chamada]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--anel-cor);
+  pointer-events: none;
+  animation: anel-pulsa 1.6s ease-in-out infinite;
+}
+
+@keyframes anel-pulsa {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* Without motion, the call is told by width: the ring stays still and thicker,
+   so it does not read like the ring of someone not on the call. */
+@media (prefers-reduced-motion: reduce) {
+  [data-anel][data-em-chamada] {
+    box-shadow: 0 0 0 3px var(--anel-cor);
+  }
+
+  [data-anel][data-em-chamada]::after {
+    content: none;
+    animation: none;
+  }
+}
+
+/* Where there is a ring, the corner dot hides and stays for the screen reader:
+   it tells the state in words. See `Avatar.tsx`. */
+[data-anel] > .presence-dot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+  Call cards use the ring like other avatars, and on a call everyone is on the
+  call: the ring always pulses.
+
+  The pulse grows less here. The voice ring (`.anel-de-voz`, green when
+  speaking) is at 45.3% of its box, a little outside the face: at `scale(1.3)`
+  the pulse would cross it, and the state green and the speaking green would
+  blur together. At 1.1 the pulse ends before the voice ring on all three card
+  sizes (96, 64, and 40 px). See `scripts/medir-aneis-de-presenca.mjs`.
+*/
+.call-chip [data-anel][data-em-chamada]::after {
+  animation-name: anel-pulsa-no-cartao;
+}
+
+@keyframes anel-pulsa-no-cartao {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* Derived presence, worn on the avatar's corner. The ring colour cuts the
+   notch out of whatever surface the avatar sits on. */
+.presence-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--presence-offline);
+  border: 2.5px solid var(--presence-ring, var(--bg-side));
+  box-sizing: content-box;
+  cursor: help;
+}
+
+.presence-dot.active {
+  background: var(--presence-online);
+}
+
+.presence-dot.busy {
+  background: var(--presence-busy);
+}
+
+.presence-dot.away {
+  background: var(--presence-away);
+}
+
+/* Surfaces whose background is not --bg-side tell the ring so. */
+.call-chip {
+  --presence-ring: var(--bg-raised);
+}
+
+.members {
+  --presence-ring: var(--bg-side);
+}
+
+/* Icon-only variant of the ghost buttons: square, centred glyph. */
+.ghost.icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex: none;
+}
+
+/* ------------------------------------------------------------- room icons */
+
+/* Generated, deterministic room identity: initial over a channel-derived
+   colour. A squircle, so rooms read apart from the circular people. */
+.room-icon {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 30%;
+  color: #f2f3f8;
+  font-weight: 600;
+  flex: none;
+  overflow: hidden;
+}
+
+/* The image fills the square without distortion. The `overflow: hidden` above
+   is what crops it to the rounded corner: without it the photo spills out. */
+/* The person's role in a channel, where the address was before. Told apart by
+   color and weight: an address is technical noise, a role is information. */
+.member-role {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.room-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The common space: the app logo instead of a colored initial.
+   Neutral background, not accent: the highlight color is the user's choice and
+   changes by account, and a logo that changes color stops being a logo. */
+.room-icon.official {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------ selo oficial */
+
+/* A seal cut out with a checkmark, in the user's chosen color: see
+   `SeloOficial.tsx`. It was text until the owner asked for the symbol; the
+   explanation text carried is now in the `title`, and stays required.
+
+   The color is `--accent` and it is the only place where it appears as a MARK.
+   State is never the accent: see the note in `tokens.css`. */
+.selo-oficial {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  /* Zero, otherwise the line box grows with the line height of text that no
+     longer lives here, and the seal misaligns from the name next to it. */
+  line-height: 0;
+  color: var(--accent);
+  cursor: help;
+}
+
+/* In `em` not pixels: the seal follows the text beside it without needing a
+   size tweak: 14px in the sidebar, 15px in the channel header, any future
+   size without touching here. A hair above 1em because the clipping eats 11.5%
+   of the radius and without it the seal reads smaller than the text. */
+.selo-oficial svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* In the sidebar the line is narrow and the name already cuts with ellipsis.
+   The seal never shrinks or breaks: either it fits whole, or the name gives
+   space first: that is what `flex: none` above ensures. The `gap` of 8px on
+   the line is wide for a small symbol, and tightens to 2px: the seal belongs
+   to the name, and the distance says it does.
+
+   The 2px now comes from the `.channel-label` `gap`, not a negative margin
+   canceling the line `gap`: the seal is no longer a sibling of the call label
+   and unread count, and canceling a spacing you stopped being next to would
+   open a 6px hole on the wrong side. See `.channel-label`. */
+
+/* --------------------------------------------------- distintivo embaixador */
+
+/* The star of who brought in a community: see `DistintivoDeEmbaixador.tsx`.
+   Indigo, not `--accent`, so it does not read like the common channel seal.
+
+   Inline, not flex, like the mute mark: the badge lives inside the name
+   (`.member-name`, the message `.author`, the person page `h1`), and the name
+   can break to two lines. In `em`, to follow the name size wherever it is. */
+.distintivo-embaixador {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -0.12em;
+  margin-left: 0.3em;
+  line-height: 0;
+  color: var(--indigo);
+  cursor: help;
+}
+
+.distintivo-embaixador svg {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+/* ---------------------------------------------------------------- wordmark */
+
+/* The closed-eye O carries the first letter; the rest is honest lowercase
+   type. Gap tuned so the O reads as part of the word, not an icon beside it. */
+.orwell-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.orwell-wordmark svg {
+  color: var(--accent);
+  flex: none;
+}
+
+/* The mark at the top of the rail: identity, quietly. */
+.rail-logo {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+/* ------------------------------------------------------------- activity */
+
+/* Anchored above the identity block it belongs to; a menu, not a modal. */
+.activity-menu {
+  position: fixed;
+  z-index: var(--z-menu);
+  width: 232px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  box-shadow: 0 14px 38px rgb(0 0 0 / 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: menu-in var(--dur-fast) var(--ease);
+  transform-origin: bottom left;
+}
+
+.activity-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.activity-option:hover {
+  background: var(--bg-hover);
+}
+
+.activity-option.on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.activity-menu hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: var(--space-2) 0;
+}
+
+/* The honest note about what invisibility does and does not hide. */
+.activity-note {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* An address inside a message. Underlined only on hover: inside a paragraph,
+   permanent underline reads as noise. */
+.linkified {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.linkified:hover,
+.linkified:focus-visible {
+  text-decoration: underline;
+}
+
+/* A mention inside a message.
+   Soft background instead of underline: it reads as distinct from a link,
+   which goes out, without shouting in the paragraph, and it is the convention
+   everyone already learned elsewhere. `word-break` because someone without a
+   published profile appears with a shortened address, and on a phone that counts. */
+.mention {
+  display: inline;
+  border: 0;
+  padding: 0 3px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+/* Without `onMention` the mention still draws, but it is not a button: the
+   cursor must say so, or it promises a click that will not happen. */
+span.mention {
+  cursor: default;
+}
+
+.mention:hover,
+.mention:focus-visible {
+  background: var(--accent);
+  color: var(--bg-main);
+}
+
+/* ------------------------------------------------- mention suggestions */
+
+/*
+ * Anchored above the input line, which sits at the bottom of the screen.
+ * A dropdown from here would extend past the window edge, which is where
+ * footer field suggestions end up when nobody thinks about it.
+ *
+ * `bottom: 100%` instead of a fixed height: the input line grows when it holds
+ * images or a pinned link card, and a pixel value would detach from it exactly
+ * then.
+ */
+.mention-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 20;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1);
+  list-style: none;
+  min-width: min(260px, 100%);
+  max-width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  /* Was `var(--shadow-lg, …)`, and `--shadow-lg` never existed anywhere in this
+     sheet: what showed was always the fallback, and the name pointed to a system
+     that was never built. The mention picker is a menu, and menus here use
+     `--sombra-2`, which now exists. */
+  box-shadow: var(--sombra-2);
+}
+
+/* The positioning context for suggestions. Without this they stuck to the page
+   instead of the input box. */
+.composer-line {
+  position: relative;
+}
+
+.mention-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* A class, not `:hover`: arrow key navigation needs to show where you are, and
+   the mouse might be anywhere else on the screen. */
+.mention-option.escolhido {
+  background: var(--accent-soft);
+}
+
+.mention-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* What `@all` does next to the name, in the tone of notes. */
+.mention-hint {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- polls */
+
+/*
+  The same card in chat and on the bulletin board, so it lives here not in
+  `screens.css`: two designs for the same thing end up drifting, and what
+  drifts in a poll is not decoration-it is the count looking different
+  depending on where you look.
+
+  Deliberately restrained. Nothing here competes with the conversation around
+  it: no background color, no shadow, no text size larger than the prose.
+  A poll is something said, and something said does not shout.
+*/
+.votacao {
+  margin-top: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  max-width: 460px;
+}
+
+.votacao-pergunta {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-base);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.votacao-opcoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/*
+  The row of one option: the bar below, text and count above.
+
+  `position: relative` with the bar absolutely positioned, not a background
+  gradient: the bar must animate width when a vote arrives without repainting
+  text over it.
+*/
+.votacao-opcao {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: var(--space-3);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+
+/* No `onVote` means no button: the same row, with nothing suggesting a click. */
+.votacao-opcao.lida {
+  cursor: default;
+}
+
+.votacao-opcao:not(.lida):hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+/* My choice. Whoever voted needs to see what they voted for without having to
+   remember-same rule and color as the thumbs on the bulletin board. */
+.votacao-opcao.escolhida {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.votacao-opcao.escolhida .votacao-texto {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.votacao-barra {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--accent-soft);
+  transition: width var(--dur) var(--ease);
+}
+
+.votacao-texto {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.votacao-conta {
+  position: relative;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Who voted for each option. Small and faded: second-level information, but
+   it must be there-it is what makes the footer sentence true. */
+.votacao-quem {
+  margin: var(--space-1) 0 0;
+  padding-inline: var(--space-3);
+  color: var(--text-faint);
+  font-size: var(--font-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.votacao-rodape {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  color: var(--text-faint);
+  font-size: var(--font-xs);
+}
+
+/* The creation sheet: the question, the options, and the notice of what this is. */
+.nova-votacao-opcoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.nova-votacao-opcao {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nova-votacao-opcao input {
+  flex: 1;
+  min-width: 0;
+}
+
+.nova-votacao-nota {
+  margin: var(--space-4) 0 0;
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------ onda */
+
+/**
+ * Voice drawn as bars. See `components/Onda.tsx` for why.
+ *
+ * ⚠️ `--voz` is NOT declared here, though the temptation is great. Declaring
+ * `--voz: 0` in this rule would give a local value that shadows the card being
+ * measured, and the wave would freeze forever with the meter working perfectly
+ * on top. That is why each use is `var(--voz, 0)`: zero is what we use when
+ * nobody measures, never a declaration that wins over measurement.
+ *
+ * `--onda-altura` is what each place adjusts. Bar width and spacing between
+ * them stay the same across the app: a wave with thick bars in one place and
+ * thin in another reads as two different components.
+ */
+.onda {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--onda-altura, 14px);
+  flex: none;
+}
+
+/**
+ * Each bar, and the only property that moves.
+ *
+ * `transform: scaleY()` and nothing else. `height` would force a layout
+ * recalculation for the entire row every frame, times the number of people on
+ * the call-and in a grid of cards that wrap around each other this bubbles up
+ * the whole page. Measured in `scripts/medir-voz-visivel.mjs`: with transforms,
+ * the browser layout counter does not move a single time.
+ *
+ * ⚠️ There are NO `@keyframes` here, though there were. The first version
+ * animated each bar with mismatched rhythms and let voice control amplitude;
+ * it cost 562 µs per frame on a SILENT call, versus 51 µs with no waves. The
+ * frames held `var()`, which stops Chromium from handing them to the
+ * compositor: 49 bars recalculated on the main thread sixty times per second to
+ * show nothing.
+ *
+ * What remains is not a stripped-down version-it is the honest version. Height
+ * is a function of level alone, so in silence there is no calculation
+ * happening, and everything moving is measurement. Life comes from voice: level
+ * rises fast and falls slow, and bars have different steps.
+ *
+ * `--degrau` is the level at which this bar starts to rise, and `* 1.5` is how
+ * much it rises per unit of voice. The center bar starts at zero and the edge
+ * ones near the top: the wave WIDENS with voice instead of just getting fatter.
+ * Without that, five bars at proportional heights read as one object just
+ * inflating.
+ *
+ * No `will-change`: one compositing layer per bar is five per card, forty on
+ * an eight-person call, and the video memory for that costs more than repainting
+ * a 2×14 rectangle.
+ */
+.onda-barra {
+  width: 2px;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 65%, transparent);
+  transform-origin: 50% 50%;
+  transform: scaleY(
+    calc(var(--repouso, 0.26) + clamp(0, (var(--voz, 0) - var(--degrau, 0)) * 1.5, 1) * var(--peso, 0.6))
+  );
+}
+
+/**
+ * Reduced motion: the level stays, the movement goes.
+ *
+ * Bars change size sixty times per second when someone speaks, and that is
+ * exactly what this preference exists to turn off. Removing the wave outright
+ * would take information away from someone who asked only for stillness-so bars
+ * stay at full height and LIGHT UP in the same order always, from center
+ * outward, each at its `--degrau`. Nothing moves, nothing changes size, and
+ * you still see who is talking and how much.
+ *
+ * The `* 8` is step sharpness: with a multiplier of 1 each bar would go from
+ * off to on across the whole scale and the group would read as haze. `clamp`
+ * because a percentage outside [0,100] in `color-mix` is territory where engines
+ * disagree.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .onda-barra {
+    transform: none;
+    background: color-mix(
+      in srgb,
+      var(--accent) calc(clamp(0, (var(--voz, 0) - var(--degrau, 0)) * 8, 1) * 100%),
+      var(--line)
+    );
+  }
+}
+
+/* ------------------------------------------------- the "⋯" of a row */
+
+/* 28 px target, above the 24 px accessibility requires. Discrete until you
+   hover over it, like closing a chat. On a touch screen it is always visible:
+   there is no "hover" with a finger. */
+.botao-mais {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-faint);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.botao-mais:hover,
+.botao-mais:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* ------------------------------------------------- copy someone's id */
+
+/* The id does not show; you copy it with this button, next to the name. 24 px
+   target, the accessibility minimum, and the faintest ink in the house: it is
+   a tool, not information. See `BotaoCopiarId`. */
+.copiar-id {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-faint);
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  cursor: copy;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.copiar-id:hover,
+.copiar-id:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* On the face of a request in a list: the avatar on the left, text alongside. */
+.pedido-quem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pedido-texto {
+  min-width: 0;
+}
+
+/*
+  The button on the "No connection" banner. Anchored right with no background,
+  like outbox actions: the banner is already red, and a second color block on
+  top would shout. It does not shrink, because details are cut first.
+*/
+.connection-banner-ligar {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.connection-banner-ligar:disabled {
+  color: var(--text-dim);
+  text-decoration: none;
+  cursor: default;
+}

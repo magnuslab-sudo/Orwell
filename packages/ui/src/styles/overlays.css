@@ -1,0 +1,708 @@
+/* --------------------------------------------------------- context menu */
+
+.context-menu {
+  position: fixed;
+  z-index: var(--z-menu);
+  min-width: 190px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  box-shadow: var(--sombra-2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each entry is wrapped in a span (for the optional separator), so the button
+   must claim the full row itself or the hover only paints the text width. */
+.context-menu button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.context-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu button.destructive {
+  color: var(--danger);
+}
+
+.context-menu hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: var(--space-2) 0;
+}
+
+/* The input that opens a submenu ("Move to", 2/11/2026): the label on the left
+   and the arrow on the right, lit while the submenu is open. */
+.context-menu button.menu-com-escada {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.context-menu button.menu-com-escada[data-aberta] {
+  background: var(--bg-hover);
+}
+
+.menu-escada-seta {
+  color: var(--text-faint);
+  font-size: var(--font-lg);
+  line-height: 1;
+}
+
+/* The submenu: a second menu, beside the first. Height has a cap, because a
+   channel with twenty voice rooms cannot push the submenu off the screen. */
+.context-menu.context-escada {
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  animation: none;
+}
+
+/* On mobile the submenu is a sheet at the bottom of the screen: there is no
+   right side to open into at 390px width. 16px margin on the sides, and above
+   the gesture bar. */
+.context-menu.context-folha {
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  top: auto;
+  min-width: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  transform-origin: bottom center;
+  /* Above the alerts: they are on the same screen bottom, and an alert over a
+     sheet just opened would cover the room the user was about to pick. */
+  z-index: calc(var(--z-toast) + 1);
+}
+
+.menu-folha-titulo {
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.context-menu button.menu-voltar {
+  color: var(--text-dim, var(--text));
+}
+
+/* The title of a role being renamed in place, in the roles list. */
+.role-name-campo {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--accent, var(--line));
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* The header of a block of inputs.
+
+It started for move-to-another-room destinations: the menu for someone in a
+voice room is the PERSON menu, view profile, copy address, send message,    and destinations are an addition. They came after a divider and nothing else,
+so with four voice rooms the menu ended with four "Move to ..." lines hanging
+below "Copy address", with nothing to say it was a different kind of action.
+
+Aligned with the input text, not the edge: a header that does not start in
+the same column as what it names reads like a separate thing. */
+.menu-section {
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+/* The input with a slider: a person's volume in the call.
+
+   The header on top, and below the track, the value and the button that resets
+   to 100%. The track is drawn by hand (the `appearance: none` removes the
+   system one), filled with the accent up to the value and with a fine mark at
+   100%: it is the reference the thumb-dragger looks for with their eyes.
+
+   No animation: the thumb follows the finger, and nothing slows it down with
+   reduced motion. */
+.menu-deslizante {
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 240px;
+}
+
+.menu-deslizante-letreiro {
+  font-size: var(--font-base);
+  color: var(--text);
+}
+
+.menu-deslizante-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.menu-deslizante-pista {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.menu-deslizante input[type="range"] {
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  /* A horizontal drag does not scroll the page or open another menu. */
+  touch-action: none;
+}
+
+.menu-deslizante input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--menu-deslizante-cheio),
+    var(--line) var(--menu-deslizante-cheio)
+  );
+}
+
+.menu-deslizante input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--line);
+}
+
+.menu-deslizante input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+}
+
+.menu-deslizante input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-raised);
+  cursor: pointer;
+}
+
+.menu-deslizante input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-raised);
+  cursor: pointer;
+}
+
+.menu-deslizante input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* The mark at 100%. At 100% the thumb center is at the midpoint of the track,
+   no matter the width, so the mark aligns with it. */
+.menu-deslizante-marca {
+  position: absolute;
+  left: var(--menu-deslizante-normal);
+  top: 50%;
+  width: 2px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  background: var(--text-dim);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.menu-deslizante-valor {
+  min-width: 4.5ch;
+  text-align: right;
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* More specific than `.context-menu button`, which stretched the button to the
+   full line. */
+.context-menu .menu-deslizante-repor {
+  width: auto;
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+}
+
+/* With a finger, the usable height of the slider and button reaches 44px. */
+@media (pointer: coarse) {
+  .menu-deslizante input[type="range"] {
+    height: 44px;
+  }
+
+  .context-menu .menu-deslizante-repor {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ------------------------------------------------------ overlays, sheets */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* Pure black scrim: darkness, not a colour — correct under every accent. */
+  background: rgb(0 0 0 / 0.55);
+  display: grid;
+  place-items: center;
+  z-index: var(--z-overlay);
+}
+
+.prompt,
+.sheet {
+  background: var(--bg-side);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+/* Card widths yield to the viewport before the viewport clips them. */
+.prompt {
+  width: min(400px, calc(100vw - 2 * var(--space-5)));
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.prompt h2,
+.sheet-header h2 {
+  font-size: var(--font-md);
+}
+
+.prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.choice-label {
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.join-link {
+  margin-bottom: var(--space-2);
+}
+
+.sheet.narrow {
+  width: min(460px, calc(100vw - 2 * var(--space-5)));
+}
+
+.sheet {
+  width: min(580px, calc(100vw - 2 * var(--space-5)));
+  max-height: 88vh;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6) var(--space-4);
+}
+
+.sheet-lead {
+  padding: 0 var(--space-6) var(--space-4);
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.sheet-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
+  A group of blocks inside a sheet body, with the same spacing between them as
+  the body has. It is the mold for any wrapper a screen puts in the body (to
+  hide it, or to give it a `ref`): a plain `<div>` eats the body's `gap`, and
+  the blocks inside stay stuck. That is what broke the "By link" in Invite.
+  
+  `[hidden]` aside because `display: flex` beats the browser's `hidden`.
+  */
+.sheet-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.sheet-grupo[hidden] {
+  display: none;
+}
+
+/**
+ * The sheet that has a photo in the stage grows, and the padding goes away.
+ *
+ * By content, not by a class that screens pass: two screens open posts, your
+ * own profile and someone else's, and a wide sheet hardcoded in both would
+ * diverge on the first fix, like photo zooming did before it stopped being a
+ * slot. The `:has` asks the right question: do I have a post with a stage
+ * inside me? A third screen opening posts inherits this without writing a line.
+ *
+ * The padding goes away because the photo touches the edges. An image with
+ * 24px of sheet around it is an image in a frame; without them it is the sheet.
+ */
+.sheet:has(.post-open),
+.sheet.narrow:has(.post-open) {
+  width: min(1040px, calc(100vw - 2 * var(--space-5)));
+}
+
+.sheet-body:has(.post-open) {
+  padding: 0;
+  gap: 0;
+}
+
+@media (min-width: 900px) {
+  /**
+   * Height assumed, not left to chance: it is what gives the photo the full
+   * column. Without this the sheet would have the height of the text next to
+   * it, and a two-line post gave a two-line stage.
+   *
+   * 640 and no more: a landscape photo at 3:2 in a 680-wide column is 450 tall,
+   * and each pixel of extra sheet is a black bar above and below it. A portrait
+   * photo uses the full height and thanks you for it; this number seeks the
+   * middle ground between the two.
+   */
+  .sheet:has(.post-open),
+  .sheet.narrow:has(.post-open) {
+    height: min(640px, 88vh);
+    height: min(640px, 88dvh);
+  }
+
+  /* The conversation column scrolls on the inside. See `.post-open-lado`. */
+  .sheet-body:has(.post-open) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+.donations {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The friends list I show on my profile: the same support card. */
+.mostrar-amigos {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mostrar-amigos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.donations legend {
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 var(--space-3);
+}
+
+.donation-row {
+  display: grid;
+  grid-template-columns: 108px 1fr 1.4fr 32px;
+  gap: var(--space-3);
+}
+
+.sheet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------------------------------------------------------- active invites */
+
+.invite-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.invite-row-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.invite-row-main {
+  font-size: var(--font-base);
+}
+
+.invite-row-sub {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------- safety number */
+
+/* Large, monospace and selectable: this string exists to be read aloud or
+   held next to another screen, so legibility is the entire design. */
+.safety-number {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-lg);
+  letter-spacing: 0.1em;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  user-select: text;
+}
+
+.verify-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------ room picker */
+
+.room-pick-list {
+  list-style: none;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/* Choose between a text room and a voice room: two buttons side by side,
+   because they are two options and a dropdown for two options is one too many. */
+.kind-choice {
+  display: flex;
+  /* Wraps the line when the pills do not fit. Without this, at 390px the last
+     one ("1080p", for video quality) was cut at the card edge. */
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.kind-choice button {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------- enquadrar */
+
+/*
+  The sheet for framing an image (`components/Enquadrar.tsx`). The stage is the
+  drag zone, bigger than the frame, so the rest of the image shows around it,
+  dimmed. The frame is the crop: what is inside is what comes out.
+
+  `touch-action: none` on the stage: without this, the first finger scrolled the
+  sheet instead of dragging the image, and the pinch zoomed the entire page.
+*/
+.enquadrar-palco {
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--bg-deep);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.enquadrar-palco:active {
+  cursor: grabbing;
+}
+
+.enquadrar-palco.fixo {
+  cursor: default;
+}
+
+/*
+  Keyboard focus lights the frame border. An outline on the stage did not work:
+  outside it, the sheet body (which scrolls) cut it off; inside, the image and
+  mask painted over it.
+*/
+.enquadrar-palco:focus-visible {
+  outline: none;
+}
+
+.enquadrar-palco:focus-visible .enquadrar-moldura::after {
+  border-color: var(--accent);
+  border-width: 3px;
+}
+
+.enquadrar-moldura {
+  position: relative;
+  width: min(272px, 100%);
+  aspect-ratio: 1;
+}
+
+/* The cover is the frame of the gallery (`.post-images`, 16:10), at stage width. */
+.enquadrar-capa .enquadrar-moldura {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+
+/* The image at full scale, positioned by `transform` from the corner. */
+.enquadrar-moldura img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/*
+  The mask: a huge shadow around the frame dims what lies outside, and the
+  border shows the shape. The corners are those of whoever shows it later: the
+  avatar circle, the 30% of the channel icon (`.room-icon`), the 14px of the
+  gallery.
+  */
+.enquadrar-moldura::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgb(255 255 255 / 0.85);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+
+.enquadrar-circulo .enquadrar-moldura::after {
+  border-radius: 50%;
+}
+
+.enquadrar-quadrado .enquadrar-moldura::after {
+  border-radius: 30%;
+}
+
+.enquadrar-capa .enquadrar-moldura::after {
+  border-radius: var(--radius-lg);
+}
+
+.enquadrar-zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-dim);
+}
+
+.enquadrar-zoom input[type="range"] {
+  flex: 1;
+  height: 3px;
+  padding: 0;
+  appearance: none;
+  background: var(--line);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.enquadrar-zoom input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.enquadrar-zoom input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.enquadrar-zoom input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

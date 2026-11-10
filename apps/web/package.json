@@ -1,0 +1,28 @@
+{
+  "name": "@enclave/web",
+  "version": "1.3.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@enclave/client-core": "*",
+    "@enclave/crypto": "*",
+    "@enclave/protocol": "*",
+    "@enclave/ui": "*",
+    "mediasoup-client": "^3.22.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.2.4"
+  },
+  "license": "AGPL-3.0-only"
+}

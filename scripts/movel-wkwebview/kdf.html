@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>kdf em javascriptcore</title>
+<body>
+<script src="kdf-bundle.js"></script>
+<script>
+;(async () => {
+  const voltas = Number(new URLSearchParams(location.search).get("voltas") ?? 5)
+  const r = globalThis.medirKdf(voltas)
+  r.ua = navigator.userAgent
+  r.deviceMemory = navigator.deviceMemory ?? null
+  r.hardwareConcurrency = navigator.hardwareConcurrency ?? null
+  window.webkit.messageHandlers.prova.postMessage(JSON.stringify(r))
+})()
+</script>
+</body>

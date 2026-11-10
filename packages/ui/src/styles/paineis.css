@@ -1,0 +1,330 @@
+/* ---------------------------------------------------------------- panels */
+
+/*
+  The color of all surfaces, on top of the aurora (`fundo.css`).
+
+  History. At 0.8.3 (October 26, 2026) liquid glass went on everything: a 64%
+  tint over a `backdrop-filter` with blur, saturation and brightness, in a
+  `::before` of each panel. The owner saw it in production and said the same day:
+  "keep the background but remove the liquid glass. meaning, revert but adapt to
+  the background." The aurora stayed; the blur left all surfaces.
+
+  Now each surface is an almost solid tint of midnight skin, no filter: the
+  aurora hints through below, and text reads like on a solid surface. From 0.8.3
+  remain the accent outline, the clear 1px line inside, the deep shadow and the
+  rays, so the design does not jump.
+
+  The values are all in `tokens.css` (`--painel-*`).
+
+  THE TINT OF EACH SURFACE is the `--painel-fundo` property, and the rule that
+  paints it (`background: var(--painel-fundo)`) is one only, at the bottom.
+  Variants (the card under the mouse, the action well, the drawer) change the
+  property, with the specificity they have; they only repeat the `background`
+  where a screen sheet weighs more than the tint rule (the two mouse highlights).
+  All surfaces declare it in the base rule, so none inherit it from the panel
+  where it sits.
+
+  Three tint levels:
+  - the panels (rail, sidebar, headers, members, text bar, cards, gate, person
+    page, call): `--painel-tinta`;
+  - the floats (sheets, questions, menus, alerts, notification panels, search
+    and pinned panels, mention suggestions, the call dock): more opaque,
+    `--painel-flutuante`, because they pass over text;
+  - what is inside a panel (cards inside a sheet, the link card inside a
+    balloon): `--painel-interior`, like balloons and rail buttons, which never
+    had a filter.
+*/
+
+/* ------------------------------------------------------------ surfaces */
+
+/*
+  `:where()`: weighs nothing. The `position: relative` comes from 0.8.3 and
+  stays: whoever is already `fixed` or `absolute` (the drawers, the menus)
+  stays that way, and what anchors in these boxes does not move. The shadow too
+  is `:where`: whoever already has their own shadow (the error alert, which
+  glows pink) keeps it.
+  */
+:where(
+    .rail,
+    .sidebar,
+    .topbar,
+    .people-bar,
+    .members,
+    .chat-composer .composer-line,
+    .card,
+    .gate-card,
+    .settings-nav,
+    .people-aside,
+    .pessoa-cabeca,
+    .pessoa-accoes,
+    .post-row,
+    .call-head,
+    .call-barra,
+    .role-card,
+    .link-card,
+    .pedido-card,
+    .sheet,
+    .prompt,
+    .context-menu,
+    .emoji-panel,
+    .toast,
+    .notif-panel,
+    .activity-menu,
+    .procura-panel,
+    .pinned-panel,
+    .mention-picker,
+    .gate-convite,
+    .call-dock:not(.lateral),
+    .aviso-versao
+  ) {
+  position: relative;
+  --painel-fundo: var(--painel-tinta);
+  box-shadow: var(--painel-aresta), var(--painel-sombra);
+}
+
+/* The floats: more tint. */
+:where(
+    .sheet,
+    .prompt,
+    .context-menu,
+    .emoji-panel,
+    .toast,
+    .notif-panel,
+    .activity-menu,
+    .procura-panel,
+    .pinned-panel,
+    .mention-picker,
+    .gate-convite,
+    .call-dock:not(.lateral),
+    .aviso-versao
+  ) {
+  --painel-fundo: var(--painel-flutuante);
+}
+
+/*
+  What is inside a panel or a balloon gets the inner tint. It comes after the
+  two rules above, with the same specificity (none): it wins by coming after.
+  */
+:where(
+    .rail,
+    .sidebar,
+    .topbar,
+    .people-bar,
+    .members,
+    .chat-composer .composer-line,
+    .card,
+    .gate-card,
+    .settings-nav,
+    .people-aside,
+    .pessoa-cabeca,
+    .pessoa-accoes,
+    .post-row,
+    .call-head,
+    .call-barra,
+    .role-card,
+    .link-card,
+    .pedido-card,
+    .sheet,
+    .prompt,
+    .context-menu,
+    .emoji-panel,
+    .message-body
+  )
+  :where(
+    .rail,
+    .sidebar,
+    .topbar,
+    .people-bar,
+    .members,
+    .chat-composer .composer-line,
+    .card,
+    .gate-card,
+    .settings-nav,
+    .people-aside,
+    .pessoa-cabeca,
+    .pessoa-accoes,
+    .post-row,
+    .call-head,
+    .call-barra,
+    .role-card,
+    .link-card,
+    .pedido-card
+  ) {
+  --painel-fundo: var(--painel-interior);
+}
+
+/* The tint. `:is()` weighs the strongest selector in the list: it wins over
+   the background that screen sheets give each surface. */
+:is(
+    .rail,
+    .sidebar,
+    .topbar,
+    .people-bar,
+    .members,
+    .chat-composer .composer-line,
+    .card,
+    .gate-card,
+    .settings-nav,
+    .people-aside,
+    .pessoa-cabeca,
+    .pessoa-accoes,
+    .post-row,
+    .call-head,
+    .call-barra,
+    .role-card,
+    .link-card,
+    .pedido-card,
+    .sheet,
+    .prompt,
+    .context-menu,
+    .emoji-panel,
+    .toast,
+    .notif-panel,
+    .activity-menu,
+    .procura-panel,
+    .pinned-panel,
+    .mention-picker,
+    .gate-convite,
+    .call-dock:not(.lateral),
+    .aviso-versao
+  ) {
+  background: var(--painel-fundo);
+}
+
+/* The accent outline. The alert has the accent line on the left (`pele.css`),
+   and the gate its own stronger cyan: they keep theirs. */
+:is(
+    .rail,
+    .sidebar,
+    .topbar,
+    .people-bar,
+    .members,
+    .chat-composer .composer-line,
+    .card,
+    .settings-nav,
+    .people-aside,
+    .pessoa-cabeca,
+    .pessoa-accoes,
+    .call-head,
+    .call-barra,
+    .sheet,
+    .prompt,
+    .context-menu,
+    .emoji-panel,
+    .notif-panel,
+    .activity-menu,
+    .procura-panel,
+    .pinned-panel,
+    .mention-picker,
+    .call-dock:not(.lateral),
+    .aviso-versao
+  ) {
+  border: 1px solid var(--painel-borda);
+}
+
+/* Small cards have variants with a color bar on the left (the role, the video,
+   the post). A simple selector: it wins the base rule and loses to variants,
+   which are more specific. */
+.role-card,
+.link-card,
+.pedido-card,
+.post-row {
+  border: 1px solid var(--painel-borda);
+}
+
+/* ------------------------------------------------------------- as formas */
+
+/* The generous radius of large panels, sheets, and cards. */
+.card,
+.gate-card,
+.pessoa-cabeca,
+.call-head,
+.sheet,
+.prompt,
+.emoji-panel {
+  border-radius: var(--painel-raio);
+}
+
+/* The minimal call bar: a capsule around the buttons, with the color
+   measured in `barraMinima.test.tsx`. */
+.call-barra {
+  padding: 6px 14px 10px;
+  border-radius: var(--radius-full);
+  --painel-fundo: var(--painel-barra);
+}
+
+/* The feed card under the cursor: slightly lighter. The `background`
+   repeats because `.card.post:hover` (`screens.css`) weighs more than the
+   color rule, and painted an opaque background. */
+.card.post:hover,
+.post-row:hover {
+  --painel-fundo: var(--painel-claro);
+  background: var(--painel-fundo);
+}
+
+/* The person page actions in a well: deeper than the card. */
+.pessoa-accoes {
+  --painel-fundo: var(--painel-poco);
+}
+
+/* The role you can give and the person does not yet have: a well. Whoever has
+   the role rises to the surface; the mouse highlight does too. */
+.role-card[data-tem="nao"] {
+  --painel-fundo: var(--painel-poco);
+}
+
+.role-card[data-tem="sim"],
+.role-card[data-tem="nao"]:hover {
+  --painel-fundo: var(--painel-claro);
+  background: var(--painel-fundo);
+}
+
+/* The message balloons: the interior color, as in 0.8.3. */
+.message .message-body {
+  border-color: var(--painel-borda);
+  background: var(--painel-interior);
+  box-shadow: inset 0 1px 0 rgb(var(--brilho-cor) / 0.05), var(--sombra-1);
+}
+
+/* The rail buttons live inside the rail: interior color. */
+.rail-btn,
+.rail-btn.active {
+  background: var(--painel-interior);
+}
+
+/*
+  The ancestors of a panel have no background, so the dawn reaches the
+  surfaces. The `.main` was solid below 841 px.
+*/
+.main {
+  background: transparent;
+}
+
+@media (min-width: 841px) {
+  .rail,
+  .sidebar,
+  .topbar,
+  .people-bar,
+  .members,
+  .settings-nav {
+    border-radius: var(--painel-raio);
+  }
+
+  .rail {
+    padding: var(--space-4) 0;
+  }
+}
+
+/*
+  On narrow screens the sidebar, members, and people column are DRAWERS: they
+  float above the chat. A translucent color let you see the messages below,
+  mixed with room names, and that was the complaint from 0.8.0 ("on mobile
+  users don't see the rooms"). In the drawer the color is solid.
+  */
+@media (max-width: 840px) {
+  .sidebar,
+  .members,
+  .people-aside {
+    --painel-fundo: var(--painel-gaveta);
+  }
+}

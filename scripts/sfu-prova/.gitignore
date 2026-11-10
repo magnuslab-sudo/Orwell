@@ -1,0 +1,16 @@
+# Created on each test run; not sources.
+pagina.bundle.js
+.captura.json
+# Created by the first packet test (scripts/sfu-prova-primeiro-pacote/).
+primeiro-pacote.html
+primeiro-pacote.bundle.js
+.captura-primeiro-pacote.json
+primeiro-pacote.worker.js
+# Created by the microphone recovery test (scripts/sfu-prova-mic-recupera/).
+mic-recupera.html
+mic-recupera.bundle.js
+mic-recupera.worklet.js
+mic-recupera.gtcrn.wasm
+.captura-mic-recupera.json
+# The producer trace (with payload, padding only), written alongside each capture.
+*.chegados.json

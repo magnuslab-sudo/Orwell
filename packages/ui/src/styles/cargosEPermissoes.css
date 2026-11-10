@@ -1,0 +1,218 @@
+/* Roles and permissions (1.2, parity plan §4). Its own sheet, like the one for
+   properties by sections. Nothing animates: dragging only changes opacity. */
+
+.cargos-e-permissoes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.cep-seccao h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.95rem;
+  color: var(--titulo);
+}
+
+.cep-nota {
+  margin: 0 0 var(--space-3);
+  font-size: 0.8rem;
+  color: var(--apagado);
+}
+
+.cep-ordem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cep-cargo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
+  padding: 6px var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cep-cargo.cep-arrastado {
+  opacity: 0.5;
+}
+
+.cep-pega {
+  cursor: grab;
+  color: var(--discreto);
+  user-select: none;
+  line-height: 28px;
+}
+
+.cep-cargo-nome {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  background: none;
+  border: 0;
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cep-cor {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  flex: none;
+}
+
+.cep-setas {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.cep-setas button {
+  min-width: 28px;
+  min-height: 28px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--secundario);
+  cursor: pointer;
+}
+
+.cep-setas button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cep-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.cep-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--secundario);
+}
+
+.cep-campo input,
+.cep-campo select,
+.cep-novo input,
+.cep-tabela select {
+  min-height: 28px;
+  background: var(--poco);
+  border: 1px solid var(--poco-contorno);
+  border-radius: 6px;
+  color: var(--texto);
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.cep-permissoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cep-ajuda {
+  display: block;
+  margin-left: 44px;
+  font-size: 0.75rem;
+  color: var(--apagado);
+}
+
+.cep-novo {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.cep-novo input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The room table scrolls sideways on mobile, and the sheet does not. */
+.cep-seccao:has(.cep-tabela) {
+  overflow-x: auto;
+}
+
+.cep-tabela {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-top: var(--space-2);
+}
+
+.cep-tabela th,
+.cep-tabela td {
+  padding: 4px 6px;
+  text-align: left;
+  color: var(--secundario);
+}
+
+.cep-tabela th[scope="row"] {
+  color: var(--texto);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------- the order, in both editors
+   The same gesture in the regular editor (`.role-card`) and in the model
+   section (`.cep-cargo`). See `components/OrdemDosCargos.tsx`. */
+
+.role-card[draggable="true"] {
+  cursor: grab;
+}
+
+.role-card.cep-arrastado {
+  opacity: 0.5;
+}
+
+.role-head .cep-pega {
+  flex: none;
+  line-height: 1;
+}
+
+.role-head .cep-setas {
+  flex: none;
+}
+
+/* The line that moved into place settles: arrives from where it came and
+   lights up once. It tells whoever dragged or pressed the arrow where the role
+   landed. */
+.cep-assenta {
+  animation: cargo-assenta 260ms var(--ease);
+}
+
+@keyframes cargo-assenta {
+  from {
+    transform: translateY(-6px);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* With reduced motion it keeps settling, slower (owner rule: nothing stops).
+   `!important` and a class over the universal rule in `base.css`, which sets
+   all animations to 0.01 ms. */
+@media (prefers-reduced-motion: reduce) {
+  .cep-assenta {
+    animation: cargo-assenta 620ms var(--ease) !important;
+    animation-duration: 620ms !important;
+  }
+}

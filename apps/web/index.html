@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      `viewport-fit=cover`: installed on the home screen, the app fills the
+      entire screen, notch and gesture bar included. Without it iOS leaves two
+      dead bars in the wrong color; with it, anyone touching the edges must
+      respect `env(safe-area-inset-*)`, and that is what the stylesheets in
+      `packages/ui/src/styles/` do. On a screen with no notch the `env()` values
+      are zero and nothing changes.
+
+      `interactive-widget=resizes-content`: when the virtual keyboard is open,
+      the PAGE shrinks instead of the keyboard overlaying it. The app forbids
+      page scrolling (`base.css`: `overflow: hidden`, `100dvh`), so without this
+      the keyboard would cover the input bar and there would be no gesture to
+      bring it back: you would type blind. Where the value is not recognized
+      (current iOS) the second half of the fix remains, which is `useVisualViewport`
+      measuring how much the keyboard covers and the stylesheet lifting the bar
+      by that height. See `movel.css` and `--teclado`.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!--
+      Almost no remote origins. The page loads its own bundle and talks to one
+      homeserver over WebSocket.
+      
+      `connect-src` names that homeserver rather than allowing the whole `wss:`
+      scheme. A bare `wss:` is a scheme-source: it matches every host alive, so
+      any script that ever ran in this origin could stream the vault, identity
+      key, epoch secrets, decrypted history, to a socket of its choosing, with
+      the policy's blessing. Serving this build for a different homeserver means
+      changing this line and the matching header in the nginx vhost.
+      
+      `frame-src 'none'`: nothing is embedded. From 12 August to 2 November
+      2026 this named the YouTube player (`youtube-nocookie.com`), loaded when a
+      reader clicked a thumbnail. The player is gone: the thumbnail is now a
+      plain link that opens the video in a new tab, with
+      `rel="noopener noreferrer"`. Spelled out rather than left to
+      `default-src 'self'` so that the line says the page embeds nothing.
+      
+      This policy is markup and not a response header, so it travels with the
+      build: no nginx or Caddy directive to keep in step, and the deployed
+      artefact is this file, minified into apps/web/dist and served from /srv.
+      Check it there and not only in the dev server.
+      
+      `manifest-src 'self'` adds no origin: without it the manifest already fell
+      under `default-src 'self'`. It is spelled out so that the line says what
+      the page loads, and so that loosening `default-src` one day cannot widen
+      where an install manifest may come from.
+      
+      `'wasm-unsafe-eval'` in `script-src` lets WebAssembly compile and nothing
+      else: it does not allow `eval`, `new Function` or inline scripts. This is
+      what the noise reduction model in the voice chain needs (the `gtcrn.wasm`,
+      which runs in the AudioWorklet; see `packages/client-core/src/audio/README.md`).
+      The binary comes from the site itself, with a hash in the name, via
+      `connect-src 'self'`. Without this keyword compilation fails and the chain
+      falls back to the browser suppressor. The Service Worker does not change:
+      its policy is the `default-src 'none'` header in `infra/Caddyfile`, and it
+      does not run WebAssembly.
+      -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'none'; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://orwell.pt; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#080c1a" />
+    <!--
+      A file, not the data-URI that was here before.
+      
+      The previous one was the brand mark with no background: on a light tab it
+      vanished and read as "the app has no favicon". The current one brings the
+      app's own dark background, and is the same file that the public page serves.
+      One copy only, so they do not diverge if someone refines the mark later.
+      -->
+    <link rel="icon" href="./marca.04656517.svg" type="image/svg+xml" />
+    <!--
+      The installable app (PWA). The manifest and icons live in `public/`, come
+      out with fixed names in `/app/`, and the PNGs carry the content hash in
+      the name, like the favicon: `marca/gerar-marca.py` writes them and also
+      rewrites the references here and in the manifest. None of this is edited by
+hand.
+      
+      Both `href` start with `/` and not `./` on purpose: Vite prepends the `base`
+      when building and they come out as `/app/...`, which resolves from anywhere
+      in the app. A `./` only resolves correctly from `/app/` exactly.
+
+      The two `apple-*` meta tags are what Safari on iOS reads when you "Add to
+      Home Screen": it ignores the manifest `display` on old versions and the
+      manifest icon on all versions. `black-translucent` lets the app draw under
+      the status bar, which is what `viewport-fit=cover` requests; the app's dark
+      background sits behind the clock and battery.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.25a65991.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Orwell" />
+    <title>Orwell</title>
+    <!--
+      The skin background before any stylesheet arrives: without it the first
+      render is white until CSS loads. `style-src 'unsafe-inline'` is already in
+      the policy above.
+
+      The opening screen comes in `#root` itself, which is empty here: the
+      `abertura-no-html.ts` plugin writes it at build time with the same markup
+      as `Splash`, and it adds to this `<head>` the script that sets the language
+      and the stylesheet that hides the others. The first render is already the
+      opening; `main.tsx` takes its place at the same point in the loop.
+    -->
+    <style>
+      html,
+      body {
+        background: #080c1a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

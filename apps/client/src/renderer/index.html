@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Belt as well as braces. The main process sets a CSP as a response header, but
+      production loads this document over file://, which carries no response headers at
+      all, so in the shipped app that policy governed nothing. This tag is what
+      actually applies there, and it is the only thing standing between a forged avatar
+      URL and a beacon that reveals every reader's IP.
+
+      Kept in step with the header in apps/client/src/main/index.ts by hand: the
+      renderer must not be laxer than the policy the main process believes it is
+      enforcing.
+
+      `'wasm-unsafe-eval'` in `script-src` allows compiling WebAssembly and nothing
+      else: it does not allow `eval`, `new Function` or inline scripts. This is what
+      the noise reduction model needs (the `gtcrn.wasm`, which runs on the
+      AudioWorklet; see `packages/client-core/src/audio/README.md`). Without this
+      word the model does not compile in the installed app and the chain falls back to
+      Chromium's suppressor. Tested in `scripts/audio-electron.mjs`.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Orwell</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

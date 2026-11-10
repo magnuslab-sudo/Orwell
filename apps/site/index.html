@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      The landing page in English. Since 3 November 2026 the site is in English
+      first and Portuguese second (owner's order: "quero o site em inglês
+      primeiro, pt second"). Portuguese lives at `/pt/`, with the same markup and
+      the same facts: whoever changes a fact here changes it there in the same
+      commit. `testes/pagina.test.ts` checks both versions.
+      
+      Nothing from outside. Nothing at all. The policy is the same as the
+      Portuguese version, and the reason is written there (`pt/index.html`). The
+      `script-src 'self'` is only for `src/sistema.ts`, the script that picks
+      the button by system. The `connect-src 'self'` is only for the measure in
+      the "Support" section: the script requests `/_enclave/apoiar.json` from
+      this origin.
+      -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+
+    <title>Orwell · A European alternative to Discord</title>
+    <meta
+      name="description"
+      content="Talk with your community without giving us your email or your phone number. Channels, categories, voice rooms and screen sharing, with end-to-end encryption. No ads and no algorithm."
+    />
+    <link rel="icon" href="/marca.04656517.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://orwell.pt/" />
+    <link rel="alternate" hreflang="en" href="https://orwell.pt/" />
+    <link rel="alternate" hreflang="pt" href="https://orwell.pt/pt/" />
+    <link rel="alternate" hreflang="x-default" href="https://orwell.pt/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://orwell.pt/" />
+    <meta property="og:title" content="Orwell · A European alternative to Discord" />
+    <meta
+      property="og:description"
+      content="Talk with your community without giving us your email or your phone number. No ads and no algorithm."
+    />
+    <meta property="og:image" content="https://orwell.pt/cartao.png" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:locale:alternate" content="pt_PT" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="stylesheet" href="/src/estilo.css" />
+    <script type="module" src="/src/sistema.ts"></script>
+  </head>
+
+  <body class="entrada editorial">
+    <!--
+      The images, once, and used by reference. The landing page now uses only
+      the logo. The other three stay because `scripts/publicar-instaladores.mjs`
+      reads them FROM HERE for the downloads page. The `i-marca` is WRITTEN by
+      `marca/gerar-marca.py`: do not edit it here.
+    -->
+    <svg class="desenhos" aria-hidden="true">
+      <defs>
+        <symbol id="i-marca" viewBox="0 0 24 24">
+          <path d="M4.59865 1.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V3.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V2.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.51329 6H7.70308a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H2.51329a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M14.6969 6H19.8867a0.85 0.85 0 0 1 0.85 0.85V8.15a0.85 0.85 0 0 1 -0.85 0.85H14.6969a0.85 0.85 0 0 1 -0.85 -0.85V6.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M2.35 10.5H7.15a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H2.35a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M15.25 10.5H20.05a0.85 0.85 0 0 1 0.85 0.85V12.65a0.85 0.85 0 0 1 -0.85 0.85H15.25a0.85 0.85 0 0 1 -0.85 -0.85V11.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.11329 15H9.30308a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H4.11329a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M16.2969 15H21.4867a0.85 0.85 0 0 1 0.85 0.85V17.15a0.85 0.85 0 0 1 -0.85 0.85H16.2969a0.85 0.85 0 0 1 -0.85 -0.85V15.85a0.85 0.85 0 0 1 0.85 -0.85Z" />
+          <path d="M4.59865 19.5H17.8013a0.85 0.85 0 0 1 0.85 0.85V21.65a0.85 0.85 0 0 1 -0.85 0.85H4.59865a0.85 0.85 0 0 1 -0.85 -0.85V20.35a0.85 0.85 0 0 1 0.85 -0.85Z" />
+        </symbol>
+        <symbol id="i-secretaria" viewBox="0 0 24 24">
+          <rect x="3" y="5" width="18" height="12" rx="2" />
+          <path d="M2 20h20" />
+        </symbol>
+        <symbol id="i-browser" viewBox="0 0 24 24">
+          <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+          <path d="M3 9h18" />
+          <circle cx="6.4" cy="6.8" r="0.6" />
+          <circle cx="8.8" cy="6.8" r="0.6" />
+        </symbol>
+        <symbol id="i-escudo" viewBox="0 0 24 24">
+          <path d="M12 3.2 5 6v5.5c0 4.2 2.9 7.6 7 9.3 4.1-1.7 7-5.1 7-9.3V6Z" />
+          <path d="M9.2 11.8 11.3 14l3.7-4.2" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="topo">
+      <a class="marca" href="/">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell</span>
+      </a>
+      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Support us</a>
+      <a class="topo-entrar" href="/app/">Sign in</a>
+    </header>
+
+    <!--
+      The support banner (owner's request on 9 November 2026: "põe no início e
+      no fim, preciso mesmo de doações"). Thin and discreet, right below the
+      header. Ko-fi only, no GoFundMe and no measure (owner's decision the same
+      day; see `MEDIDOR_LIGADO` in src/apoio.ts).
+    -->
+
+    <!--
+      Section "02 Editorial", the same as the Portuguese version: a title with a
+      real screenshot of the app, the phone, and the rest closed in two questions.
+      The four points came out on 3 November 2026. The main button changes with
+      the system (`src/sistema.ts`).
+      -->
+    <main>
+      <section class="heroi">
+        <div class="heroi-texto">
+          <p class="etiqueta">A European alternative to Discord and social media</p>
+          <h1>Play, talk<br />and share.</h1>
+          <p class="heroi-lead">
+            Voice rooms, screen sharing and communities, the way you already know them. Everything is
+            end-to-end encrypted with post-quantum cryptography: safe today, and against the quantum computers
+            of tomorrow. No ads, no algorithm, no email.
+          </p>
+        <div class="accao">
+          <p class="accao-principal">
+            <a class="para-browser" href="/app/">Open in the browser <span aria-hidden="true">→</span></a>
+            <a class="para-windows" href="/transferencias/">Download for Windows <span aria-hidden="true">→</span></a>
+            <a class="para-macos" href="/transferencias/">Download for macOS <span aria-hidden="true">→</span></a>
+          </p>
+          <p class="accao-outros">
+            <a class="outro-browser" href="/app/">Open in the browser</a>
+            <a class="outro-macos" href="/transferencias/">macOS</a>
+            <a class="outro-windows" href="/transferencias/">Windows</a>
+            <a class="outro-telemovel" href="#telemovel">On your phone, no app store</a>
+          </p>
+        </div>
+        </div>
+        <figure class="heroi-captura">
+          <img
+            src="/capturas/aplicacao-0c3bf101.webp"
+            alt="The Orwell app: the list of rooms on the left, a conversation in the middle and who is in the channel on the right"
+            width="1280"
+            height="800"
+          />
+        </figure>
+      </section>
+
+      <!--
+        We are looking for ambassadors (owner request on October 27 and November 2,
+        2026). The `/ambassadors.html` page has the full program and the banner area.
+        Applications happen INSIDE the app, in the Orwell channel, not by email:
+        that's why the link goes to `/app/`. The names come from `src/embaixadores.json`,
+        at build time, via the `TRIBUTO_LINHA` marker.
+      -->
+      <section id="embaixadores" class="seccao embaixadores">
+        <p class="etiqueta">Ambassadors</p>
+        <h2 class="seccao-titulo">Bring your community.</h2>
+        <p class="seccao-texto">
+          Do you have a community on Discord, on TeamSpeak, on Root, on your own server or in another app? Bring the
+          admin and the community to Orwell, and test the app with us. You test it, and the people who make the app
+          listen to you.
+        </p>
+        <div class="embaixadores-colunas">
+          <div>
+            <h3>What the community gets</h3>
+            <p>
+              Direct contact with the people who make Orwell, in a private channel. A channel of your own, and your
+              requests go first. Your name in the tribute section of the site. The ambassador badge in the app, next
+              to your name.
+            </p>
+          </div>
+          <div>
+            <h3>What we ask</h3>
+            <p>
+              Bring the community, or part of it. Use the app for real for one month. Tell us what breaks and what is
+              missing, without a filter.
+            </p>
+          </div>
+        </div>
+        <p class="embaixadores-como">
+          Create an account, go to the Orwell channel and write "I want to be an ambassador" with the name of your
+          community. We answer there.
+        </p>
+        <p class="embaixadores-links">
+          <a href="/app/">Apply with my community</a>
+          <a href="/ambassadors.html">See the programme <span aria-hidden="true">→</span></a>
+        </p>
+        %TRIBUTO_LINHA%
+        <p class="embaixadores-versao">
+          Orwell is at version %VERSAO%. There are still things to do, and that is why ambassadors matter.
+        </p>
+      </section>
+
+      <section class="seccao seccao-mais">
+        <!--
+          Mobile: the browser app on the home screen, with caps before the steps
+          end. The step sources are in the Portuguese version comment. The Chrome
+          and Safari labels come from the English interface; Orwell's come from
+          `packages/ui/src/linguas/en.ts`. A drawer, like the other two, since
+          November 3, 2026: the `id="telemovel"` is in the `<details>`, and the
+          hero link goes there and opens it (`src/gaveta.ts`).
+        -->
+        <details id="telemovel" class="mais">
+          <summary>Use it on your phone, no app store</summary>
+          <div class="mais-corpo">
+            <p class="seccao-texto">
+              There is no app in the app stores. You put the browser app on your home screen. It gets its own icon, opens
+              in its own window and you always get the latest version. It is the same app as
+              <span class="mono">orwell.pt/app</span>.
+            </p>
+
+            <div class="movel">
+              <div class="movel-sistema">
+                <h3>Android <span class="movel-browser">in Chrome</span></h3>
+                <ol class="movel-passos">
+                  <li>Open <span class="mono">orwell.pt/app</span> in Chrome.</li>
+                  <li>Tap the three dots, next to the address bar.</li>
+                  <li>
+                    Choose "Add to Home screen". In some versions of Chrome, this option is called "Install app".
+                  </li>
+                  <li>Confirm with "Install". The account you already had in Chrome is still there.</li>
+                </ol>
+              </div>
+              <div class="movel-sistema">
+                <h3>iPhone and iPad <span class="movel-browser">in Safari</span></h3>
+                <ol class="movel-passos">
+                  <li>
+                    Open <span class="mono">orwell.pt/app</span> in Safari. In other browsers the option may not exist.
+                  </li>
+                  <li>
+                    Tap Share, the square with the arrow pointing up. On iOS 26 it can be inside the three dots button.
+                  </li>
+                  <li>
+                    Scroll down the list and choose "Add to Home Screen". If you see the option to open it as a web app,
+                    leave it on.
+                  </li>
+                  <li>Tap "Add".</li>
+                  <li>
+                    Create or import your account inside the new icon. iOS keeps the icon's data apart from Safari's
+                    data, and an account created in Safari does not show up there.
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <p class="movel-abrir"><a href="/app/">Open orwell.pt/app <span aria-hidden="true">→</span></a></p>
+
+            <div class="aviso movel-limites">
+              <div>
+                <h3>Before you install</h3>
+                <p>
+                  <strong>No notifications while the app is closed.</strong> To reach your phone at that point, they would
+                  have to go through Apple or Google. That is a privacy decision we have not made yet. While the app is
+                  open, alerts arrive as they do in the browser.
+                </p>
+                <p>
+                  <strong>You add your phone to your computer account from the computer.</strong> On the computer, go to
+                  Settings, "Devices", "Add device". A code appears. On the phone, on the start screen, choose "Yes, pair
+                  this device" and scan the code with the camera, or paste the link. Both screens show six words.
+                  Continue only if they match. The phone sees conversations from that moment on and does not have the
+                  account key: adding or removing devices is always done on the computer. Do not import the computer's
+                  <span class="mono">.enclave</span> file on the phone to keep using it on both. One account open in two
+                  places breaks the channel encryption, for good.
+                </p>
+                <p>
+                  <strong>On iPhone, iOS 15.4 or later.</strong> Earlier versions have no encrypted calls. With Lockdown
+                  Mode on, Orwell does not work, because that mode turns off the place where the account is stored, and
+                  the calls.
+                </p>
+                <p>
+                  <strong>The design was born on the computer.</strong> It works on the phone, but some screens are still
+                  cramped. We are adapting them.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!--
+          Orwell vs Discord, line by line, locked in a question. The same
+          lines as the Portuguese version, with the same sources (checked on
+          August 14, 2026, see the comment there). Name only, never the logo.
+          The `id="versus"` stays, because other pages link to `/#versus`.
+        -->
+        <details id="versus" class="mais">
+          <summary>Orwell vs Discord, point by point</summary>
+          <div class="mais-corpo">
+            <p class="seccao-texto">The right-hand column shows what Discord itself publishes about itself.</p>
+            <div class="tabela-rolo">
+              <table class="versus">
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="versus-canto">In practice</span></th>
+                    <th scope="col" class="versus-nos">Orwell</th>
+                    <th scope="col">Discord</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Email to create an account</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Not asked for.</td>
+                    <td data-rotulo="Discord">Required.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Phone number</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Never. There is no field for it.</td>
+                    <td data-rotulo="Discord">Asked for to verify the account, and required by communities with high verification.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ID document or selfie to prove your age</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Never.</td>
+                    <td data-rotulo="Discord">Where the law requires it, with a selfie or an ID document, and for age-restricted spaces.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Ads</th>
+                    <td class="versus-nos" data-rotulo="Orwell">None, anywhere.</td>
+                    <td data-rotulo="Discord">Sponsored Quests and video ads, on desktop and on mobile.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">An algorithm deciding what you see</th>
+                    <td class="versus-nos" data-rotulo="Orwell">None. The board is in order of arrival.</td>
+                    <td data-rotulo="Discord">Recommendations and sponsored content ahead of everything else.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">End-to-end encryption for text</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Always. There is no way to turn it off.</td>
+                    <td data-rotulo="Discord">No, and it says it has no plans for it.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">End-to-end encryption for calls</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Yes. Voice, video and shared screen.</td>
+                    <td data-rotulo="Discord">Yes, since 2024.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Who holds the keys</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Only the devices of the people talking. We hold none.</td>
+                    <td data-rotulo="Discord">Discord, for everything that is text.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">What the server can read</th>
+                    <td class="versus-nos" data-rotulo="Orwell">
+                      Nothing you say. It stores the messages encrypted, and a two-letter reply is the same size as a
+                      paragraph.
+                    </td>
+                    <td data-rotulo="Discord">All the messages. That is how content moderation works.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Selling your data to third parties</th>
+                    <td class="versus-nos" data-rotulo="Orwell">We have no data to sell.</td>
+                    <td data-rotulo="Discord">Says it does not sell it, and uses it to choose the ads it shows you.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">In a data leak, what gets out</th>
+                    <td class="versus-nos" data-rotulo="Orwell">We do not store emails, phone numbers or ID documents.</td>
+                    <td data-rotulo="Discord">
+                      In October 2025 about 70,000 photos of ID documents got out, through a customer support
+                      provider.
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Who decides what you can say</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Your community, through the roles it creates. We cannot read, so we cannot decide.</td>
+                    <td data-rotulo="Discord">Discord, with global rules applied to content.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Where it lives, and which law applies</th>
+                    <td class="versus-nos" data-rotulo="Orwell">European Union (Paris). Portuguese law and the GDPR.</td>
+                    <td data-rotulo="Discord">United States.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Price</th>
+                    <td class="versus-nos" data-rotulo="Orwell">Free. There is no paid version and no locked feature.</td>
+                    <td data-rotulo="Discord">Free, with Nitro as the paid tier.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="versus-nota">
+              So how do we pay for this? We set up this system for people who want it all to themselves. That work is
+              what we live on, and not your attention.
+            </p>
+          </div>
+        </details>
+
+        <!--
+          The technical layer, collapsible. `<details>` opens without JavaScript. The two
+          encryption promises are pinned to the letter in both languages, in
+          `testes/pagina.test.ts`. The caveats about 512-byte padding are in the
+          Portuguese version comment and apply here too.
+        -->
+        <details class="mais">
+          <summary>Want to know how?</summary>
+          <div class="mais-corpo">
+            <div class="colunas">
+              <div>
+                <h3>Encryption built for groups</h3>
+                <p>
+                  We use the open standard <span class="mono">RFC 9420</span>, built for large groups. When someone
+                  joins or leaves, the keys change. Whoever leaves can no longer read what comes next. Whoever joins
+                  cannot read the messages from before they joined. They get the channel's board, posts, rooms and
+                  roles.
+                </p>
+              </div>
+              <div>
+                <h3>Post-quantum by default</h3>
+                <p>
+                  The key exchange combines the classic method with <span class="mono">ML-KEM</span>, which resists
+                  quantum computers. Anyone who stores your messages today to open them in the future with one of those
+                  computers cannot read anything.
+                </p>
+              </div>
+              <div>
+                <h3>A server that does not read</h3>
+                <p>
+                  The server keeps the encrypted messages for 30 days and delivers them to whoever holds the key. It
+                  does not know what they say. A two-letter reply is the same size as a paragraph. Times are stored to
+                  the minute, and not to the millisecond.
+                </p>
+              </div>
+              <div>
+                <h3>The account is a key pair</h3>
+                <p>
+                  We do not store passwords, so there is none to steal. The password you choose opens the account on
+                  your device and never leaves it. There is no email to match against other data, and no password
+                  reset that anyone can trick.
+                </p>
+              </div>
+              <div>
+                <h3>Calls pass through us encrypted</h3>
+                <p>
+                  Voice, video and screen pass through a machine of ours that relays them. The encryption uses a key
+                  of the channel itself, and that machine has no key at all. Only people who could already read the
+                  channel's messages can join the call. Encrypted voice already works in Chrome, Firefox and Safari. A
+                  browser that cannot encrypt the call connects directly to the others, without going through our
+                  machine.
+                </p>
+              </div>
+              <div>
+                <h3>Several devices, one account</h3>
+                <p>
+                  Each device you add to the account gets keys of its own. What must not happen is the same account
+                  file being opened on two devices at the same time. The channel keys stop matching and there is no
+                  way to repair them afterwards. That is why the app warns you before it lets you try.
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="seccao seccao-nota">
+        <p>
+          Orwell was made and is run by users like you. No company is waiting for your data.
+          <strong>You do not even need an email to sign in.</strong>
+        </p>
+      </section>
+
+      <!--
+        Support Orwell: as of November 9, 2026, only through Ko-fi (owner's decision).
+        The GoFundMe meter stays in the HTML, hidden and switched off (see the same
+        note in pt/index.html).
+      -->
+      <section class="seccao seccao-apoio" id="apoiar">
+        <p class="etiqueta">Support</p>
+        <h2>Help keep Orwell online.</h2>
+        <p class="bloco-texto">
+          I'm a solo developer from Portugal, building Orwell independently. No company, no investors, no ads:
+          just me and the people who use it every day. A few collaborators look over the code. Every euro goes to
+          the server, the licences and the legal costs, and gives me time to keep improving Orwell and other public-interest projects. The first goal
+          is €2,200.
+        </p>
+        <p class="apoio-ligacao">
+          <a class="botao-kofi" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer"><svg class="botao-kofi-chavena" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 5h13a3 3 0 0 1 0 6h-.6A6 6 0 0 1 10.5 16h-1A6 6 0 0 1 3.5 10V6a1 1 0 0 1 .5-1Zm13 2v2a1 1 0 0 0 0-2Zm-7.3 1.1c-.8-.8-2.1 0-1.7 1 .4.9 1.7 2 2.5 2.6.8-.6 2.1-1.7 2.5-2.6.4-1-.9-1.8-1.7-1l-.8.7Z"/><path fill="currentColor" d="M3 18h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2Z"/></svg>Support me on Ko-fi</a>
+        </p>
+        <div class="apoio-medidor" id="apoio-medidor" hidden>
+          <div class="apoio-barra" aria-hidden="true"><div class="apoio-enchimento"></div></div>
+          <p class="apoio-numeros" aria-live="polite"></p>
+        </div>
+        <p class="apoio-partilha">If you can't donate, share Orwell.</p>
+      </section>
+    </main>
+
+    <footer class="rodape">
+      <div class="rodape-marca">
+        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      </div>
+      <!-- IDENTICAL footer on all pages in the same language, link by link and in the same order. -->
+      <nav class="rodape-links">
+        <a href="/">Home</a>
+        <a href="/transferencias/">Download</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/ambassadors.html">Ambassadors</a>
+        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Support</a>
+        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+      </nav>
+      <nav class="linguas" aria-label="Language">
+        <a href="/" hreflang="en" aria-current="page">EN</a>
+        <span aria-hidden="true">·</span>
+        <a href="/pt/" hreflang="pt" lang="pt">PT</a>
+      </nav>
+      <p class="rodape-nota">
+        This page runs a single script, from this origin. It picks the button for your system and opens the section
+        that a link points to. It sets no cookies and asked nothing of any
+        server but this one. Made in Portugal.
+      </p>
+      <p class="rodape-nota">Discord is a trademark of Discord Inc. Orwell has no connection with Discord.</p>
+      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Source code</a></p>
+      <p class="rodape-nota"><a href="/terceiros.txt">Third-party notices</a></p>
+    </footer>
+  </body>
+</html>

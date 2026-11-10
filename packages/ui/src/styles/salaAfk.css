@@ -1,0 +1,64 @@
+/* The AFK room (2/11/2026). Its own sheet to avoid touching the screen sheets.
+   The room appears in the list like the others, faded, marked as AFK; whoever
+   is there also fades. Nothing animates here, so reduced motion has nothing to
+   slow down. */
+
+.room-row.sala-afk .room-name,
+.room-row.sala-afk .room-voice-members {
+  opacity: 0.7;
+}
+
+.marca-afk {
+  flex: none;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs, 0.7rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  border: 1px solid color-mix(in srgb, var(--text-faint) 50%, transparent);
+}
+
+li:has(> .room-row.sala-afk) .room-voice-members {
+  opacity: 0.6;
+}
+
+/* The notice for whoever moved to the AFK room: the `.call-aviso` template, in
+   a note, with the "Back" button next to the phrase. */
+.call-aviso.call-aviso-afk {
+  align-items: center;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-left-color: var(--accent);
+}
+
+.call-aviso-accao {
+  flex: none;
+  min-height: 24px;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.call-aviso-accao:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* In the chat area, in the AFK room. */
+.sala-afk-vazia {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6, 2rem) var(--space-4);
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--font-sm);
+}
+
+.seccao-sala-afk h3 {
+  margin: 0;
+  font-size: var(--font-base);
+}

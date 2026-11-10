@@ -1,0 +1,15 @@
+{
+  "//": "SÓ PARA VERIFICAR TIPOS DOS TESTES (1.0 «Arca», fatia 6c): npx tsc -p packages/crypto/tsconfig.testes.json. Não emite nada; o tsconfig.json de produção continua a excluir os testes.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "types": ["node"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": []
+}

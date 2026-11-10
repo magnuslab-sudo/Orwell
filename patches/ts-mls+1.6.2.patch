@@ -1,0 +1,41 @@
+diff --git a/node_modules/ts-mls/dist/src/clientState.js b/node_modules/ts-mls/dist/src/clientState.js
+index 34b1f43..dd774e0 100644
+--- a/node_modules/ts-mls/dist/src/clientState.js
++++ b/node_modules/ts-mls/dist/src/clientState.js
+@@ -278,14 +278,25 @@ export async function validateRatchetTree(tree, groupContext, config, authServic
+                 const leafIndex = toLeafIndex(unmergedLeaf);
+                 const dp = directPath(leafToNodeIndex(leafIndex), leafWidth(tree.length));
+                 const nodeIndex = leafToNodeIndex(leafIndex);
+-                if (tree[nodeIndex]?.nodeType !== "leaf" && !dp.includes(toNodeIndex(i)))
++                // Remendo Orwell (2/11/2026), RFC 9420 §12.4.3.1, "Verify the integrity of
++                // the ratchet tree": "For each non-empty parent node and each entry in the
++                // node's unmerged_leaves field: Verify that the entry represents a non-blank
++                // leaf node that is a descendant of the parent node. Verify that every
++                // non-blank intermediate node between the leaf node and the parent node also
++                // has an entry for the leaf node in its unmerged_leaves."
++                // O original exigia a lista IGUAL em todos os nós do caminho inteiro (também
++                // acima do pai) e recusava árvores válidas; e aceitava uma entrada que não é
++                // descendente desde que a folha não estivesse vazia. Ver patches/README.md.
++                if (tree[nodeIndex]?.nodeType !== "leaf" || !dp.includes(toNodeIndex(i)))
+                     return new ValidationError("Unmerged leaf did not represent a non-blank descendant leaf node");
+                 for (const parentIdx of dp) {
++                    if (parentIdx === toNodeIndex(i))
++                        break;
+                     const dpNode = tree[parentIdx];
+                     if (dpNode !== undefined) {
+                         if (dpNode.nodeType !== "parent")
+                             return new InternalError("Expected parent node");
+-                        if (!arraysEqual(dpNode.parent.unmergedLeaves, n.parent.unmergedLeaves))
++                        if (!dpNode.parent.unmergedLeaves.includes(unmergedLeaf))
+                             return new ValidationError("non-blank intermediate node must list leaf node in its unmerged_leaves");
+                     }
+                 }
+@@ -457,7 +468,7 @@ export async function applyProposals(state, proposals, committerLeafIndex, pskSe
+         const [mutatedTree, addedLeafNodes] = await applyTreeMutations(state.ratchetTree, grouped, state.groupContext, sentByClient, state.clientConfig.authService, state.clientConfig.lifetimeConfig, cs.signature);
+         const [updatedPskSecret, pskIds] = await accumulatePskSecret(grouped.psk.map((p) => p.proposal.psk.preSharedKeyId), pskSearch, cs, zeroes);
+         const selfRemoved = mutatedTree[leafToNodeIndex(toLeafIndex(state.privatePath.leafIndex))] === undefined;
+-        const needsUpdatePath = allProposals.length === 0 || Object.values(grouped.update).length > 1 || Object.values(grouped.remove).length > 1;
++        const needsUpdatePath = allProposals.length === 0 || Object.values(grouped.update).length >= 1 || Object.values(grouped.remove).length >= 1;
+         return {
+             tree: mutatedTree,
+             pskSecret: updatedPskSecret,

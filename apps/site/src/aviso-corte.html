@@ -1,0 +1,32 @@
+<!--
+  DRAFT. NOT PUBLISHED.
+  
+  The cutoff notice for 1.0 "Arca" (`docs/planos/corte-1-0-guiao.md`, step 1 of
+  cutoff day): goes live on the site one week before the cutoff. The date is the
+  owner's, so it stays blank, and the block does not enter any page until they
+  give it.
+  
+  Why it is in `src/` and not next to `index.html`: Vite only builds the four
+  pages in `rollupOptions.input` (`vite.config.ts`), and the test in
+  `testes/pagina.test.ts` only counts `.html` files from the root of `apps/site`.
+  Here, this file is not built, not served, and does not break any test.
+  
+  How to activate it, on the day:
+  1. Replace `&lt;data&gt;` with the cutoff date in full ("4 de Novembro de 2026").
+  2. Copy the `<div class="aviso">` below to `apps/site/index.html`, right after
+  `<main>` and before `<section class="heroi">`. It uses the `.aviso` class
+  and the `#i-escudo` icon that the page already has: no new CSS.
+  3. `npm run build` in `apps/site` and deploy the site, with the owner's go-ahead.
+  4. On cutoff day, the block goes out again (or becomes "We left beta on …" in
+  the past), in the same deploy as 1.0.
+  
+  The text is from the script. It has no em dashes and follows the short style of
+  the rest of the site.
+  -->
+<div class="aviso aviso-corte">
+  <svg aria-hidden="true"><use href="#i-escudo" /></svg>
+  <div>
+    <h2>Saímos de beta</h2>
+    <p>Saímos de beta a &lt;data&gt;. As contas do beta não passam. Quem quiser guardar mensagens exporta com a app antiga antes.</p>
+  </div>
+</div>
