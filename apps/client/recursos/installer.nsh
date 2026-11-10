@@ -40,3 +40,11 @@
     StrCpy $isForceCurrentInstall "1"
   ${endIf}
 !macroend
+
+; Finish page link to Ko-fi. MUI_PAGE_FINISH (assistedInstaller.nsh) reads
+; these defines; this file is included before it. Installer only: the
+; uninstaller's finish page would show the link too.
+!ifndef BUILD_UNINSTALLER
+  !define MUI_FINISHPAGE_LINK "Support Orwell on Ko-fi"
+  !define MUI_FINISHPAGE_LINK_LOCATION "https://ko-fi.com/orwell_eu"
+!endif

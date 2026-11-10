@@ -45,10 +45,23 @@ body { margin: 0; background: var(--fundo); }
   <h1>Release notes</h1>
   <p class="subtitulo">Orwell version Carmelo 1.3</p>
   <section class="versao">
+    <h2><span class="numero">1.3.5</span> <time class="data" datetime="2026-11-10">November 10, 2026</time></h2>
+    <ul>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The Windows installer is always in English, whatever the system language, with no language picker.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The Windows installer's finish page links to Ko-fi (https://ko-fi.com/orwell_eu) to support the project.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The macOS disk image has a &quot;Support Orwell&quot; link to Ko-fi next to the drag-to-Applications window.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The Windows .exe file description and the macOS system-audio permission prompt (screen sharing with sound) are now in English.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">Desktop downloads go from 1.3.3 straight to 1.3.5, so desktop users also get everything in 1.3.4: Orwell is open source under the AGPL-3.0, with a &quot;Source code&quot; link in Settings &gt; Help and diagnostics.</span></li>
+    </ul>
+  </section>
+  <section class="versao">
     <h2><span class="numero">1.3.4</span> <time class="data" datetime="2026-11-09">November 9, 2026</time></h2>
     <ul>
       <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">Orwell is now open source under the AGPL-3.0: https://github.com/magnuslab-sudo/orwell. A &quot;Source code&quot; link sits in Settings &gt; Help and diagnostics and in the site footer.</span></li>
       <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">The web app serves its source maps again.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">Desktop installers ship the licence (LICENSE), the copyright notice (NOTICE) and the third-party notices next to the program.</span></li>
+      <li><span class="tipo tipo-melhoria">Improvement</span><span class="texto">orwell.pt: support now goes through Ko-fi only (https://ko-fi.com/orwell_eu), with a &quot;Support us&quot; link next to Sign in and the Support link in the footer.</span></li>
+      <li><span class="tipo tipo-fix">Fix</span><span class="texto">Shared room: an account that rejoins through the room card from another device (browser to desktop app, for example) now stays in the channel and gets the echo of its own commit. Before, the commit was taken as lost after 10 s and retried once a minute, bumping the room epoch every time.</span></li>
     </ul>
   </section>
   <section class="versao">

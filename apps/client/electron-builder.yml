@@ -79,7 +79,7 @@ mac:
   # won't even ask, and the audio track arrives silent. See `somDoSistema` in
   # `src/main/ecra.ts`.
   extendInfo:
-    NSAudioCaptureUsageDescription: "O Orwell usa o som do sistema quando partilhas o ecrã numa chamada."
+    NSAudioCaptureUsageDescription: "Orwell uses system audio when you share your screen in a call."
   # No signing identity, stated here so the build won't look for it and die on a
   # machine that has it configured for something else.
   identity: null
@@ -88,13 +88,21 @@ mac:
 
 dmg:
   # The drag-to-Applications window, which is the gesture everyone knows on macOS.
+  # Default background with the arrow, 40 px less on top and room below for
+  # the Ko-fi link (recursos/background.png and @2x, 540x460).
+  background: background.png
   contents:
     - x: 130
-      y: 220
+      y: 180
     - x: 410
-      y: 220
+      y: 180
       type: link
       path: /Applications
+    # Opens https://ko-fi.com/orwell_eu in the browser.
+    - x: 270
+      y: 330
+      type: file
+      path: recursos/Support Orwell.webloc
 
 win:
   artifactName: "${productName}-${version}-windows-${arch}.${ext}"
@@ -107,6 +115,10 @@ win:
 
 nsis:
   oneClick: false
+  # Always English, whatever the Windows language. No language picker.
+  multiLanguageInstaller: false
+  installerLanguages:
+    - en_US
   # The installer asks where to install. An installer that doesn't ask looks like
   # one hiding something.
   allowToChangeInstallationDirectory: true

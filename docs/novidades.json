@@ -1,5 +1,32 @@
 [
   {
+    "versao": "1.3.5",
+    "nome": "Carmelo",
+    "data": "2026-11-10",
+    "itens": [
+      {
+        "tipo": "melhoria",
+        "texto": "The Windows installer is always in English, whatever the system language, with no language picker."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "The Windows installer's finish page links to Ko-fi (https://ko-fi.com/orwell_eu) to support the project."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "The macOS disk image has a \"Support Orwell\" link to Ko-fi next to the drag-to-Applications window."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "The Windows .exe file description and the macOS system-audio permission prompt (screen sharing with sound) are now in English."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "Desktop downloads go from 1.3.3 straight to 1.3.5, so desktop users also get everything in 1.3.4: Orwell is open source under the AGPL-3.0, with a \"Source code\" link in Settings > Help and diagnostics."
+      }
+    ]
+  },
+  {
     "versao": "1.3.4",
     "nome": "Carmelo",
     "data": "2026-11-09",
@@ -11,6 +38,18 @@
       {
         "tipo": "melhoria",
         "texto": "The web app serves its source maps again."
+      },
+      {
+        "tipo": "fix",
+        "texto": "Shared room: an account that rejoins through the room card from another device (browser to desktop app, for example) now stays in the channel and gets the echo of its own commit. Before, the commit was taken as lost after 10 s and retried once a minute, bumping the room epoch every time."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "Desktop installers ship the licence (LICENSE), the copyright notice (NOTICE) and the third-party notices next to the program."
+      },
+      {
+        "tipo": "melhoria",
+        "texto": "orwell.pt: support now goes through Ko-fi only (https://ko-fi.com/orwell_eu), with a \"Support us\" link next to Sign in and the Support link in the footer."
       }
     ]
   },

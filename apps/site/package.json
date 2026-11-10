@@ -1,6 +1,6 @@
 {
   "name": "@enclave/site",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "private": true,
   "type": "module",
   "description": "A página pública de orwell.pt. Separada da aplicação de propósito: quem vem ler não carrega o bundle de quem vem usar.",
