@@ -2,25 +2,25 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { ate, contasDeTeste, desligarContas, levantarServidor, type ContaDeTeste, type ServidorDeTeste } from "../testes/cliente-de-teste.js"
 
 /**
- * The feed right after a new friend (October 26, 2026).
+ * The wall right after a new friendship (October 26, 2026).
  *
  * The script `retratar-midnight.mjs` saw, in about 2 of 8 runs, Kaori's posts
- * missing from Vesna's feed when Kaori posted right after accepting. The
- * suspect was feed delivery: Vesna's slot not yet settled, the post in an epoch
- * before the slot, or the feed rebroadcast (`republishPosts`) losing the race.
+ * missing from Vesna's wall when Kaori posted right after accepting. The
+ * suspect was feed delivery: Vesna's seat not yet settled, the post in an epoch
+ * before the seat, or the wall resend (`republishPosts`) losing the race.
  *
- * These tests fix the order of each case, without leaving it to chance. All
- * pass: the post reaches Vesna in every order, in under a second. The cause in
- * the script was the script itself (see the note in `retratar-midnight.mjs`),
- * and this stands as proof that feed delivery loses nothing in this window.
+ * These tests pin the order of each case, with no timeouts left to chance. All
+ * pass: the post reaches Vesna in every order, in under a second. The script's
+ * failure came from the script itself (see the note in `retratar-midnight.mjs`),
+ * and this stays as proof that feed delivery loses nothing in this window.
  *
  * The orders, from Kaori's side (the one who accepts and posts):
- * 1. posts before giving the slot: the post goes in an epoch without Vesna, and
- *    only the feed rebroadcast as it grows brings it to her;
+ * 1. posts BEFORE giving the seat: the post goes in an epoch without Vesna, and
+ *    only the wall resend when the feed grows brings it to her;
  * 2. posts at the same time as accepting: the channel queue decides the order;
- * 3. posts after giving the slot, with Vesna offline: Vesna gets the Welcome
- *    and the post only when back, by recovery;
- * 4. posts after giving the slot, before Vesna opens the Welcome;
+ * 3. posts after giving the seat, with Vesna offline: Vesna gets the Welcome
+ *    and the post only when she is back, through recovery;
+ * 4. posts after giving the seat, before Vesna opens the Welcome;
  * 5. posts after Vesna is in the feed.
  */
 
@@ -39,7 +39,7 @@ afterAll(async () => {
   await servidor?.fechar()
 })
 
-/** Vesna asks, and the request reaches Kaori. Returns the direct. */
+/** Vesna asks, and the request reaches Kaori. Returns the DM. */
 async function pedido(vesna: ContaDeTeste, kaori: ContaDeTeste): Promise<string> {
   const dm = await vesna.session.openDirect(kaori.address)
   await ate(() => kaori.session.channels.includes(dm), "a Kaori entra na directa")
@@ -106,7 +106,7 @@ describe("o mural logo a seguir a uma amizade nova", () => {
       for (const titulo of ["Chuva em Shibuya", "Néon e vidro"]) {
         await ate(() => temPublicacao(vesna!, feed, titulo), `«${titulo}» chega à Vesna (${ordem})`, 10_000)
       }
-      // And the friendship closes on both sides, like in the script.
+      // And the friendship completes on both sides, as in the script.
       await ate(() => vesna!.session.friendTies().get(kaori!.address)?.link === "amigos", "a Vesna vê a amizade")
     }, 60_000)
   }

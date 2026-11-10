@@ -12,11 +12,11 @@ import { Store } from "./store.js"
 /**
  * The operator scripts, run for real against a local database.
  *
- * None of these tests can reach production, and there are two guards for it:
+ * **None of these tests can reach production**, and two guards ensure it:
  * each script runs with `ORWELL_BASE` pointing to a temp database, and with
- * a fake `ssh` at the front of the PATH that exits with error and does nothing.
- * If a script ignored the local database and tried the server, it failed here
- * instead of wiping production.
+ * a fake `ssh` first in the PATH that exits with an error and does nothing.
+ * If a script ignored the local database and tried the server, it would fail
+ * here instead of wiping production.
  */
 
 const RAIZ = fileURLToPath(new URL("../../../", import.meta.url))
@@ -60,7 +60,7 @@ function sql(consulta: string): string {
 
 const CANAL = "!984:orwell.pt"
 
-/** Real commits in chain for a channel. See `commit-por-epoch.test.ts`. */
+/** Real commits in a chain for a channel. See `commit-por-epoch.test.ts`. */
 async function cadeiaDeCommits(canal: string, quantos: number): Promise<{ commits: Uint8Array[] }> {
   let sala = await createChannel(generateIdentity(parseServerName("orwell.pt")), canal)
   const commits: Uint8Array[] = []
@@ -122,8 +122,8 @@ describe.skipIf(!sqlite3Disponivel)("limpar-servidor.mjs", () => {
   })
 
   it("uma base de antes de `channel_epochs` limpa-se na mesma, com marcador", () => {
-    // This is where it failed: deleted five tables, crashed on the sixth, and the
-    // marker-the half that tells clients to forget-was never written.
+    // This is where it failed: it deleted five tables, crashed on the sixth, and the
+    // marker (the half that tells clients to forget) was never written.
     basePovoada()
     sql("DROP TABLE channel_epochs")
     const { codigo, saida } = correr("limpar-servidor.mjs", [], { ORWELL_APAGAR: "sim" })
@@ -134,14 +134,14 @@ describe.skipIf(!sqlite3Disponivel)("limpar-servidor.mjs", () => {
   })
 
   it("por omissão é local: sem ORWELL_BASE nem ORWELL_ALVO nunca vai ao servidor", () => {
-    // The house rule: a script points to the local machine, and to production only when
-    // asked. This one pointed to production by default.
+    // The house rule: a script targets the local machine, and production only when
+    // asked. This one targeted production by default.
     //
     // WITHOUT `ORWELL_APAGAR`, on purpose: without `ORWELL_BASE` the database is the
-    // true `.dev-data` of the repository, and with confirmation this test deleted it
-    // whenever it existed (9/13/2026, mid-bancada). To prove where the script points,
-    // just count it, which touches nothing; and the exit code depends on whether
-    // `.dev-data` exists, so we do not assert.
+    // repository's real `.dev-data`, and with the confirmation this test deleted it
+    // whenever it existed (13/9/2026, in the middle of a test run). To prove where the
+    // script points, the count is enough, and it touches nothing; the exit code depends
+    // on whether `.dev-data` exists, so we do not assert it.
     const semBase = { ...ambiente }
     delete semBase.ORWELL_BASE
     const resultado = spawnSync(process.execPath, [join(RAIZ, "scripts", "limpar-servidor.mjs")], {
@@ -204,16 +204,16 @@ describe.skipIf(!sqlite3Disponivel)("destrancar-canal.mjs", () => {
     expect(codigo, saida).toBe(0)
     expect(sql(`SELECT epoch FROM channel_epochs WHERE channel = '${CANAL}'`)).toBe("18")
     expect(sql("SELECT epoch FROM channel_epochs WHERE channel = '!outro:orwell.pt'")).toBe("4")
-    // Nothing else touched: no events, no card, no subscriptions.
+    // Nothing else is touched: no events, no card, no subscriptions.
     expect(sql("SELECT count(*) FROM events")).toBe("1")
     expect(sql("SELECT count(*) FROM group_infos")).toBe("1")
   })
 
   it("e o que grava sobrevive a um reinício do servidor", async () => {
     /*
-      Deleted the row, and `inicializarEpochs` recalculated it from history at
+      It deleted the row, and `inicializarEpochs` recalculated it from history at
       the next startup: a restart before the next commit would lock the
-      channel again at the epoch where the operator had taken it from.
+      channel again at the epoch the operator had moved it off.
     */
     openDatabase(base).close()
     const { commits } = await cadeiaDeCommits(CANAL, 3)

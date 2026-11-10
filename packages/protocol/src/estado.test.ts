@@ -36,7 +36,7 @@ function estadoMinimo(): EstadoDeConta {
 
 describe("o canal da conta", () => {
   it("a forma `!self-` saiu: o protocolo já não a constrói (1.0 «Arca», fatia 3)", async () => {
-    // The address is `moradaDaConta` (ids.ts); recognizing it is the vault's job.
+    // The address is `moradaDaConta` (ids.ts); recognizing it is the vault record's job.
     const estado = await import("./estado.js")
     expect("canalDaContaDe" in estado).toBe(false)
   })
@@ -149,7 +149,7 @@ describe("o instantâneo no emparelhamento", () => {
     expect(partes.length).toBeLessThanOrEqual(ESTADO_PARTES_MAX)
     const junto = juntarEstado(partes)
     if (junto === null) throw new Error("o instantâneo cortado não se lê")
-    // The newest stays, the oldest goes.
+    // The newest stayed, the oldest went.
     expect(junto.amizades[`!dm-ana.p${LIVRO_CANAIS_MAX - 1}:localhost`]).toBeDefined()
     expect(junto.amizades["!dm-ana.p0:localhost"]).toBeUndefined()
     expect(junto.lidas[`!canal-com-um-nome-comprido-${LIDAS_MAX - 1}:localhost`]).toBe(LIDAS_MAX - 1)
@@ -192,12 +192,12 @@ describe("os perfis das outras pessoas no instantâneo", () => {
   it("passam no instantâneo, sem retrato; um mapa torto cai sozinho e o resto fica", () => {
     const perfis = { [CARLOS]: { displayName: "Carlos", statusText: "a ler", activity: "ocupado", updatedAt: 7 } }
     expect(EstadoDeConta.parse({ ...estadoMinimo(), perfis }).perfis).toEqual(perfis)
-    // A name above the limit, or a broken address: the map goes out, the snapshot does not.
+    // A name above the cap, or a malformed address: the map is dropped, the snapshot is not.
     const torto = EstadoDeConta.parse({ ...estadoMinimo(), lidas: { "!a:x": 1 }, perfis: { [CARLOS]: { displayName: "x".repeat(65), updatedAt: 1 } } })
     expect(torto.perfis).toBeUndefined()
     expect(torto.lidas).toEqual({ "!a:x": 1 })
     expect(EstadoDeConta.parse({ ...estadoMinimo(), perfis: { "carlos": { displayName: "C", updatedAt: 1 } } }).perfis).toBeUndefined()
-    // The portrait is not a schema field: it gets thrown away.
+    // The avatar is not a schema field: it is dropped.
     const comRetrato = EstadoDeConta.parse({ ...estadoMinimo(), perfis: { [CARLOS]: { displayName: "C", updatedAt: 1, avatarDataUrl: "data:x" } } })
     expect(comRetrato.perfis?.[CARLOS]).toEqual({ displayName: "C", updatedAt: 1 })
   })

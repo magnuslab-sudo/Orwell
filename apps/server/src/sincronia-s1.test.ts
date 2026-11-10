@@ -16,8 +16,8 @@ import {
  * Absolute sync, phases S1 and S2, with real accounts (§8.1 of the plan
  * `docs/planos/2026-10-20-sincronia-absoluta.md`).
  *
- * The authoritative server, MLS groups, `Session` with its own vaults. Each
- * test pins a goal of S1 or S2 that the S0 benchmark showed failing.
+ * The real server, the MLS groups, `Session`s with their own vaults. Each
+ * test locks a goal of S1 or S2 that the S0 measurement showed failing.
  */
 
 let servidor: ServidorDeTeste
@@ -50,9 +50,9 @@ const entradaCom = (conta: ContaDeTeste, canal: string, corpo: string) =>
 const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
- * Open sockets until `repor()` drop echoes from their own connection
- * (`channel.event` with `ref`) while `swallow` is on. Only those: sockets from
- * other accounts, and those that open later, pass through unchanged.
+ * Sockets opened before `repor()` drop their own connection's echoes
+ * (`channel.event` with `ref`) while `engolir` is on. Only those: sockets from
+ * other accounts, and those opened later, stay as they are.
  */
 function socketQueEngoleEcos(): { engolir: boolean; engolidos: number; repor: () => void } {
   const Original = globalThis.WebSocket
@@ -87,14 +87,14 @@ function socketQueEngoleEcos(): { engolir: boolean; engolidos: number; repor: ()
   return estado
 }
 
-/** An account running 0.6.0 (or 0.5.7): never sends the device signal, so never announces itself (§4.6). */
+/** An account posing as 0.6.0 (or 0.5.7): it never sends the device signal, so it never announces itself (§4.6). */
 function semAnuncio(conta: ContaDeTeste): () => void {
   const enviar = conta.session.send.bind(conta.session)
   conta.session.send = async (destino, payload) => {
     if (payload.t === "typing") return
     return enviar(destino, payload)
   }
-  // And since S4, no anti-entropy: an old client neither requests nor applies telemetry.
+  // And since S4, no anti-entropy: an old client neither requests nor applies reports.
   conta.session.antiEntropiaLigada = false
   return () => {
     conta.session.send = enviar
@@ -104,9 +104,9 @@ function semAnuncio(conta: ContaDeTeste): () => void {
 
 describe("S1: o seq do eco em todos os envios", () => {
   /**
-   * The S0 finding (scenario: member joining late): Ana's message placed before
-   * Carla's position stayed in Ana's vault with `seq` -1, and Ana's snapshot gave
-   * it to Carla. With the echo's `seq`, the position rule now holds for our own
+   * The S0 finding (scenario "member who joins late"): Ana's message sent before
+   * Carla's seat stayed in Ana's vault with `seq` -1, and Ana's snapshot gave
+   * it to Carla. With the echo's `seq`, the seat rule now holds for our own
    * messages too.
    */
   it("uma mensagem nossa ganha o seq do servidor, e a regra do lugar deixa-a fora do instantâneo", async () => {
@@ -127,7 +127,7 @@ describe("S1: o seq do eco em todos os envios", () => {
     const instantaneo = instantaneoDoCanal(ana!.vault.contents, canal, { desde: lugar! })
     expect(instantaneo.porParte["mensagens-da-janela"]?.n).toBe(0)
 
-    // After the position, the new message enters the window on both sides, and the
+    // After the seat, the new message enters the window on both sides, and the
     // digests with a window become equal (the "before" message is no longer a false divergence).
     await ana!.session.send(canal, mensagem("depois do lugar"))
     await ate(() => entradaCom(carla!, canal, "depois do lugar") !== undefined, "a Carla lê a nova")
@@ -139,11 +139,11 @@ describe("S1: o seq do eco em todos os envios", () => {
     const [ana, bruno] = await contas("Ana", "Bruno")
     const canal = await canalComTodos(servidor, ana!, [bruno!])
     /*
-      The echo is dropped intentionally, not from latency (S6). Before, the test
+      The echo is dropped on purpose, not by timing (S6). Before, the test
       would disconnect right after `send` and expect the echo not to have arrived
       yet; on a fast local server it sometimes did, and the test would fail.
       Now Ana's connection runs through a filter that drops her echoes
-      (`channel.event` with `ref`) while `swallow` is on.
+      (`channel.event` with `ref`) while `engolir` is on.
     */
     ana!.session.disconnect()
     const filtro = socketQueEngoleEcos()
@@ -171,8 +171,8 @@ const publicacao = (id: string, caption: string) =>
 
 describe("S1: quem entra tarde recebe o que é de quem estava", () => {
   /**
-   * The S0 scenario that never evened out: Carla joins a space and got zero
-   * posts, zero comments, zero reactions and zero tickets. Now each author
+   * The S0 scenario that never converged: Carla joined a space and got zero
+   * posts, zero comments, zero votes and zero tickets. Now each author
    * resends what is theirs, and the role arrives with the original timestamp (F11).
    */
   it("publicações, comentários, gostos, votos, tickets e cargos com o carimbo original", async () => {
@@ -210,7 +210,7 @@ describe("S1: quem entra tarde recebe o que é de quem estava", () => {
     await ate(() => JSON.stringify(contar(carla!)) === JSON.stringify(contar(ana!)), "o mural e os tickets iguais na Carla", 30_000)
     expect(contar(carla!)).toMatchObject({ publicacao: 5, comentario: 10 })
 
-    // Each person's likes and reactions, as the fold counts them.
+    // Each person's likes and votes, as the fold counts them.
     const envolvimento = dobrarEnvolvimento(carla!.session.history(canal), carla!.address)
     expect(envolvimento.get(posts[0]!)?.up).toBe(1)
     expect([...(dobrarVotos(carla!.session.history(canal)).get(posts[1]!) ?? new Map())].sort()).toEqual(
@@ -219,18 +219,18 @@ describe("S1: quem entra tarde recebe o que é de quem estava", () => {
         [bruno!.address, 2],
       ].sort(),
     )
-    // Carla's ticket board: both tickets, and the state decided by Bruno.
+    // Carla's ticket board: both tickets, and the state decided by Ana.
     await ate(() => carla!.session.ticketsOf(canal, "").length === 2, "os dois tickets na Carla")
     expect(carla!.session.ticketsOf(canal, "").find((t) => t.id === ticket)?.state).toBe("working")
     // Bruno's role, with the assignment timestamp, not the resend time.
     expect(carla!.session.rolesFor(canal, bruno!.address)).toContain("porteiro")
     expect(carla!.vault.contents.channelMemberRolesAt?.[canal]?.[bruno!.address]?.at).toBe(carimbo)
-    // And no messages from before the position.
+    // And no message from before the seat.
     expect(
       carla!.session.history(canal).filter((e) => e.payload.t === "message" && !e.payload["ticket"] && e.seq >= 0 && e.seq < (lugar ?? 0)),
     ).toHaveLength(0)
-    // No duplicates: nobody stored copies from the resend. Count history
-    // ENTRIES, not unique keys in the digest, which hid a copy stored under the same key.
+    // No duplicates: nobody stored copies from the resend. Count the history
+    // ENTRIES, not the unique keys of the digest, which hid a copy stored under the same key.
     const entradas = (conta: ContaDeTeste) => {
       const lidas = conta.session.history(canal)
       const quantas = (t: string, ticket = false) =>
@@ -316,9 +316,9 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
   /**
    * A 0.5.7 client stores each resent comment or ticket as a new entry, and a
    * 0.6.0 deduplicates posts and likes only against what it still has in history
-   * (finding 1 of the 0.7.0 review). Here we simulate 0.6.0 as Carla who doesn't
-   * announce (the device signal is dropped before leaving): in a space she gets
-   * nothing from the resend, neither the feed nor the likes. When she announces,
+   * (finding 1 of the 0.7.0 review). Here Carla poses as a 0.6.0 that doesn't
+   * announce itself (the device signal is dropped before it goes out): in a space she
+   * gets nothing from the resend, neither the wall nor the likes. When she announces,
    * everything arrives, once.
    */
   it("com uma folha que não se anunciou, o reenvio fica à espera; quando se anuncia, chega", async () => {
@@ -331,7 +331,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
     await bruno!.session.openTicket(canal, "", "Ticket do Bruno")
     await ate(() => divergencias([ana!, bruno!], canal).length === 0, "a Ana e o Bruno iguais")
 
-    // Carla is 0.6.0: no device signal.
+    // Carla poses as 0.6.0: no device signal.
     const anunciar = semAnuncio(carla!)
     await ana!.session.seat(canal, carla!.address)
     await ate(() => carla!.session.channels.includes(canal), "a Carla entra")
@@ -346,7 +346,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
       ticket: 0,
     })
 
-    // Carla learns to deduplicate and announces herself: each person resends what was missing.
+    // Carla learns to deduplicate and announces herself: each one resends what was missing.
     anunciar()
     delete carla!.vault.contents.reenvioAnunciado?.[canal]
     await carla!.session.sincronizarAgora()
@@ -362,16 +362,16 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
   }, 120_000)
 
   /**
-   * Finding 1 of the 0.7.0 review, with a 0.6.0 conversation traced through.
+   * Finding 1 of the 0.7.0 review, with a 0.6.0 conversation counted.
    *
    * Carla is fully 0.6.0: doesn't announce, and stores what she receives as a
    * 0.6.0 stores it (the old schema and deduplication, copied below): one list
    * only, with a cap, where posts and likes are rejected only if the same `id`
-   * from the same author is still there. Cap of 15 instead of 400, to keep the
-   * test fast; the ratio is the same (eleven accounts with two hundred likes each).
+   * from the same author is still there. Cap of 15 instead of 400, so the test
+   * runs in seconds; the ratio is the same (eleven accounts with two hundred likes).
    * Bruno connects for the first time after the update (`reenviadoPara` empty):
-   * without the gate from §4.6 on likes, his 20 likes would all come back and
-   * flush Carla's entire vault.
+   * without the gate from §4.6 on likes, his 20 likes would all come in again and
+   * push the whole conversation out of Carla's vault.
    */
   it("a primeira ligação depois da actualização não apaga a conversa de um 0.6.0", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
@@ -389,7 +389,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
     await ate(() => bruno!.vault.contents.reenviadoPara?.[canal]?.includes(carla!.address) === true, "o reenvio do Bruno corre")
     await esperar(1_000)
 
-    // A 0.6.0 vault: one list, cap, deduplication only for `post` and `post.reaction`.
+    // A 0.6.0 vault: one list, a cap, deduplication only for `post` and `post.reaction`.
     const TECTO = 15
     const HISTORICO = new Set(["message", "post", "post.comment", "post.reaction", "edit", "redact"])
     const cofreAntigo: { sender: string; payload: Record<string, unknown> }[] = []
@@ -408,7 +408,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
     for (let i = 0; i < 10; i++) await ana!.session.send(canal, mensagem(`conversa ${i}`))
     await ate(() => conversa() === 10, "a conversa no cofre antigo da Carla")
 
-    // Bruno on his first connection after the update: never spoke to anyone.
+    // Bruno on his first connection after the update: he has never resent anything to anyone.
     delete bruno!.vault.contents.reenviadoPara?.[canal]
     await bruno!.session.sincronizarAgora()
     await ate(() => bruno!.vault.contents.reenviadoPara?.[canal] !== undefined, "a passagem do Bruno acaba")
@@ -422,7 +422,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
    * anything in the current epoch and has been silent for `FOLHA_CALADA_MS`.
    * Here the timeout is zero, and Carla sends nothing: Bruno's resend still goes
    * out. With a fourteen-day timeout (the test above), a live leaf that hasn't
-   * spoken yet keeps blocking.
+   * spoken yet still blocks it.
    */
   it("uma folha morta não trava o reenvio", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
@@ -432,7 +432,7 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
     await bruno!.session.commentOnPost(canal, post, "comentário do Bruno")
     await ate(() => divergencias([ana!, bruno!], canal).length === 0, "a Ana e o Bruno iguais")
 
-    // Carla is a dead leaf: enters and never says anything.
+    // Carla is a dead leaf: she joins and never says anything.
     carla!.session.send = async () => undefined as never
     const prazo = Session.FOLHA_CALADA_MS
     Session.FOLHA_CALADA_MS = 0
@@ -450,8 +450,8 @@ describe("S1, §4.6: o reenvio de comentários e tickets espera que todas as fol
 describe("S1: o reenvio do próprio, sem tempestade e sem dar por feito o que falhou", () => {
   /**
    * Finding 2: `reenviadoPara` was saved with failed sends (each `send`
-   * had `.catch(() => {})`). Those who didn't receive stayed marked as done,
-   * and the next connection didn't retry. Now only with zero failures.
+   * had `.catch(() => {})`). A member that didn't receive it stayed marked as done,
+   * and the next connection didn't retry. Now it is saved only with zero failures.
    */
   it("um envio falhado não dá o canal por dito, e a passagem seguinte repete", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
@@ -463,7 +463,7 @@ describe("S1: o reenvio do próprio, sem tempestade e sem dar por feito o que fa
     // All leaves announced: the full resend can go out.
     await ate(() => Object.keys(bruno!.vault.contents.capacidadesNoCanal?.[canal] ?? {}).length === 2, "a Ana e a Carla anunciadas ao Bruno")
 
-    // The first connection after the update, with Bruno's comments failing on send.
+    // The first connection after the update, with Bruno's comments failing on the way out.
     const enviar = bruno!.session.send.bind(bruno!.session)
     bruno!.session.send = async (destino, payload) => {
       if (payload.t === "post.comment") throw new Error("sem ligação")
@@ -483,7 +483,7 @@ describe("S1: o reenvio do próprio, sem tempestade e sem dar por feito o que fa
 
   /**
    * Finding 5. (a) On the first connection after the update, `reenviadoPara`
-   * is empty on each channel: one channel per pass, not all at once. (b) Resending
+   * is empty on every channel: one channel per pass, not all at once. (b) Resending
    * something that already has `seq` marks nothing in `enviosPorConfirmar`: the
    * cap of 512 marks was being spent by resends.
    */
@@ -507,7 +507,7 @@ describe("S1: o reenvio do próprio, sem tempestade e sem dar por feito o que fa
     await ate(() => Object.keys(bruno!.vault.contents.enviosPorConfirmar ?? {}).length === 0, "sem marcas à espera")
     await bruno!.session.sincronizarAgora()
 
-    // New marks, counted on write.
+    // New marks, counted at write time.
     const contents = bruno!.vault.contents
     let marcas = contents.enviosPorConfirmar
     let novas = 0
@@ -543,7 +543,7 @@ describe("S1, F12: a directa aberta pelos dois lados ao mesmo tempo", () => {
     await ate(() => ana!.session.membersOf(dm).map(String).includes(bruno!.address), "o Bruno no grupo da Ana")
     await ate(() => bruno!.session.membersOf(dm).map(String).includes(ana!.address), "a Ana no grupo do Bruno")
     // Same group on both sides: same confirmed transcript, not just same epoch
-    // (both groups from the race are both in epoch 1).
+    // (the two groups from the race are both in epoch 1).
     const transcricao = (conta: ContaDeTeste) =>
       Buffer.from(conta.session.groupFor(dm)?.state.groupContext.confirmedTranscriptHash ?? new Uint8Array()).toString("hex")
     await ate(() => transcricao(ana!) !== "" && transcricao(ana!) === transcricao(bruno!), "o mesmo grupo dos dois lados")
@@ -555,8 +555,8 @@ describe("S1, F12: a directa aberta pelos dois lados ao mesmo tempo", () => {
 
   /**
    * Finding 6 of the 0.7.0 review: the loser of the race adopts the peer's group,
-   * and what they already wrote stays in the old group, which the peer never opened.
-   * Two cross friend requests, each with a message written before both groups converge:
+   * and what it had already written stayed in the old group, which the peer never opened.
+   * Two crossed friend requests, each with a message written before the two groups converge:
    * the friendship is made on both sides, and the loser's message reaches the winner,
    * once. (The winner's message, read by the loser before adopting, stays a gap
    * until the next connection: it's in `docs/PENDENTES.md`.)
@@ -571,7 +571,7 @@ describe("S1, F12: a directa aberta pelos dois lados ao mesmo tempo", () => {
     }
     const [dm, doOutroLado] = await Promise.all([pedir(ana!, bruno!), pedir(bruno!, ana!)])
     expect(dm).toBe(doOutroLado)
-    // The lower address wins the tiebreaker (`#ganhaODesempate`).
+    // The group of the lower address wins (`#ganhaODesempate`).
     const [ganha, perde] = ana!.address < bruno!.address ? [ana!, bruno!] : [bruno!, ana!]
     await ate(
       () =>
@@ -591,10 +591,10 @@ describe("S1, F12: a directa aberta pelos dois lados ao mesmo tempo", () => {
 describe("S1, F10: pedir os perfis de quem aparece sem nome", () => {
   /**
    * Bruno published his profile to the channel before Carla joined (the forced
-   * send when she entered was lost), and Carla doesn't have it. She asks, and he
-   * publishes it. Then (finding 4 of the 0.7.0 review) Carla asks again endlessly:
-   * Bruno doesn't publish again, neither with the day cap forgotten (already told
-   * everyone), nor with a new account (already answered today).
+   * send when she joined was lost), and Carla doesn't have it. She asks, and he
+   * publishes it. Then (finding 4 of the 0.7.0 review) Carla asks over and over:
+   * Bruno doesn't publish again, neither with the daily cap forgotten (he already told
+   * everyone), nor with a new account (he already answered today).
    */
   it("a Carla perdeu o perfil do Bruno; pede, e o Bruno publica-o uma vez, por mais que ela repita", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
@@ -602,14 +602,14 @@ describe("S1, F10: pedir os perfis de quem aparece sem nome", () => {
     await ate(() => carla!.vault.contents.directory[bruno!.address] !== undefined, "a Carla tem o perfil do Bruno")
     await esperar(500)
 
-    // The profiles Bruno publishes on this channel, counted on send.
+    // The profiles Bruno publishes on this channel, counted on the way out.
     let publicados = 0
     const enviar = bruno!.session.send.bind(bruno!.session)
     bruno!.session.send = async (destino, payload) => {
       if (destino === canal && payload.t === "profile") publicados += 1
       return enviar(destino, payload)
     }
-    // Bruno's last post here was before Carla joined.
+    // Bruno's last profile publish here was before Carla joined.
     bruno!.vault.contents.perfilPublicadoPara = { [canal]: [ana!.address, bruno!.address] }
 
     const pedir = async () => {
@@ -625,7 +625,7 @@ describe("S1, F10: pedir os perfis de quem aparece sem nome", () => {
       expect(carla!.vault.contents.perfisPedidos?.[canal]).toContain(bruno!.address)
       await ate(() => publicados === 1, "o Bruno publica uma vez")
 
-      // Duplicate requests: no response.
+      // Repeated requests: no reply.
       for (let i = 0; i < 3; i++) await pedir()
       // Daily cap forgotten, but no new members: nothing.
       delete bruno!.vault.contents.perfisDadosEm?.[canal]
@@ -646,7 +646,7 @@ describe("S1, F11: um relógio adiantado não manda para sempre", () => {
   /**
    * Finding 3 from the 0.7.0 review. The larger timestamp wins, and the
    * timestamp was the publisher's clock: an admin with the clock two hours ahead
-   * could grant a role that nobody could revoke for those two hours. A new action
+   * could grant a role that nobody could remove for those two hours. A new act
    * is stamped above what is stored.
    */
   it("o Bruno dá o cargo com o relógio duas horas à frente; a Ana tira-o e vence", async () => {

@@ -12,8 +12,8 @@ import {
 /**
  * Delete a category, with real accounts.
  *
- * Report from the owner in 0.8.0: "deleting a category does not delete it, even as
- * administrator". Here we prove half the core: the tombstone (`removed: true`)
+ * Report from the owner on 0.8.0: "deleting a category does not delete it, even as
+ * administrator". Here we prove the core's half: the tombstone (`removed: true`)
  * from an administrator who is NOT the founder reaches everyone and beats the
  * stored declaration, and the category leaves `categoriesOf` in all three vaults.
  * Also after the founder republishes the channel authority, which resends the
@@ -92,14 +92,14 @@ describe("apagar uma categoria", () => {
  * Phase 1f: deleted categories that come back (report from the founder of the Orwell channel,
  * 27 October 2026: "I delete categories and they keep coming back").
  *
- * A category exists by declaration OR by rooms with that name written. Delete rewrites
- * the rooms that the deleter SEES, and puts the tombstone in the declaration.
+ * A category exists by declaration OR because rooms carry its name. Deleting rewrites
+ * the rooms the deleter SEES, and puts the tombstone on the declaration.
  * The three scenarios of the plan, with real accounts and server.
  */
 const salaEm = (conta: ContaDeTeste, canal: string, room: string): { category: string } | undefined =>
   conta.session.roomsOf(canal).find((sala) => sala.room === room)
 
-/** The category appears in the tree for who sees it: declared, or named by a room. */
+/** The category appears in the tree of whoever sees it: declared, or named by a room. */
 const categoriaVisivel = (conta: ContaDeTeste, canal: string, nome: string): boolean =>
   temCategoria(conta, canal, nome) || conta.session.roomsOf(canal).some((sala) => sala.category === nome)
 
@@ -150,7 +150,7 @@ describe("fase 1f: uma categoria apagada não volta", () => {
     await ate(() => !temCategoria(bruno!, canal, "Arquivo"), "a lápide chega ao Bruno")
 
     // Bruno drags categories: the sidebar republishes the list with new positions
-    // (`arrumarCategoria`), and his list still showed the deleted one when a room
+    // (`arrumarCategoria`), and his list still carried the deleted one when a room
     // named it. The reorder gesture says `reordenar`.
     await bruno!.session.upsertCategory(canal, { category: "Arquivo", position: 3, reordenar: true } as Parameters<
       NonNullable<typeof bruno>["session"]["upsertCategory"]
@@ -173,7 +173,7 @@ describe("fase 1f: uma categoria apagada não volta", () => {
     await ana!.session.upsertCategory(canal, { category: "Arquivo", position: 1, removed: true })
     await ate(() => !temCategoria(bruno!, canal, "Arquivo"), "a lápide chega ao Bruno")
 
-    // Bruno closes and reopens the app: on startup, he republishes the channel
+    // Bruno closes and reopens the app: on connect, it republishes the channel
     // authority and rooms with the original timestamp.
     bruno!.session.disconnect()
     await bruno!.session.connect()

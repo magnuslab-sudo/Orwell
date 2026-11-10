@@ -10,9 +10,9 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The order of roles (4/11/2026), with accounting and production server: who
- * orders (the founder and `admin`), what travels (the signed `rank`, and the
- * `position` matching for clients 1.1.x), and what each member reads after commit.
+ * Role order (4/11/2026), with real accounts and server: who sets the order
+ * (the founder and `admin`), what travels (the signed `rank`, and the matching
+ * `position` for 1.1.x clients), and what each member reads after the commit.
  *
  * Ana founds. Dário has `admin`. Bruno manages roles by delegation. Carla is a member.
  */
@@ -29,7 +29,7 @@ afterAll(async () => {
 })
 
 const ordem = (conta: ContaDeTeste, canal: string): string[] => conta.session.rolesOf(canal).map((papel) => papel.role)
-/** The order as a client 1.1.x reads it: only the `position`, with name as tiebreaker. */
+/** The order as a 1.1.x client reads it: only the `position`, with the name as tiebreaker. */
 const ordemAntiga = (conta: ContaDeTeste, canal: string): string[] =>
   [...conta.session.rolesOf(canal)].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name)).map((papel) => papel.role)
 
@@ -43,11 +43,11 @@ describe("a ordem dos cargos entre clientes", () => {
     for (const conta of [bruno, carla]) {
       await ate(() => conta.session.rolesOf(canal).length === 3, `${conta.nome} tem os três cargos`)
     }
-    // No sorting: by birth order, each one at the end.
+    // No sorting: in creation order, each one added at the bottom.
     for (const conta of [ana, bruno, carla]) expect(ordem(conta, canal)).toEqual(["chefe", "guia", "porteiro"])
 
     await ana.session.reorderRoles(canal, ["porteiro", "chefe", "guia"])
-    // One `role.define` per role that changes place: waits for the last one.
+    // One `role.define` per role that changes place: we wait for the last one.
     for (const conta of [bruno, carla]) {
       await ate(() => conta.session.rolesOf(canal).map((papel) => papel.rank).join() === "3,2,1", `${conta.nome} lê a ordem nova`)
     }
@@ -83,7 +83,7 @@ describe("a ordem dos cargos entre clientes", () => {
       await ate(() => conta.session.rolesFor(canal, dario.address).includes("admin"), `${conta.nome} sabe que o Dário é admin`)
     }
 
-    // No escalation: Bruno does not move the Gate above the Chief, nor does Carla change the order.
+    // No escalation: Bruno does not move Porteiro above Chefe, and Carla cannot change the order.
     await expect(bruno.session.reorderRoles(canal, ["porteiro", "chefe"])).rejects.toThrow("only an administrator may manage roles")
     await expect(carla.session.reorderRoles(canal, ["porteiro", "chefe"])).rejects.toThrow("only an administrator may manage roles")
 

@@ -2,15 +2,15 @@
 # Nothing here touches other projects on the host beyond the published ports,
 # and those are chosen in .env for whichever of the two modes applies:
 #
-#   standalone  — Caddy owns 80/443 and does its own TLS:
+#   standalone  : Caddy owns 80/443 and does its own TLS:
 #                   ENCLAVE_SITE_ADDRESS=enclave.example.pt
 #                   ENCLAVE_HTTP_BIND=80  ENCLAVE_HTTPS_BIND=443
-#   behind-proxy — an existing nginx/traefik on the host terminates TLS and
+#   behind-proxy: an existing nginx/traefik on the host terminates TLS and
 #                 forwards the domain here over loopback HTTP:
 #                   ENCLAVE_SITE_ADDRESS=:80
 #                   ENCLAVE_HTTP_BIND=127.0.0.1:8080   (HTTPS bind unused)
 #
-#   cp .env.example .env   # set ENCLAVE_DOMAIN first — addresses embed it forever
+#   cp .env.example .env   # set ENCLAVE_DOMAIN first: addresses embed it forever
 #   docker compose up -d --build
 name: enclave
 
@@ -37,67 +37,67 @@ services:
       ENCLAVE_TURN_URLS: ${ENCLAVE_TURN_URLS:-}
       ENCLAVE_TURN_SECRET: ${ENCLAVE_TURN_SECRET:-}
       ENCLAVE_TURN_TTL: ${ENCLAVE_TURN_TTL:-600}
-      # The room everyone on this server enters. Empty turns off the idea. It must be listed
-      # here: compose only passes to the container what is listed, and adding to .env is not
+      # The room everyone on this server joins. Empty turns the feature off. It must be listed
+      # here: compose only passes to the container what is listed, and adding it to .env is not
       # enough.
       ENCLAVE_COMMON_ROOM: ${ENCLAVE_COMMON_ROOM:-}
-      # For the same reason, and it was the same trap: the server reads this variable
-      # (`config.ts`) and it was not listed here. Whoever put it in .env ended up with the
-      # mode turned off silently, with no error anywhere.
+      # Same reason, and it was the same trap: the server reads this variable
+      # (`config.ts`) and it was not listed here. Anyone who set it in .env ended up with the
+      # mode silently off, with no error anywhere.
       #
       # "true" lets everyone on this server know what accounts exist here. Only for a family
-      # installation, where that list is already not a secret. See docs/THREAT-MODEL.md.
+      # installation, where that list is not a secret anyway. See docs/THREAT-MODEL.md.
       ENCLAVE_COMMUNITY_MODE: ${ENCLAVE_COMMUNITY_MODE:-false}
       # The lowest version of the app this server lets in (1.0 "Arca"). Empty refuses no one;
-      # "1.0.0" on the day of cutover refuses beta apps with the error version-old. Listed by
+      # "1.0.0" on cutover day refuses beta apps with the error versao-antiga. Listed because of
       # the trap above.
       ENCLAVE_VERSAO_MINIMA_DO_CLIENTE: ${ENCLAVE_VERSAO_MINIMA_DO_CLIENTE:-}
       # ---------------------------------------------------------------- SFU
-      # The media engine. Listed here by the same trap as the two above, and already pays
-      # twice: compose only passes to the container what is listed, and a variable only in
-      # .env turns off the feature silently.
+      # The media engine. Listed here because of the same trap as the two above, which has already
+      # bitten twice: compose only passes to the container what is listed, and a variable only in
+      # .env silently turns the feature off.
       #
       # ENCLAVE_SFU_PORT empty or missing is ZERO, and zero means NO SFU: the server starts
       # anyway, the gateway responds anyway, hello.ok does not announce the capability and
       # every client keeps meshing. That is what makes this phase deployable on its own.
       ENCLAVE_SFU_PORT: ${ENCLAVE_SFU_PORT:-}
       # REQUIRED inside Docker when the SFU is on, and this is not tuning. The worker sees
-      # the internal IP of the bridge (172.x); without the announced public IP, ICE candidates
-      # point to a machine that does not exist on the client side. The symptom would be a call
-      # that negotiates completely successfully and never connects, the worst form of failure,
-      # because everything the logs say ran fine.
+      # the bridge's internal IP (172.x); without the announced public IP, ICE candidates
+      # point to a machine that does not exist from the client side. The symptom would be a call
+      # that negotiates successfully all the way and never connects, the worst kind of failure,
+      # because the logs say everything went fine.
       ENCLAVE_SFU_ANNOUNCED_IP: ${ENCLAVE_SFU_ANNOUNCED_IP:-}
-      # The SFU's outgoing budget, all calls summed, in Mbit/s. Empty is the default value
-      # (300 for video, 40 reserve for voice). See apps/server/src/orcamento-de-saida.ts.
+      # The SFU's egress budget, all calls combined, in Mbit/s. Empty means the default
+      # (300 for video, 40 reserved for voice). See apps/server/src/orcamento-de-saida.ts.
       ENCLAVE_ORCAMENTO_VIDEO_MBPS: ${ENCLAVE_ORCAMENTO_VIDEO_MBPS:-}
       ENCLAVE_RESERVA_VOZ_MBPS: ${ENCLAVE_RESERVA_VOZ_MBPS:-}
       # Video cut near the monthly traffic quota. The file is written on the host by
-      # infra/quota-vnstat.sh (cron) and mounted read-only here below. If missing, unreadable,
-      # or older than 2h, the server ignores it and stays on normal budget. From 80% of the
+      # infra/quota-vnstat.sh (cron) and mounted read-only below. If missing, unreadable,
+      # or older than 2h, the server ignores it and stays on the normal budget. From 80% of the
       # quota, video drops to ENCLAVE_ORCAMENTO_VIDEO_REDUZIDO_MBPS on new admissions.
       ENCLAVE_QUOTA_FICHEIRO: ${ENCLAVE_QUOTA_FICHEIRO:-/quota/saida-do-mes.json}
       ENCLAVE_QUOTA_MENSAL_TB: ${ENCLAVE_QUOTA_MENSAL_TB:-8}
       ENCLAVE_ORCAMENTO_VIDEO_REDUZIDO_MBPS: ${ENCLAVE_ORCAMENTO_VIDEO_REDUZIDO_MBPS:-50}
       # The meter for the "Support" section of the website (apps/server/src/apoio.ts). The
-      # server reads this GoFundMe campaign at 15 em 15 minutos and serves the
+      # server reads this GoFundMe campaign every 15 minutes and serves the
       # amount in /_enclave/apoiar.json. Visitors to the site never talk to
       # GoFundMe. Empty disables the read, and the site loses the bar.
       ENCLAVE_CAMPANHA_GOFUNDME: ${ENCLAVE_CAMPANHA_GOFUNDME-https://www.gofundme.com/f/orwell-privacidade-e-comunicacao-livre-na-europa}
-      # Reports (apps/server/src/denuncia.ts) live in /data/denuncias, outside the base and
-      # outside the backup that leaves the VPS. A closed report stays for ENCLAVE_DENUNCIAS_DIAS
-      # days (90), plus as long as there is a suspension in progress. The copy to the founder
-      # arrives with a delay drawn at random between the hours in ENCLAVE_DENUNCIA_ATRASO_HORAS
+      # Reports (apps/server/src/denuncia.ts) live in /data/denuncias, outside the database and
+      # outside the backup that leaves the VPS. A closed report is kept for ENCLAVE_DENUNCIAS_DIAS
+      # days (90), and longer while a suspension is in progress. The copy to the founder
+      # arrives after a random delay within the hours in ENCLAVE_DENUNCIA_ATRASO_HORAS
       # (1-6).
       ENCLAVE_DENUNCIAS_DIAS: ${ENCLAVE_DENUNCIAS_DIAS:-90}
       ENCLAVE_DENUNCIA_ATRASO_HORAS: ${ENCLAVE_DENUNCIA_ATRASO_HORAS:-1-6}
-      # Left OUT on purpose, not by oversight, the other two that the server reads. Putting
-      # them in .env does nothing, just as it did not with the ones above; the difference is
+      # Left OUT on purpose, not by oversight: the other two that the server reads. Putting
+      # them in .env does nothing, just as it did nothing for the ones above; the difference is
       # that here that is the desired behavior:
-      #   ENCLAVE_DB_PATH , would point the base outside the `server-data` volume
+      #   ENCLAVE_DB_PATH: would point the database outside the `server-data` volume
       #                       and it would vanish on the first `docker compose up`.
-      #   ENCLAVE_LOG     , `debug` turns on Fastify request logging, which is a history
+      #   ENCLAVE_LOG:     `debug` turns on Fastify request logging, which is a history
       #                       of activity per account and per minute. Turn it on by hand,
-      #                       in a diagnostics session, never by a file left on by accident.
+      #                       in a diagnostics session, never through a file left on by accident.
     volumes:
       - server-data:/data
       # The month's output, written by the host cron (infra/quota-vnstat.sh).
@@ -105,14 +105,15 @@ services:
     expose:
       - "8448"
     # Media does NOT go through Caddy or nginx: RTP over UDP goes straight to the container
-    # port. Only signaling goes through the gateway's WebSocket, via the usual path, the
+    # port. Only signaling goes through the gateway's WebSocket, by the usual path, so the
     # edge stays exactly as it is.
     #
     # UDP and TCP with the SAME number. TCP is the fallback for networks that block UDP,
-    # and it exists so that coturn is no longer needed to cross NAT.
+    # and because it exists, coturn is no longer needed to cross NAT.
     #
     # Both lines are always mapped, even with the SFU off: a published port for a container
-    # that does not listen on it does no harm, and the alternative, conditional mapping, # is a file that changes shape based on .env, which is where afternoons go lost.
+    # that does not listen on it does no harm, and the alternative, conditional mapping,
+    # is a file that changes shape based on .env, which is where afternoons get lost.
     ports:
       - "${ENCLAVE_SFU_PORT:-44300}:${ENCLAVE_SFU_PORT:-44300}/udp"
       - "${ENCLAVE_SFU_PORT:-44300}:${ENCLAVE_SFU_PORT:-44300}/tcp"
@@ -135,14 +136,14 @@ services:
       - caddy-config:/config
       # The installers, outside the image.
       #
-      # Publishing a new file cannot force a rebuild and restart of the container: they are
-      # hundreds of megabytes that have nothing to do with the code, and a deploy of a text
-      # fix does not have to drag them. A bind mount to a folder on the host; whoever puts
+      # Publishing a new file must not force a rebuild and restart of the container: they are
+      # hundreds of megabytes that have nothing to do with the code, and deploying a text
+      # fix should not have to drag them along. A bind mount to a folder on the host; what puts
       # them there is `scripts/publicar-instaladores.mjs`.
       - /opt/enclave/transferencias:/srv/transferencias:ro
 
 volumes:
-  # sqlite + server.key.json — the only state worth backing up.
+  # sqlite + server.key.json: the only state worth backing up.
   server-data:
   caddy-data:
   caddy-config:

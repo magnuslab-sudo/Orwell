@@ -28,7 +28,7 @@ import { Store } from "./store.js"
  * minute, with the right code; that non-members of the channel cannot read or
  * write; that the `conta:` scope belongs only to the account itself; that
  * versions arrive after `auth.ok`, after each `channel.subscribe`, and after
- * each alien write; that metrics have no names; and that a thief with the
+ * each write by someone else; that metrics have no names; and that a thief with the
  * database file cannot read what is stored there.
  */
 
@@ -44,7 +44,7 @@ function chaveQualquer(): string {
   return toBase64(randomBytes(16))
 }
 
-/** Padded cipher: `buckets` × 1 KiB of random bytes, in base64url. */
+/** Padded ciphertext: `baldes` × 1 KiB of random bytes, in base64url. */
 function cifra(baldes = 1): string {
   return toBase64(randomBytes(baldes * 1024))
 }
@@ -52,7 +52,7 @@ function cifra(baldes = 1): string {
 /**
  * A raw socket, like the `Cliente` from `cliente-de-teste.ts`, but that can be
  * built here: the `entrar` below needs to see what arrives between `auth.ok`
- * and `pong`, which `Cliente.ligar` throws away.
+ * and `pong`, which `Cliente.ligar` discards.
  */
 class Ligacao {
   #socket: WebSocket
@@ -136,7 +136,7 @@ async function entrar(
   return { cliente, endereco: identidade.address, identidade, aposLogin }
 }
 
-/** The first claims the channel; the others enter by redeemed invite, as in reality. */
+/** The first claims the channel; the others join through a redeemed invite, as in real use. */
 async function sentar(anfitriao: Ligacao, outros: { cliente: Ligacao; endereco: string }[], canal: string): Promise<void> {
   anfitriao.enviar({ t: "channel.subscribe", channels: [canal] })
   await anfitriao.ateAoPong()
@@ -147,8 +147,8 @@ async function sentar(anfitriao: Ligacao, outros: { cliente: Ligacao; endereco: 
     outro.enviar(convite.resgate(endereco))
     await anfitriao.proximoDe("invite.request")
     // The redemption is a request, not a seat (INV-01): the seat comes from the
-    // Welcome sent by whoever is already there, which is what a member sends when
-    // admitting.
+    // Welcome addressed to them by someone already there, which is what a member
+    // sends when admitting.
     anfitriao.enviar({ t: "channel.send", channel: canal, kind: "welcome", ciphertext: toBase64(crypto.getRandomValues(new Uint8Array(64))), recipient: endereco })
     await outro.proximoDe("channel.event")
     outro.enviar({ t: "channel.subscribe", channels: [canal] })
@@ -234,7 +234,7 @@ describe("o cofre com ligações reais", () => {
     ana.cliente.enviar({ t: "cofre.get", escopo, desdeVersao: 3 })
     expect(await ana.cliente.proximoDe("cofre.entradas")).toMatchObject({ completo: false, entradas: [], lapides: [], ate: 3 })
 
-    // Counters count only what is alive.
+    // Counters count only live entries.
     expect(servidor.enclave.store.cofreContadores(escopo)).toEqual({ versaoGlobal: 3, bytes: 2048, entradas: 1, lapides: 1, podadoAte: 0 })
 
     // Rewriting the deleted key resurrects it with a new version.
@@ -254,7 +254,7 @@ describe("o cofre com ligações reais", () => {
     ana.cliente.enviar({ t: "cofre.put", escopo, entradas: [{ chave: k, conteudo: cifra(), versaoEsperada: 0 }] })
     expect((await ana.cliente.proximoDe("cofre.put.result")).aceites).toEqual([{ chave: k, versao: 1 }])
 
-    // Two writing the same key from version 0: the second loses.
+    // Two clients writing the same key from version 0: the second loses.
     ana.cliente.enviar({
       t: "cofre.put",
       escopo,
@@ -316,7 +316,7 @@ describe("o cofre com ligações reais", () => {
     expect(await carla.cliente.proximoDe("cofre.rejected")).toMatchObject({ code: "cofre-sem-lugar" })
     expect(servidor.enclave.store.cofreContadores(escopo)).toMatchObject({ versaoGlobal: 1, entradas: 1 })
 
-    // And she never gets the notice of versions from a channel where she is not.
+    // And she never gets the version notice for a channel she is not in.
     ana.cliente.enviar({ t: "cofre.put", escopo, entradas: [{ chave: chaveQualquer(), conteudo: cifra() }] })
     await ana.cliente.proximoDe("cofre.put.result")
     expect((await carla.cliente.ateAoPong()).map((f) => f.t)).not.toContain("cofre.versoes")
@@ -346,7 +346,7 @@ describe("o cofre com ligações reais", () => {
     ana.cliente.enviar({ t: "cofre.put", escopo, entradas: [{ chave: chaveQualquer(), conteudo: cifra() }] })
     await ana.cliente.proximoDe("cofre.put.result")
     expect(await outro.cliente.proximoDe("cofre.versoes")).toEqual({ t: "cofre.versoes", cofres: [{ escopo, versaoGlobal: 2 }] })
-    // Bruno is not from this account: he hears nothing.
+    // Bruno is not on this account: he hears nothing.
     expect((await bruno.cliente.ateAoPong()).map((f) => f.t)).not.toContain("cofre.versoes")
   })
 
@@ -362,8 +362,8 @@ describe("o cofre com ligações reais", () => {
     expect(await bruno.cliente.proximoDe("cofre.versoes")).toEqual({ t: "cofre.versoes", cofres: [{ escopo, versaoGlobal: 1 }] })
     expect((await ana.cliente.ateAoPong()).map((f) => f.t)).not.toContain("cofre.versoes")
 
-    // Subscribe again (a reconnect) says the version of the channel with vault,
-    // and nothing from the channel that has no vault.
+    // Subscribing again (a reconnect) reports the version of the channel with a
+    // vault, and nothing for the channel without one.
     ana.cliente.enviar({ t: "channel.subscribe", channels: [vazio] })
     await ana.cliente.ateAoPong()
     bruno.cliente.enviar({ t: "channel.subscribe", channels: [canal] })
@@ -407,14 +407,14 @@ describe("o cofre com ligações reais", () => {
     // The file and the WAL, as they are on the server disk.
     const caminhos = [servidor.baseDeDados, `${servidor.baseDeDados}-wal`].filter((c) => existsSync(c))
     const disco = Buffer.concat(caminhos.map((c) => readFileSync(c)))
-    // Proof that we are reading the right place: the cipher is there.
+    // Proof that we are reading the right place: the ciphertext is there.
     expect(disco.includes(conteudo)).toBe(true)
     expect(disco.includes(Buffer.from(segredo))).toBe(false)
     expect(disco.includes(Buffer.from("sala:geral-dos-segredos"))).toBe(false)
     expect(disco.includes(Buffer.from("SEGREDO"))).toBe(false)
 
-    // No account next to the cipher: the table has no author column, and the entry
-    // row does not carry the address of who wrote it.
+    // No account next to the ciphertext: the table has no author column, and the entry
+    // row does not carry the address of whoever wrote it.
     const db = openDatabase(servidor.baseDeDados)
     const colunas = (db.prepare("PRAGMA table_info(cofres)").all() as { name: string }[]).map((c) => c.name)
     expect(colunas).toEqual(["escopo", "chave", "versao", "conteudo", "lapide", "epoch", "at_minute"])
@@ -425,7 +425,7 @@ describe("o cofre com ligações reais", () => {
       .join("\n")
     expect(textoDaLinha).not.toContain(ana.endereco)
     // And in the disk bytes, Ana's address appears only outside the vault (accounts,
-    // subscriptions): never glued to the cipher. The SQLite cell of the entry carries
+    // subscriptions): never next to the ciphertext. The entry's SQLite cell carries
     // the scope and key next to the content; 512 bytes on each side cover it.
     let copias = 0
     for (let i = disco.indexOf(conteudo); i >= 0; i = disco.indexOf(conteudo, i + 1)) {
@@ -529,7 +529,7 @@ describe("os tectos do cofre", () => {
     const escopo = `canal:${canal}`
     const k = chaveQualquer()
 
-    // More entries in one frame than the whole minute: waiting does not solve it.
+    // More entries in one frame than the whole per-minute limit: waiting does not help.
     ana.cliente.enviar({
       t: "cofre.put",
       escopo,
@@ -554,7 +554,7 @@ describe("os tectos do cofre", () => {
     ana.cliente.enviar({ t: "cofre.get", escopo, desdeVersao: 0 })
     expect(await ana.cliente.proximoDe("cofre.rejected")).toMatchObject({ code: "cofre-ritmo" })
 
-    // The limit is per account: another account writes to the same one.
+    // The limit is per account: another account can still write.
     const bruno = guardar(await entrar(apertado))
     bruno.cliente.enviar({ t: "cofre.put", escopo: `conta:${bruno.endereco}`, entradas: [{ chave: chaveQualquer(), conteudo: cifra() }] })
     expect((await bruno.cliente.proximoDe("cofre.put.result")).aceites).toHaveLength(1)
@@ -599,7 +599,7 @@ describe("o Store do cofre", () => {
     const p3 = store.cofreGet(ESCOPO, p2.ate, 4096, 100)
     expect(p3).toMatchObject({ completo: false, mais: false, ate: 5 })
     expect(p3.entradas.map((e) => e.chave)).toEqual(chaves.slice(4))
-    // An entry larger than the budget goes out on its own, so reading can continue.
+    // An entry larger than the budget goes out alone, so reading makes progress.
     expect(store.cofreGet(ESCOPO, 0, 100, 100).entradas).toHaveLength(1)
     // E por linhas.
     expect(store.cofreGet(ESCOPO, 0, 1 << 20, 3)).toMatchObject({ mais: true, ate: 3 })
@@ -609,7 +609,7 @@ describe("o Store do cofre", () => {
     const store = novoStore()
     const [a, b, c, d] = escrever(store, 4)
     for (const chave of [a, b, c]) store.cofreDel(ESCOPO, chave as string, undefined, 2)
-    // Three tombstones with limit of two: the one for `a` (version 5) left.
+    // Three tombstones with a limit of two: the one for `a` (version 5) was dropped.
     expect(store.cofreContadores(ESCOPO)).toMatchObject({ versaoGlobal: 7, entradas: 1, lapides: 2, podadoAte: 5 })
     const antes = store.cofreGet(ESCOPO, 4, 1 << 20, 100)
     expect(antes.completo).toBe(true)

@@ -2,15 +2,15 @@
  * The connection between two accounts, folded from the events that created it.
  *
  * It lives in the protocol, not on each side, for one reason only: the core needs
- * it to know who deserves a seat in its feed after reconnecting, and the interface
+ * it to know who it owes a place in its feed after reconnecting, and the interface
  * needs it to know which requests are still pending. Two separate folds over the
  * same events diverge at the first change, and what diverges here is not a label,
  * it is who gets which keys.
  *
  * Friendship is mutual by construction: a request, an acceptance, and each side
- * gets a seat in the other's feed. What this fold does not do, and cannot do, is
- * grant those seats, each one is an MLS commit signed by the feed owner. Here we
- * only say who deserves them.
+ * gets a place in the other's feed. What this fold does not do, and cannot do, is
+ * grant those places: each one is an MLS Commit signed by the feed owner. Here we
+ * only say who is owed them.
  */
 
 /** The state of a connection, from the point of view of whoever folds it. */
@@ -28,7 +28,7 @@ export type FriendLink =
  * Written like this, not as the whole `Payload`, because the interface stores
  * messages in its own loose form and would have to convert them just to ask
  * about the state of a friendship. Reading little is also the guarantee that the
- * fold does not start depending on fields that are not its business.
+ * fold never comes to depend on fields that are none of its business.
  */
 export interface FriendPayloadShape {
   t: string
@@ -40,29 +40,29 @@ export interface FriendPayloadShape {
 
 export interface FriendEvent {
   channel: string
-  /** Whoever sent it, authenticated by MLS, never a field from inside the payload. */
+  /** The sender, authenticated by MLS, never a field from inside the payload. */
   sender: string
   payload: FriendPayloadShape
 }
 
 export interface FriendTie {
   peer: string
-  /** The channel through which the response goes: where this connection spoke last. */
+  /** Where the response goes: the channel this connection last spoke in. */
   channel: string
   link: FriendLink
   /**
    * When the open request was made, so the list can sort by it.
    *
-   * Whoever asked last, in both directions: a received request stores its time,
-   * a sent one stores ours, and that is what lets "Sent" sort the same way as
-   * "Received".
+   * The time of whoever asked last, in both directions: a received request stores
+   * theirs, a sent one stores ours, and that is what lets "Enviados" sort the same way as
+   * "Recebidos".
    *
-   * It is for display and nothing else. The state comes from the order of arrival
-   *, see the note on `foldFriendTies`.
+   * It is for display and nothing else. The state comes from the order of arrival:
+   * see the note on `foldFriendTies`.
    */
   at: number
   note?: string | undefined
-  /** Broken by one of the two, not by lack of response. */
+  /** Ended by one of the two, not by lack of response. */
   severed: boolean
 }
 
@@ -73,7 +73,7 @@ export function isFriendPayload(payload: { t: string }): boolean {
   return FRIEND_PAYLOADS.has(payload.t)
 }
 
-/** The visible state, calculated from what we know and not stored separately. */
+/** The visible state, computed from what we know and not stored separately. */
 function linkOf(state: { friends: boolean; mineOpen: boolean; theirsOpen: boolean }): FriendLink {
   if (state.friends) return "amigos"
   if (state.mineOpen && state.theirsOpen) return "cruzado"
@@ -85,9 +85,9 @@ function linkOf(state: { friends: boolean; mineOpen: boolean; theirsOpen: boolea
 interface TieState {
   peer: string
   channel: string
-  /** This side requested and has not yet received a response. */
+  /** This side asked and has not received a response yet. */
   mineOpen: boolean
-  /** The other side requested and has not yet been answered. */
+  /** The other side asked and has not been answered yet. */
   theirsOpen: boolean
   friends: boolean
   severed: boolean
@@ -101,14 +101,14 @@ interface TieState {
  * `events` must arrive in ORDER OF ARRIVAL at this device, and the state comes
  * from that order, not from the timestamps inside the payloads. The distinction
  * is about security, not tidiness: timestamps are written by the sender, and a
- * fold that ordered by them would accept a `friend.accept` dated before a
- * rejection, this device would then add someone to its own feed who had
+ * fold that ordered by them would accept a `friend.accept` backdated before a
+ * rejection, and this device would then add to its own feed someone who had
  * already been rejected. Arrival order cannot be forged on the other end of
  * the wire.
  *
  * `peerOfChannel` says who is being talked to in a channel, when that is
  * deducible: in a direct conversation it is the other member. Returning `null`
- * is the right answer for a room, there a message from us has no single
+ * is the right answer for a room: there what we send has no single
  * recipient, and it is attributed to whoever has an open request in that same
  * channel, which is the only path through which a request made before direct
  * conversations can still close.
@@ -146,7 +146,7 @@ export function foldFriendTies(
     /**
      * Who this event concerns.
      *
-     * What arrives has an authenticated sender, and that is it. What we send
+     * What arrives has an authenticated sender, and that's them. What we send
      * needs the channel to know who it went to: in a direct conversation there
      * is only one, and in a room it applies to whoever has a pending request
      * there.
@@ -191,11 +191,11 @@ export function foldFriendTies(
            * An accept only counts against a request from THE OTHER side.
            *
            * Without this guard, a `friend.accept` that nobody requested would
-           * put the connection in "friends", and the next connection's
-           * reconciliation would add that person to our feed. A sentence on
-           * the wire would translate to a place in the feed, exactly what
-           * the product's core promise forbids. The guard on our side works
-           * the same way in reverse: accepting cannot be a way to respond to
+           * put the connection in "friends", and the reconciliation on the next
+           * reconnect would add that person to our feed. A sentence on
+           * the wire would earn a place in the feed, exactly what
+           * the product's core promise forbids. On our side the guard is
+           * the same in reverse: accepting cannot be a way to respond to
            * our own request.
            */
           if (mine ? tie.theirsOpen : tie.mineOpen) {
@@ -209,17 +209,17 @@ export function foldFriendTies(
 
         case "friend.decline":
           /**
-           * Closes a request and grants nothing, in no sense.
+           * Closes a request and grants no place, in either direction.
            *
            * A REJECTION closes the other's request: ours does not erase our
-           * own request, nor does theirs erase what they asked for. A
+           * own request, and theirs does not erase what they asked for. A
            * CANCELLATION (`withdrawn`) is the opposite, and only the opposite:
            * whoever sends it closes THEIR request, and the other side's
            * request, if any, remains. In a crossed request, canceling mine
            * leaves me with theirs still waiting, which is what happened.
            *
-           * Both senses read by the authenticated sender, not by a who-wrote
-           * field: nobody cancels someone else's request, because a `withdrawn`
+           * Both directions are read from the authenticated sender, not from a
+           * who-wrote-it field: nobody cancels someone else's request, because a `withdrawn`
            * only closes the request of whoever sent it.
            */
           if (event.payload.withdrawn === true) {
@@ -238,7 +238,7 @@ export function foldFriendTies(
           break
 
         case "friend.remove":
-          // Undone, and undone both ways: neither friendship nor request waiting for
+          // Ended, and ended on both sides: no friendship, and no request waiting for
           // a response that would bring it back by itself.
           tie.friends = false
           tie.mineOpen = false
@@ -267,7 +267,7 @@ export function foldFriendTies(
 /**
  * The requests still waiting for our response, newest to oldest.
  *
- * A crossed request counts as a request needing response: accepting is what
+ * A crossed request counts as one awaiting a response: accepting is what
  * closes it, and either side can do that.
  */
 export function openRequestsOf(ties: Map<string, FriendTie>): FriendTie[] {
@@ -287,12 +287,12 @@ export function sentRequestsOf(ties: Map<string, FriendTie>): FriendTie[] {
   return [...ties.values()].filter((tie) => tie.link === "pedido-enviado").sort((a, b) => b.at - a.at)
 }
 
-/** Who must have a place in our feed for the friendship to be mutual for real. */
+/** Who must have a place in our feed for the friendship to be truly mutual. */
 export function friendsOfTies(ties: Map<string, FriendTie>): string[] {
   return [...ties.values()].filter((tie) => tie.link === "amigos").map((tie) => tie.peer)
 }
 
-/** Who was already a friend and stopped being one by the act of one of the two. */
+/** Who was a friend and stopped being one through an act by either side. */
 export function severedOf(ties: Map<string, FriendTie>): Set<string> {
   const cortados = new Set<string>()
   for (const tie of ties.values()) if (tie.severed) cortados.add(tie.peer)

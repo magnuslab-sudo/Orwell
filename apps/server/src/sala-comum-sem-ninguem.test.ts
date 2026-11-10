@@ -16,13 +16,13 @@ import type { ServerConfig } from "./config.js"
  * registered at 01:46 on August 20, 2026 on a server where no member was
  * online stayed out, and stayed out indefinitely: the request is a frame, the
  * server does not save it, and when the founder connected 71 minutes later
- * there was nothing to tell them.
+ * there was nothing to tell him.
  *
- * What this file measures is the new gate: a `GroupInfo` with external
- * initialization left on the server, which new arrivals pick up to add
- * themselves to the tree. Nobody awake, nobody authorizing, and they join.
+ * What this file measures is the new gate: a `GroupInfo` that allows external
+ * joins, left on the server, which a newcomer picks up to add itself to the
+ * tree. Nobody awake, nobody authorizing, and it gets in.
  *
- * With accounts for real and a server for real, both sides. This is the only
+ * With real accounts and a real server, on both sides. This is the only
  * proof that matters here: the suite already passed 320/320 with all critical
  * defenses removed, because the tests built the network format by hand.
  */
@@ -106,7 +106,7 @@ afterAll(async () => {
 
 describe("a sala comum com a casa vazia", () => {
   it("quem chega entra sozinho, sem estar nenhum membro ligado", async () => {
-    // The founder creates the room, leaves the gate open, and leaves. This is what
+    // The founder creates the room, leaves the gate in place, and goes away. This is what
     // production has at two in the morning.
     const fundador = await conta("Fundador")
     await fundador.session.ensureCommonRoom()
@@ -114,9 +114,9 @@ describe("a sala comum com a casa vazia", () => {
     await until(() => enclave.store.hasGroupInfo(COMUM), "o cartão fica no servidor")
     fundador.session.disconnect()
 
-    // And now the two accounts in the middle of the night, one after the other, with the
-    // house empty. The second proves what matters just as much as the first: the gate
-    // reopens by itself, because whoever enters leaves the next card.
+    // And now the two accounts in the small hours, one after the other, with the
+    // house empty. The second proves something as important as the first: the gate
+    // resets by itself, because whoever joins leaves the next card.
     const primeira = await conta("Madrugada")
     await primeira.session.ensureCommonRoom()
     await until(() => primeira.session.channels.includes(COMUM), "a primeira entra sem ninguém")
@@ -126,8 +126,8 @@ describe("a sala comum com a casa vazia", () => {
     await segunda.session.ensureCommonRoom()
     await until(() => segunda.session.channels.includes(COMUM), "a segunda entra sem ninguém")
 
-    // And the founder, when they return, finds them there: the commits that add
-    // them to their account were waiting for them on the server.
+    // And the founder, when he returns, finds them inside: the commits that bring
+    // him up to date with their joins were waiting for him on the server.
     await fundador.session.connect()
     await until(
       () => fundador.session.membersOf(COMUM).map(String).includes(primeira.address) &&
@@ -147,9 +147,9 @@ describe("a sala comum com a casa vazia", () => {
 
 describe("a porta que se repõe sozinha", () => {
   it("um membro que se liga repõe o cartão que faltava", async () => {
-    // The case that insistence does not cover: whoever picked up the card closed the
-    // app before publishing the next one. In a silent room the epoch does not
-    // move again, and without this the gate would stay unopened for weeks.
+    // The case that retrying does not cover: whoever picked up the card closed the
+    // app before publishing the next one. In a quiet room the epoch does not
+    // move again, and without this the gate would stay unset for weeks.
     const membro = await conta("Membro")
     await membro.session.ensureCommonRoom()
     await until(() => membro.session.channels.includes(COMUM), "entra na sala")

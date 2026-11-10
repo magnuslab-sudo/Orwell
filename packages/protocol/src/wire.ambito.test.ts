@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest"
 import { ambitoDaChamada, ClientFrame } from "./wire.js"
 
 /**
- * The scope identifier, calculated on the caller's side.
+ * The scope identifier, on the side that computes it.
  *
- * The server VALIDATES the format (43 caracteres base64url, see `sfu.scope.join`) and
- * uses the pair `(canal, âmbito)` as the router key. The CLIENT calculates it,
+ * The server VALIDATES the format (43 base64url characters, see `sfu.scope.join`) and
+ * uses the pair `(canal, âmbito)` as the router key. The CLIENT computes it,
  * and that's why these guarantees live here: if two clients in the same room
- * arrive at different digests, they end up in different routers and can't hear each other,  * with the call appearing connected on both sides, which is the most expensive
- * defect this layer can produce to diagnose.
+ * arrive at different digests, they end up in different routers and can't hear each other,
+ * with the call showing as connected on both sides, which is the most expensive
+ * defect to diagnose that this layer can produce.
  */
 describe("o âmbito de uma chamada", () => {
   it("tem a forma que o esquema exige", () => {
@@ -44,14 +45,14 @@ describe("o âmbito de uma chamada", () => {
   })
 
   /**
-   * The separator trap, which the gate already pays for with the length prefix.
+   * The separator trap, which the gateway already avoids with the length prefix.
    *
    * With `${canal}|${sala}` and nothing else, `("#a|b:x", "c")` and `("#a", "b:x|c")`
-   * amount to the same thing: two different calls on the same router, and
+   * hash to the same thing: two different calls on the same router, and
    * people in one hearing those in the other. Channel names on this platform don't
    * include `|` today, but the design can't depend on a prohibition that isn't
-   * written anywhere, and shortening the concatenation GIVES THE APPEARANCE of
-   * solving it. See `chaveDeAmbito` in the gate, where this same reasoning
+   * written anywhere, and hashing the concatenation only LOOKS like it solves
+   * it. See `chaveDeAmbito` in the gateway, where this same reasoning
    * is already written.
    */
   it("não junta duas chamadas por causa do separador", () => {

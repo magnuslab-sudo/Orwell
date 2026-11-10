@@ -70,7 +70,7 @@ const pasta = (): string => join(dataDir, "denuncias")
 const ficheirosDeDenuncia = (): string[] =>
   existsSync(pasta()) ? readdirSync(pasta()).filter((nome) => /^\d+\.json$/.test(nome)) : []
 
-/** An account that already logged in on this server: the signed request only reads the base. */
+/** An account that already logged in on this server: the signed request only reads the database. */
 function conta(): AccountIdentity {
   const identidade = generateIdentity(parseServerName(SERVIDOR))
   enclave.store.registerOrVerifyAccount(identidade.address, identidade.signingPublicKey)
@@ -78,7 +78,7 @@ function conta(): AccountIdentity {
 }
 
 let ipSeguinte = 1
-/** An IP just for the test, so one account's limits do not count toward the others. */
+/** An IP just for the test, so one test's caps do not count toward the others. */
 const ipNovo = (): string => `198.51.100.${ipSeguinte++}`
 
 function corpoValido(denunciado: string, mudar: Record<string, unknown> = {}): Record<string, unknown> {
@@ -103,7 +103,7 @@ function corpoValido(denunciado: string, mudar: Record<string, unknown> = {}): R
 interface Resposta {
   statusCode: number
   corpo: unknown
-  /** Milliseconds of fake clock time between the request waiting and the response. */
+  /** Milliseconds of fake clock time between the request starting to wait and the response. */
   atraso: number
 }
 
@@ -149,7 +149,7 @@ describe("POST /_enclave/denuncia", () => {
     const ana = conta()
     const bruno = conta()
     const copia = { v: 1, e: "A".repeat(43), n: "B".repeat(32), c: "cifrado" }
-    // A broken app that sends the device name: the schema throws it out.
+    // A misbehaving app that sends the device name: the schema discards it.
     const corpo = corpoValido(bruno.address, { motivo: 2, copia, fundador: bruno.address, aparelho: "iPhone da Ana" })
     const resposta = await denunciar(ana, corpo, ipNovo())
     expect(resposta.statusCode).toBe(200)
@@ -166,13 +166,13 @@ describe("POST /_enclave/denuncia", () => {
       prioridade: "alta",
       art18: true,
       estado: "aberta",
-      // The test item is not a type with authorship: no proof, and the report stays.
+      // The test item is not a type with authorship: no proof, and the report is kept.
       verificacao: { geral: "nao-verificada", itens: [{ indice: 0, autor: bruno.address, veredicto: "esquema" }] },
     })
     expect(guardada.corpo.motivo).toBe(2)
     expect(guardada.corpo.denunciado).toBe(bruno.address)
     expect(new Date(guardada.recebida).toISOString()).toBe(guardada.recebida)
-    // Not the founder's copy, not the device, not the IP.
+    // Neither the founder's copy, nor the device, nor the IP.
     expect(texto).not.toContain('"copia"')
     expect(texto).not.toContain("cifrado")
     expect(texto).not.toContain("iPhone da Ana")
@@ -204,7 +204,7 @@ describe("POST /_enclave/denuncia", () => {
     const antes = ficheirosDeDenuncia().length
     let aceites = 0
     for (let hora = 0; aceites < 50; hora++) {
-      // More than an hour simulated: the address limit is per hour.
+      // More than an hour simulated: the per-address cap is hourly.
       vi.setSystemTime(Date.now() + HORA_MS + 1)
       for (let i = 0; i < DENUNCIAS_POR_HORA && aceites < 50; i++) {
         const resposta = await denunciar(ana, corpoValido(bruno.address), ip)
@@ -213,7 +213,7 @@ describe("POST /_enclave/denuncia", () => {
       }
     }
     expect(ficheirosDeDenuncia().length - antes).toBe(50)
-    // No count is suspended: only one person, by the VPS script, writes here.
+    // No count triggers a suspension: only a person, through the VPS script, writes here.
     expect(enclave.store.estaSuspensa(bruno.address)).toBe(false)
     const base = new DatabaseSync(join(dataDir, "test.sqlite"), { readOnly: true })
     try {
@@ -227,7 +227,7 @@ describe("POST /_enclave/denuncia", () => {
 
   it("tectos: 5 por hora por endereço e 20 por IP dão 429", async () => {
     const bruno = conta()
-    // Per address: the sixth for the same account, from different IPs.
+    // Per address: the sixth from the same account, from different IPs.
     const ana = conta()
     for (let i = 0; i < DENUNCIAS_POR_HORA; i++) {
       expect((await denunciar(ana, corpoValido(bruno.address), ipNovo())).statusCode).toBe(200)
@@ -262,7 +262,7 @@ describe("POST /_enclave/denuncia", () => {
       expect(resposta.corpo).toEqual({ error: "malformed-report" })
     }
     expect(ficheirosDeDenuncia().length).toBe(antes)
-    // Reason 1 does not require good faith (art. 16, para. 2 of the DSA does not apply there).
+    // Reason 1 waives the good-faith statement (DSA Article 16(2) does not ask for it there).
     expect((await denunciar(conta(), corpoValido(bruno.address, { motivo: 1, boaFe: false, nota: "" }), ipNovo())).statusCode).toBe(200)
   })
 
@@ -301,7 +301,7 @@ describe("POST /_enclave/denuncia", () => {
     expect(desconhecida.statusCode).toBe(401)
     expect(desconhecida.corpo).toEqual(trocado.corpo)
 
-    // Garbage does not pass the signature.
+    // Garbage does not get past the signature.
     expect((await enviar({ ola: 1 }, ipNovo())).statusCode).toBe(401)
 
     // Device clock is wrong: the app shows "device clock is incorrect".
@@ -474,7 +474,7 @@ describe("ArquivoDeDenuncias", () => {
     // It ends tomorrow: still active, it stays.
     writeFileSync(join(dir, "suspensoes", `${nomeDoFicheiroDaConta(suspenso)}.json`), aviso(ha(-1).slice(0, 10)))
     expect(await arquivo.varrer(agora, 90)).toBe(0)
-    // It ended 100 days ago: finished, and deleted.
+    // It ended 100 days ago: it is over, and it is deleted.
     writeFileSync(join(dir, "suspensoes", `${nomeDoFicheiroDaConta(suspenso)}.json`), aviso(ha(100).slice(0, 10)))
     expect(await arquivo.varrer(agora, 90)).toBe(1)
     expect(await arquivo.ler(comSuspensao.numero)).toBeNull()

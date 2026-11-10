@@ -10,16 +10,16 @@ import type { ServerConfig } from "./config.js"
 /**
  * "No name" in the common room (3/11/2026, the Reddit account wave).
  *
- * Whoever enters through the common room gate (the card) receives no portrait, and a name
- * only reaches them from whoever was online when they entered: connected members
- * republish their profile when the room grows. Whoever was offline never told them,
- * and the new account saw "No name" in all those people, forever or until each one
- * returns. Measured in script `scripts/e2e-sem-nome.mjs`: 12 offline accounts,
- * 12 "No name" for the account that entered next.
+ * Whoever joins through the common room gate (the card) gets no portrait, and a name
+ * only reached them from members who were online when they joined: online members
+ * republish their profile when the room grows. Members who were offline never sent it,
+ * and the new account saw "No name" for all of them, forever or until each one
+ * came back. Measured with the script `scripts/e2e-sem-nome.mjs`: 12 offline accounts,
+ * 12 "No name" for the account that joined next.
  *
- * The fix: whoever sees someone with no name requests it (`pedirPerfis`), and a
- * connected member responds with the profile the author signed. With accounts and
- * server for real, as in `sala-comum-sem-ninguem.test.ts`.
+ * The fix: a client that sees someone without a name asks for it (`pedirPerfis`), and
+ * an online member replies with the profile the author signed. With real accounts and
+ * server, as in `sala-comum-sem-ninguem.test.ts`.
  */
 
 let enclave: Enclave
@@ -49,7 +49,7 @@ interface Peer {
   address: string
 }
 
-/** A new account, by Setup order: connect, set the name, and join the common room. */
+/** A new account, in Setup order: connect, set the name, and join the common room. */
 async function conta(nome: string): Promise<Peer> {
   const vault = new Vault(new MemoryBackend())
   await vault.create("frase-passe-de-teste")
@@ -74,7 +74,7 @@ async function until(predicate: () => boolean, label: string, timeoutMs = 30_000
 
 const nomeQueVe = (quem: Peer, de: Peer): unknown => quem.vault.contents.directory[de.address]?.payload["displayName"]
 
-/** The profile telemetry frames that came out (all sessions from this process). */
+/** The profile report frames that went out (all sessions in this process). */
 let respostasDePerfis = 0
 const enviar = Session.prototype.send
 Session.prototype.send = function (this: Session, canal, payload) {
@@ -139,7 +139,7 @@ describe("os nomes na sala comum, para quem entra", () => {
     await new Promise((resolve) => setTimeout(resolve, 3_000))
 
     const antes = respostasDePerfis
-    // Carla arrives with Bruno offline: nobody there tells her his name.
+    // Carla arrives with Bruno offline: nobody there would tell her his name.
     const carla = await conta("Carla")
     await until(() => nomeQueVe(carla, ana) === "Ana" && nomeQueVe(carla, marta) === "Marta", "a Carla sabe os nomes de quem está ligado")
     await until(() => nomeQueVe(carla, bruno) === "Bruno", "a Carla sabe o nome do Bruno, desligado", 20_000)

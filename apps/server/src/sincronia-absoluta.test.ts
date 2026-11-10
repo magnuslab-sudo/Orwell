@@ -15,12 +15,13 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * Absolute sync across accounts: the scenarios in §8.1, marked as measurement.
+ * Absolute sync across accounts: the scenarios in §8.1, MARKED AS MEASUREMENTS.
  *
  * Phase S0 of the plan in `docs/planos/2026-10-20-sincronia-absoluta.md`. Nothing
- * is fixed here: each scenario runs on today's code and prints today's numbers,  * how much it diverges, how long until it matches, what never matches within the
+ * is fixed here: each scenario runs on today's code and prints today's numbers:
+ * how much it diverges, how long until it matches, what never matches within the
  * deadline. So assertions only lock down what the scenario set up, never the goal.
- * Phases S1 through S6 replace each `medida` with an `expect` of the goal in §2.3.
+ * Phases S1 through S6 replace each `medida` with an `expect` on the goal in §2.3.
  *
  * Each measurement goes out on a line `MEDIDA-S0 {json}` and, with
  * `MEDIR_SINCRONIA_SAIDA=<ficheiro>`, also in a JSONL file. That is what the
@@ -65,7 +66,7 @@ function registar(medida: Record<string, unknown>): void {
 }
 
 /**
- * Waits until the accounts have matching summaries, or until the deadline. Returns
+ * Waits until the accounts have matching digests, or until the deadline. Returns
  * the ms (or `null`) and, if they did not match, the types that stayed different
  * with each account's count.
  */
@@ -157,7 +158,7 @@ describe("sincronia absoluta (S0: medida, não meta)", () => {
     await ate(() => temCorpo(bruno!, canal, "enchimento 409"), "o Bruno lê as 410", 60_000)
     const iguais = await ateIgualar([ana!, bruno!], canal)
     const depois = { ana: contar(ana!), bruno: contar(bruno!) }
-    // Does the tombstone still apply? If the tombstone left the cap and the original came back, the body would reappear.
+    // Does the tombstone still apply? If the tombstone fell outside the cap and the original came back, the body would reappear.
     const originalVisivel = temCorpo(bruno!, canal, "para apagar")
     registar({
       cenario: "tecto",
@@ -243,7 +244,7 @@ describe("sincronia absoluta (S0: medida, não meta)", () => {
     carla!.session.disconnect()
     for (let i = 0; i < 10; i++) await ana!.session.send(canal, mensagem(`perdida ${i}`))
     await ate(() => temCorpo(bruno!, canal, "perdida 9"), "o Bruno lê as 10")
-    // Bruno has the `seq` from the server of each one (Ana has -1: it is her send).
+    // Bruno has the server `seq` of each one (Ana's is -1: it is her own send).
     const seqs = bruno!.session
       .history(canal)
       .filter((e) => String(e.payload["body"]).startsWith("perdida "))

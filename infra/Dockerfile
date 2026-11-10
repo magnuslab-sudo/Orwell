@@ -9,11 +9,11 @@ COPY package.json package-lock.json ./
 COPY apps ./apps
 COPY packages ./packages
 COPY tsconfig.json tsconfig.base.json ./
-# The patches BEFORE `npm ci`: it is the `postinstall` that applies them, and without
+# The patches go in BEFORE `npm ci`: its `postinstall` is what applies them, and without
 # the folder in the context `patch-package` says "No patch files found" and exits with
-# zero. It was like that for months: the bundle served had ts-mls to patch, and every
-# single eviction came out without UpdatePath. The check below is what keeps the image
-# from building in that state again, it verifies the file, not the log.
+# zero. It stayed like that for months: the served bundle had ts-mls unpatched, and every
+# single-member kick went out without an UpdatePath. The guard below is what keeps the image
+# from building in that state again: it checks the file, not the log.
 COPY patches ./patches
 RUN npm ci
 RUN node patches/verificar.mjs
@@ -33,20 +33,20 @@ COPY --from=build /app/packages ./packages
 # `postinstall`), and that is fine only because the server does not load it: neither
 # `apps/server` nor `@enclave/protocol` import `ts-mls` or `@enclave/crypto` outside
 # tests. The day the server imports the crypto, this stage needs the patched file
-# brought from `build` and to run `patches/verificar.mjs`.
+# copied from `build`, and must run `patches/verificar.mjs`.
 RUN npm ci --omit=dev --ignore-scripts
 
-# The mediasoup worker, brought by hand from the build stage.
+# The mediasoup worker, copied by hand from the build stage.
 #
 # Two lines, and without them the image builds, starts, the gateway responds, and the
-# first call discovers there is no SFU. It is the worst symptom possible: what you read
-# in the logs says everything ran fine.
+# first call is what discovers there is no SFU. It is the worst possible symptom: the
+# logs say everything went fine.
 #
 # Why it is needed: the `worker/out/Release/mediasoup-worker` does NOT travel in the
-# npm tarball (mediasoup's `files` does not include it). What puts it on disk is
-# `postinstall`, which pulls the precompiled binary, and this stage installs with
+# npm tarball (mediasoup's `files` does not include it). What puts it on disk is the
+# `postinstall`, which downloads the prebuilt binary, and this stage installs with
 # `--ignore-scripts`. Measured in `scripts/sfu-prova/imagem-do-servidor.sh`, which
-# builds the image in both cases and requires that only one starts.
+# builds the image in both scenarios and requires that only one starts.
 #
 # Removing `--ignore-scripts` would also solve it, and it is the wrong solution: that
 # option exists so that the `postinstall` of NO dependency runs in the production
@@ -54,7 +54,7 @@ RUN npm ci --omit=dev --ignore-scripts
 #
 # Phase 0 had found half the problem. The other half only showed up in Phase 1: while
 # mediasoup was a devDependency of the ROOT, the `--omit=dev` here left the image
-# without the entire library, not just without the binary. That is why it is today a
+# without the whole library, not just without the binary. That is why it is now a
 # production dependency of `@enclave/server`.
 COPY --from=build /app/node_modules/mediasoup/worker/out/Release/mediasoup-worker /worker/mediasoup-worker
 ENV MEDIASOUP_WORKER_BIN=/worker/mediasoup-worker
@@ -64,19 +64,19 @@ ENV MEDIASOUP_WORKER_BIN=/worker/mediasoup-worker
 RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 8448
-# The unique media port, UDP and TCP with the same number. The `WebRtcServer`
-# multiplexes all transports on it, that is why there is no range of ten thousand
-# ports here, and that is why in UFW there are two rules.
+# The single media port, UDP and TCP on the same number. The `WebRtcServer`
+# multiplexes every transport on it: that is why there is no ten-thousand-port range
+# here, and why UFW has two rules.
 EXPOSE 44300/udp
 EXPOSE 44300/tcp
 CMD ["node", "--no-warnings=ExperimentalWarning", "apps/server/dist/main.js"]
 
 # ------------------------------------------------------------------- web
 # Caddy serves the static app and terminates TLS (automatic Let's Encrypt),
-# proxying /_enclave/* — gateway WebSocket included — to the server container.
+# proxying /_enclave/* (gateway WebSocket included) to the server container.
 FROM caddy:2 AS web
 COPY infra/Caddyfile /etc/caddy/Caddyfile
-# The public page at the root, the app in /app/. The order is not cleanup: the site must
-# enter first so the app's `dist` is not hidden by it.
+# The public page at the root, the app in /app/. The order is not tidiness: the site must
+# go in first so that it does not hide the app's `dist`.
 COPY --from=build /app/apps/site/dist /srv
 COPY --from=build /app/apps/web/dist /srv/app

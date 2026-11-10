@@ -12,16 +12,16 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The cascade of who tidies the channel with ONE vault save (slow-after-join, 4/11/2026).
+ * The cascade from whoever tidies the channel, with ONE vault save (slow-after-join, 4/11/2026).
  *
  * `republishAuthority` sends one `role.assign` per person with a role at each join (80 in `!984`),
  * and each `send` saved the entire vault before the frame left: 101 saves per join,
- * measured at 13 MB. `Session.sendBatch` encrypts them all, saves once, and only then sends.
+ * measured with a 13 MB vault. `Session.sendBatch` encrypts them all, saves once, and only then sends.
  *
  * What cannot change is the guarantee that saving before sending gives: after a crash,
- * no ratchet generation is ever reused. Proved from the receiver side: Bruno reads
- * everything that left, then the first message from Ana's device reopened from disk. If
- * the disk had the ratchet behind what left, that message would come in a generation Bruno
+ * no ratchet generation is ever reused. It is proved on the receiving side: Bruno reads
+ * everything that was sent, then the first message from Ana's device reopened from disk. If
+ * the ratchet on disk were behind what was sent, that message would use a generation Bruno
  * already spent, and it would not open.
  */
 
@@ -45,7 +45,7 @@ afterAll(async () => {
 const atribuicao = (i: number): Payload => ({ t: "role.assign", subject: `@sujeito${i}:localhost`, roles: [], assignedAt: 1_000 + i }) as Payload
 const texto = (corpo: string): Payload => ({ t: "message", id: crypto.randomUUID(), sentAt: Date.now(), body: corpo, attachments: [], mentions: [], links: [] }) as Payload
 
-/** A disk that can lock: writes wait until it unlocks, like in a crash mid-save. */
+/** A disk that can be frozen: writes wait until it is released, as in a crash mid-save. */
 class DiscoPrendivel implements VaultBackend {
   bytes: Uint8Array | null = null
   escritas = 0
@@ -64,7 +64,7 @@ class DiscoPrendivel implements VaultBackend {
   }
 }
 
-/** Ana reopened from what is on disk, like after a crash. */
+/** Ana reopened from what is on disk, as after a crash. */
 async function reabrir(bytes: Uint8Array): Promise<Session> {
   const disco = new DiscoPrendivel()
   disco.bytes = bytes
@@ -102,7 +102,7 @@ describe("a cascata em lote", () => {
     const gravacoes = ana.backend.escritas - antes
     await ate(() => vistos.length >= 100, "as cem chegam ao Bruno", 30_000)
     expect(vistos).toEqual(Array.from({ length: 100 }, (_, i) => 1_000 + i))
-    // Before it was a hundred (one per send). One from the batch, and at most one from the next history.
+    // It used to be a hundred (one per send). Now one for the batch, and at most one for the history that follows.
     expect(gravacoes).toBeLessThanOrEqual(2)
   }, 120_000)
 
@@ -122,7 +122,7 @@ describe("a cascata em lote", () => {
     await ate(() => bruno.session.history(canal).some((e) => e.payload["body"] === "antes"), "o Bruno lê a de antes", 30_000)
     await new Promise((r) => setTimeout(r, 1_500))
 
-    // The disk locks: the batch save never finishes. It is the crash mid-cascade.
+    // The disk freezes: the batch save never finishes. This is the crash mid-cascade.
     const noDiscoAntes = disco.bytes as Uint8Array
     const ouvidas = contarAtribuicoes(bruno, canal)
     disco.preso = new Promise(() => {})
@@ -131,7 +131,7 @@ describe("a cascata em lote", () => {
     expect(ouvidas()).toBe(0)
     anaSessao.disconnect()
 
-    // Reopened from the disk from before: what she encrypts now opens on Bruno's side.
+    // Reopened from the earlier disk: what she encrypts now opens on Bruno's side.
     const reaberta = await reabrir(noDiscoAntes)
     await reaberta.send(canal, texto("depois da queda"))
     await ate(() => bruno.session.history(canal).some((e) => e.payload["body"] === "depois da queda"), "o Bruno lê a do aparelho reaberto", 30_000)
@@ -145,7 +145,7 @@ describe("a cascata em lote", () => {
     const ouvidas = contarAtribuicoes(bruno, canal)
     await ana.session.sendBatch(canal, Array.from({ length: 40 }, (_, i) => atribuicao(i)))
     await ate(() => ouvidas() >= 40, "as quarenta chegam ao Bruno", 30_000)
-    // The crash right after the last frame: the disk is what was left from the batch save.
+    // The crash right after the last frame: the disk holds what the batch save left.
     const noDisco = ana.backend.bytes as Uint8Array
     ana.session.disconnect()
     const reaberta = await reabrir(noDisco)

@@ -2,20 +2,20 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { eMoradaOpaca, moradaDirecta, temChaveDeConta, type Identity, type Payload } from "@enclave/protocol"
 import { ate, Cliente, contasDeTeste, desligarContas, levantarServidor, type ContaDeTeste, type ServidorDeTeste } from "../testes/cliente-de-teste.js"
 
-/** The account key of an identity created in this test: check it and fail loud if missing. */
+/** The account key of an identity created in this test: check it and fail loudly if missing. */
 function chaveDeConta(identity: Identity): Uint8Array {
   if (!temChaveDeConta(identity)) throw new Error("esta identidade não tem a chave de conta")
   return identity.signingPrivateKey
 }
 
 /**
- * The direct conversation opened by both sides at the same instant (phase 1g).
+ * The DM opened by both sides at the same moment (phase 1g).
  *
- * Finding from phase 1d: two cross friend requests, with the direct not opened
- * before, would create two MLS groups with the same name (in 0.9, `!dm-a.b`; in
- * 1.0, the opaque address of the DH of both accounts, which both also calculate the same).
- * Each side wrote to its group and the other did not read it. In the interface
- * this showed the account owner's report: "Friends (1)" and a pending request at the same time.
+ * Finding from phase 1d: two crossed friend requests, with no DM opened
+ * before, created two MLS groups with the same name (in 0.9, `!dm-a.b`; in
+ * 1.0, the opaque address from the two accounts' DH, which both sides also compute identically).
+ * Each side wrote to its own group and the other did not read it. In the interface
+ * this produced the owner's report: "Friends (1)" and a pending request at the same time.
  *
  * These tests use accounts and a real server. The proof is always the same:
  * at the end both sides are in the SAME group (the same epoch and the same leaves)
@@ -71,7 +71,7 @@ describe("a directa aberta pelos dois lados no mesmo instante", () => {
       const dm = dmA
 
       // Each writes right away, before any Welcome has time to arrive: it is the exact
-      // race of the frames from 1d (`application` of both, seq 0 and 1).
+      // frame race from 1d (`application` from both, seq 0 and 1).
       await Promise.all([ana!.session.send(dm, mensagem("da Ana")), bruno!.session.send(dm, mensagem("do Bruno"))])
 
       await ate(() => leu(bruno!, dm, "da Ana") && leu(ana!, dm, "do Bruno"), "cada um lê o primeiro do outro", 30_000)
@@ -90,7 +90,7 @@ describe("a directa aberta pelos dois lados no mesmo instante", () => {
 
   it("dois pedidos de amizade cruzados sem directa aberta dão «amigos» dos dois lados", async () => {
     const [ana, bruno] = await contas("Ana", "Bruno")
-    // What the interface does when you click "Request friend": opens the direct and requests.
+    // What the interface does when you click "Request friend": it opens the DM and sends the request.
     const pedir = async (quem: ContaDeTeste, a: ContaDeTeste): Promise<void> => {
       const dm = await quem.session.openDirect(a.address)
       await quem.session.sendFriendRequest(dm)
@@ -107,15 +107,15 @@ describe("a directa aberta pelos dois lados no mesmo instante", () => {
 })
 
 /**
- * The repair for someone who lost the direct group (1.0 "Arca", slice 3).
+ * The repair for someone who lost the DM's group (1.0 "Arca", slice 3).
  *
- * Until 0.9 this was "the pair already split": a client before 1g would create its
- * group and seat the other, both at the same time, and the server let each side
+ * Until 0.9 this was "the pair already split": a pre-1g client created its own
+ * group and seated the other, both at the same time, and the server let each side
  * of a `!dm-a.b` refound the channel at epoch 0. With the opaque address the
- * server does not know whose direct it is and no one refounds it (slice 4, the safe side).
+ * server does not know whose DM it is and no one refounds it (slice 4, the safe side).
  * So the split no longer happens: whoever loses the group (a `forgetChannel`, a
- * restored vault) and opens the direct again does not create a second group, but
- * asks the pair for a seat (`channel.claim` with `empty: false`). The four loops
+ * restored vault) and opens the DM again does not create a second group, but
+ * asks the peer for a seat (`channel.claim` with `empty: false`). The four rounds
  * prove that both return to the same group without losing the vault.
  */
 describe("quem perdeu o grupo da directa volta a ela sem a refundar", () => {
@@ -127,11 +127,11 @@ describe("quem perdeu o grupo da directa volta a ela sem a refundar", () => {
       await ana!.session.send(dm, mensagem("antiga da Ana"))
       await ate(() => leu(bruno!, dm, "antiga da Ana"), "o Bruno lê a primeira")
 
-      // Half the loops: Ana loses the group; the other half, Bruno.
+      // Half the rounds: Ana loses the group; the other half, Bruno.
       const [perdeu, ficou] = volta % 2 === 1 ? [ana!, bruno!] : [bruno!, ana!]
       await perdeu.session.forgetChannel(dm)
       expect(perdeu.session.channels).not.toContain(dm)
-      // Opens again: the same address, and joins via the seat the pair gives.
+      // It opens again: the same address, and it joins through the seat the peer gives it.
       expect(await perdeu.session.openDirect(ficou.address)).toBe(dm)
       expect(perdeu.session.channels).toContain(dm)
       expect(perdeu.avisos).not.toContain("channel-forked")
@@ -162,7 +162,7 @@ describe("uma terceira conta não chega à directa de duas", () => {
   it("não sabe a morada, e reclamar o nome antigo não atrasa a directa", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
     const ic = carla!.session.identity
-    // With her key and one of the other two, Carla can only reach her direct connection with him.
+    // With her key and one of the other two, Carla can only reach HER DM with him.
     const daCarla = moradaDirecta(chaveDeConta(ic), bruno!.session.identity.signingPublicKey, ic.address, bruno!.address)
     // The name that 0.9 used: claiming it does not touch the opaque address.
     const local = (conta: ContaDeTeste): string => conta.address.slice(1, conta.address.indexOf(":"))

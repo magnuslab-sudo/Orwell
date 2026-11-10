@@ -66,9 +66,9 @@ describe("identificador de conta", () => {
 
   /**
    * The bit budget is an assertion, not a comment, and it lives here. The
-   * identifier moved to Latin, and the only way that change is presentation and
-   * not security is the bit count staying put: four words of twenty bits are the
-   * same eighty as sixteen base32 characters wrote.
+   * identifier is now written in Latin words, and that change stays cosmetic, not
+   * a security change, only if the bit count does not move: four words of twenty
+   * bits are the same eighty that sixteen base32 characters used to encode.
    */
   it("carrega os 80 bits que o modelo de ameaça exige, nem mais nem menos", () => {
     expect(ACCOUNT_ID_BITS).toBe(80)
@@ -77,7 +77,7 @@ describe("identificador de conta", () => {
 
   /**
    * Truncating has to be cutting, not recombining, and writing has to be
-   * dressing, not hashing again. If the identifier stopped being exactly the
+   * encoding, not hashing again. If the identifier stopped being exactly the
    * first 80 bits of the hash, it would stop inheriting the uniformity of
    * SHA-256 and the budget above would become an unsupported claim. Proving it
    * now is easier than it was in base32: the name unfolds back to bytes.
@@ -98,8 +98,9 @@ describe("identificador de conta", () => {
   })
 
   /**
-   * What got shorter was not the character count, it grew, it was what costs
-   * a person. Sixteen unrelated symbols spell out one by one; four words speak.
+   * What got shorter was not the character count (that grew) but the effort it
+   * costs a person. Sixteen unrelated symbols are spelled out one by one; four
+   * words are just said.
    * The cap exists so a new ending does not grow the address without anyone
    * noticing.
    */
@@ -116,7 +117,7 @@ describe("a conta sobrevive ao encurtamento", () => {
    * The vault holds the private key and nothing else about the identity: the
    * address is recomputed each time you open it. That is why shortening changes
    * the presentation and not the account, and that is what the test must prove,
-   * because if the address ever becomes stored, the same password starts opening
+   * because if the address ever becomes stored, the same passphrase starts opening
    * an identity that no longer matches what the server knows.
    */
   it("a mesma chave privada reabre a mesma identidade", () => {
@@ -280,7 +281,7 @@ describe("moradas opacas", () => {
     expect(podeEstrearCanal("!orwell:orwell.pt", "!orwell:orwell.pt")).toBe(true)
     // The common room is the server's room, and only that one: any other readable form stays closed.
     expect(podeEstrearCanal("!sincronia-antiga:orwell.pt", "!orwell:orwell.pt")).toBe(false)
-    // Without a common room announced, no readable form debuts, not even an empty one.
+    // With no common room announced, no readable form may open a channel, not even the empty one.
     expect(podeEstrearCanal("!orwell:orwell.pt", "")).toBe(false)
     expect(podeEstrearCanal("!orwell:orwell.pt", null)).toBe(false)
     expect(podeEstrearCanal("", "")).toBe(false)

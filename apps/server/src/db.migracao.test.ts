@@ -7,9 +7,9 @@ import { openDatabase } from "./db.js"
 import { Store } from "./store.js"
 
 /**
- * The first column migration of this project: `key_packages.device`.
+ * The first column migration in this project: `key_packages.device`.
  *
- * The production database was born on August 14, 2026 with the `key_packages`
+ * The production database was created on August 14, 2026 with the `key_packages`
  * below, without the column, and `CREATE TABLE IF NOT EXISTS` would never add
  * it. This test creates the database with the schema from that day (copied from
  * `db.ts` at `2666629`, version 0.2.3), fills it as a 0.2.3 server would, and
@@ -40,7 +40,7 @@ beforeEach(() => {
   pasta = mkdtempSync(join(tmpdir(), "enclave-migracao-"))
   caminho = join(pasta, "enclave.sqlite")
   // A 0.2.3 database: in WAL like production, with the old table and three
-  // packages awaiting claim plus one already spent.
+  // unclaimed packages plus one already spent.
   const antiga = new DatabaseSync(caminho)
   antiga.exec("PRAGMA journal_mode = WAL")
   antiga.exec(SCHEMA_0_2_3)
@@ -86,10 +86,10 @@ describe("a coluna key_packages.device numa base de antes", () => {
     const db = openDatabase(caminho)
     const store = new Store(db)
     const aparelho = new Uint8Array(32).fill(7)
-    // For the `keypackage.low` alert from a client connecting with a chain:
+    // For the `keypackage.low` warning to a client connecting with a chain:
     // the old pool belongs to it, even without a device on record.
     expect(store.availableKeyPackages(ANA, aparelho)).toBe(3)
-    // But a claim PER device does not know whose they are, and does not touch them.
+    // But a claim PER device does not know whose they are, and leaves them alone.
     expect(store.claimKeyPackage(ANA, aparelho)).toBeUndefined()
     expect(store.availableKeyPackages(ANA)).toBe(3)
     db.close()
@@ -114,7 +114,7 @@ describe("a coluna key_packages.device numa base de antes", () => {
  * The encrypted vault (phase 3a) in a 1.0.8 "Arca" database.
  *
  * The 1.0.8 production database has no `cofres` or `cofres_meta`. Both tables
- * are born via `CREATE TABLE IF NOT EXISTS`, which on an existing database adds
+ * are created by `CREATE TABLE IF NOT EXISTS`, which on an existing database adds
  * what is missing and leaves the rest alone. The schema below is from `db.ts`
  * at `05b58a9e` (the 1.0.8 release), without comments: copied, not imported.
  */

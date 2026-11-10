@@ -15,7 +15,7 @@ import { decodePayload, encodePayload, MAX_PINNED, type Payload, PINNED_BODY_MAX
  * - a `t` that the union does not know FAILS, and a failed payload is discarded
  *   silently, counted as an ignored event, and consecutive ignored events mark
  *   the channel deaf and trigger the repair that clears history;
- * - a FIELD that the union does not know is skipped on read and takes nothing with it.
+ * - a FIELD that the union does not know is dropped on read and takes nothing with it.
  *
  * Whoever comes to add a new event type stumbles first here, which is the place
  * where the rule costs one line instead of costing conversations.
@@ -70,14 +70,15 @@ describe("a regra que decide a forma de tudo o que se acrescenta", () => {
  * Pinned messages in a room, traveling without the new `t`.
  *
  * Same policy as muted microphone and screen share, and for the reason the block
- * above just locked in. What these tests keep, beyond the round trip, are the two
+ * above just pinned down. What these tests guard, beyond the round trip, are the two
  * decisions that make the feature fit in a field:
  *
- * 1. **Absent is not an empty list.** It allows renaming or closing a room,  *    a gesture of another responsibility, done by another person, without
- *    unpinning anything. A `.default([])` here would erase pins at the first
- *    sidebar cleanup, silently.
+ * 1. **Absent is not an empty list.** That is what lets renaming or closing a
+ *    room (a different responsibility, done by a different person) unpin
+ *    nothing. A `.default([])` here would erase pins at the first sidebar
+ *    cleanup, silently.
  * 2. **The text travels with the identifier.** Someone arriving later can never
- *    open the original message, persistent secrecy, and the channel history has
+ *    open the original message (forward secrecy), and the channel history has
  *    a cap: without the copy, "pinned" would be a list of identifiers pointing
  *    to nothing.
  */
@@ -152,8 +153,8 @@ describe("as mensagens fixadas viajam sem `t` novo", () => {
 
   it("um cliente ANTIGO não fica surdo com a sala de um cliente NOVO", () => {
     // The direction that no one checks because they already wrote the new schema, and
-    // the only one the history-wiping cascade cares about. `invented` acts as a field
-    // the old version doesn't know, which is what `pinned` is for it.
+    // the only one the history-wiping cascade cares about. `inventado` stands in for a field
+    // the old version doesn't know, which is what `pinned` is to it.
     const nova = JSON.stringify({
       t: "channel.meta",
       room: "avisos",

@@ -9,8 +9,8 @@ import type { ServerConfig } from "./config.js"
 import { PEDIDOS_DA_CAIXA_POR_HORA } from "./denuncia.js"
 
 /**
- * Nonces and limits: a request that the limit rejects does not leave a nonce in
- * memory. Own server, for the map to start empty. Real identities signing through
+ * Nonces and caps: a request the cap rejects leaves no nonce in memory.
+ * A dedicated server, so the map starts empty. Real identities signing through
  * the client core.
  */
 
@@ -67,7 +67,7 @@ describe("nonces das denúncias", () => {
   })
 
   it("um pedido recusado pelo tecto não fica registado: repetido tal qual dá 429 outra vez, não 401", async () => {
-    // It was not recorded, so it is not a replay. The account limit stays full,
+    // It was not recorded, so it is not a replay. The account cap is still full,
     // so it returns 429 again, and the map does not grow.
     const identidade = generateIdentity(parseServerName(SERVIDOR))
     enclave.store.registerOrVerifyAccount(identidade.address, identidade.signingPublicKey)

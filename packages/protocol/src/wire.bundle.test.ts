@@ -6,12 +6,12 @@ import { parseServerName } from "./ids.js"
 import { ClientFrame, ServerFrame } from "./wire.js"
 
 /**
- * The claim bundled in the wire: new fields are OPTIONAL, and their absence
- * must continue to mean what it already meant (a packet, nothing else).
+ * The bundled claim on the wire: the new fields are OPTIONAL, and their absence
+ * must still mean what it already meant (one KeyPackage, nothing else).
  *
- * House rule comes from `wire.video.test.ts`: a `z.object` without the field
- * does not REJECT it, silently strips it. This is how a new client downgrades
- * to a packet against a 0.2.3 server, and this is what these tests assert
+ * The house rule is the one from `wire.video.test.ts`: a `z.object` without the
+ * field does not REJECT it, it silently strips it. That is how a new client
+ * falls back to one KeyPackage against a 0.2.3 server, and this is what these tests assert
  * both ways: the new field passes when present, and the old form passes when
  * absent.
  */

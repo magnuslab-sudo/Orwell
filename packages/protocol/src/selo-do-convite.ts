@@ -6,30 +6,30 @@ import { fromBase64, toBase64 } from "./canonical.js"
 /**
  * The invite seal: the channel name, encrypted with the code (1.0 "Arca", slice 5c).
  *
- * **The problem.** With opaque addresses (slice 3), a channel address does not
+ * **The flaw.** With opaque addresses (slice 3), a channel address does not
  * reveal the name. The name lives only inside the channel's encrypted state
- * (`room.created`, `space.meta`), and anyone opening an invite is not yet inside. The invite
- * prompt showed the address: "Invite to i8rwt9b44ce…".
+ * (`room.created`, `space.meta`), and anyone opening an invite is not inside yet. The invite
+ * prompt showed the address: "Convite para "i8rwt9b44ce…"".
  *
  * **The choice.** The invite creator seals the channel name (and their own name, if
  * they have one) with a key derived from the invite code, and sends the seal in
- * `invite.create`. The server stores it and returns it to anyone who requests it by invite.
- * The person opening the link has the code in the fragment, and only they open the
+ * `invite.create`. The server stores it and returns it to anyone who asks for it by invite.
+ * Whoever opens the link has the code in the fragment, and only they can open the
  * seal. The server stores bytes it cannot read: without the code, which never
- * reaches it, the seal is noise of fixed size `SELO_DO_CONVITE_BYTES`.
+ * reaches it, the seal is noise of the fixed size `SELO_DO_CONVITE_BYTES`.
  *
- * **The size is always the same**, on purpose: a seal of variable size would tell
+ * **The size is always the same**, on purpose: a variable-size seal would tell
  * the server how many letters the name has. The text goes in a fixed block of
- * `TEXTO_DO_SELO_BYTES`, padded with zeros.
+ * `TEXTO_DO_SELO_BYTES`, zero-padded.
  *
  * **What the seal does not prove.** That the name is true. The invite creator
- * writes anything, and the server accepts `invite.create` from any account. It only proves
- * that the name comes from whoever had the code, not from the server or the network:
- * a swapped seal (from another invite or tampered) does not open, and the prompt
- * says "a channel".
+ * can write anything, and the server accepts `invite.create` from any account. It only proves
+ * that the name comes from whoever had the code, not from the server or anyone on the path:
+ * a swapped seal (from another invite, or tampered with) does not open, and the prompt
+ * says "um canal".
  *
- * Key: HKDF-SHA256 of the code, with its own label (key domain separation from the
- * proof key, `prova-do-convite.ts`). Cipher: XChaCha20-Poly1305 with random nonce of 24 bytes,
+ * Key: HKDF-SHA256 of the code, with its own label (domain separation from the
+ * proof key, `prova-do-convite.ts`). Cipher: XChaCha20-Poly1305 with a random 24-byte nonce,
  * like the vault and the pairing box. The label goes in the associated data too.
  *
  * Text format: `versão (1 byte) | n (2 bytes) | nome do canal (n bytes) |
@@ -43,16 +43,16 @@ const ETIQUETA_BYTES = 16
 
 /** The channel name fits here (the `space.meta` is 100 units, up to 300 bytes). */
 export const NOME_DO_CANAL_NO_SELO_BYTES = 300
-/** The inviter name fits here (the profile is 64 units, up to 192 bytes). */
+/** The inviter's name fits here (the profile is 64 units, up to 192 bytes). */
 export const NOME_DE_QUEM_NO_SELO_BYTES = 192
-/** The fixed block of text, before encryption. */
+/** The fixed text block, before encryption. */
 export const TEXTO_DO_SELO_BYTES = 512
-/** The entire seal, in bytes: nonce, text, and tag. */
+/** The whole seal, in bytes: nonce, text, and tag. */
 export const SELO_DO_CONVITE_BYTES = NONCE_BYTES + TEXTO_DO_SELO_BYTES + ETIQUETA_BYTES
 /**
- * The seal cap in the wire, in base64url characters. The server refuses anything
+ * The seal's cap on the wire, in base64url characters. The server rejects anything
  * larger. It leaves room for a future version without letting the table store
- * what it cannot.
+ * just anything.
  */
 export const SELO_DO_CONVITE_MAX_CARACTERES = 1024
 
@@ -82,7 +82,7 @@ function cortarEmBytes(texto: string, limite: number): Uint8Array {
   return codificador.encode(cortado)
 }
 
-/** Seal the channel name (and the inviter name) with the invite code. Returns base64url. */
+/** Seal the channel name (and the inviter's name) with the invite code. Returns base64url. */
 export function selarNomeDoConvite(codigo: string, nome: NomeDoConvite): string {
   const canal = cortarEmBytes(nome.canal, NOME_DO_CANAL_NO_SELO_BYTES)
   const quem = cortarEmBytes(nome.quem ?? "", NOME_DE_QUEM_NO_SELO_BYTES)
@@ -109,8 +109,8 @@ export function selarNomeDoConvite(codigo: string, nome: NomeDoConvite): string 
 }
 
 /**
- * Open a seal with the link code. `null` when it does not open: wrong code,
- * seal tampered, swapped, from another version, or malformed. Never throws.
+ * Open a seal with the link code. `null` when it does not open: wrong code, or
+ * a seal that was tampered with, swapped, from another version, or malformed. Never throws.
  */
 export function abrirSeloDoConvite(codigo: string, selo: string): NomeDoConvite | null {
   let bytes: Uint8Array
@@ -138,7 +138,7 @@ export function abrirSeloDoConvite(codigo: string, selo: string): NomeDoConvite 
     if (n === 0 || n > NOME_DO_CANAL_NO_SELO_BYTES) return null
     const m = vista.getUint16(3 + n)
     if (m > NOME_DE_QUEM_NO_SELO_BYTES) return null
-    // `fatal`: bytes that are not UTF-8 are a wrong seal, not a name with "?".
+    // `fatal`: bytes that are not UTF-8 mean a wrong seal, not a name with "�".
     const descodificador = new TextDecoder("utf-8", { fatal: true })
     const canal = descodificador.decode(texto.subarray(3, 3 + n))
     const quem = m > 0 ? descodificador.decode(texto.subarray(5 + n, 5 + n + m)) : ""

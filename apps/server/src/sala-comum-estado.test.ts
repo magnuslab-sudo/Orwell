@@ -14,10 +14,10 @@ const cofreDe = (session: Session): Vault => (session as unknown as { vault: Vau
  * The common room with real accounts, which is how people get in.
  *
  * `common-room.test.ts` locks the SERVER guard, with raw sockets. This locks
- * what happens on the client side after the guard lets through: who arrives is
- * admitted by `channel.rejoin.request` → `#reseat`, which is a different path
- * from `seat` that other files exercise, and it is what everyone goes through
- * who opens an account on a server with a common room.
+ * what happens on the client side after the guard lets it through: a newcomer is
+ * admitted via `channel.rejoin.request` → `#reseat`, a different path from the
+ * `seat` the other files exercise, and it is the path everyone takes when they
+ * open an account on a server with a common room.
  *
  * Written on 18 August 2026 for the owner's report: *"she is seeing the first
  * word of the address instead of the username"*, with the detail that makes it
@@ -51,12 +51,12 @@ interface Peer {
 }
 
 /**
- * A profile picture of the size people actually use.
+ * A profile picture as large as the ones people actually upload.
  *
  * Size is the variable that matters: a profile with a portrait goes over a
  * hundred thousand characters and one without has two hundred. If there were a
- * cap somewhere along the way, the asymmetry in the report, one name arrives
- * and the other does not, would come from here.
+ * cap somewhere along the way, the asymmetry in the report (one name arrives
+ * and the other does not) would come from here.
  */
 function retrato(kb: number): string {
   return `data:image/png;base64,${"A".repeat(kb * 1024)}`
@@ -97,9 +97,9 @@ async function until(predicate: () => boolean, label: string, timeoutMs = 30_000
 /**
  * The name this device would show for this person.
  *
- * Read from the vault DIRECTORY, not from the seen messages list: it is what
- * the interface reads (`useDirectory` seeded from `profile.directory()`), and a
- * profile that arrives and does not get saved gives exactly the same defect as a
+ * Read from the vault DIRECTORY, not from the seen-messages list: it is what
+ * the interface reads (`useDirectory` is seeded from `profile.directory()`), and a
+ * profile that arrives and is not saved produces exactly the same defect as a
  * profile that never arrives. Empty means the interface falls back to
  * `shortAddress`, the first word of the address, which is the owner's report
  * word for word.
@@ -154,14 +154,14 @@ afterAll(async () => {
 /**
  * The owner, who stays connected through the entire file.
  *
- * A common room is ONE per server and is not recreated: whoever founds it must
- * stay there to admit who arrives, otherwise the second test asks to join a room
- * with no one listening. It is also what production has, the owner is the
- * oldest account and the one always connected.
+ * There is ONE common room per server and it is not recreated: whoever founds it
+ * must stay around to admit newcomers, otherwise the second test asks to join a
+ * room with no one listening. It is also what production has: the owner is the
+ * oldest account and the one that is always connected.
  *
- * And carries a portrait on purpose, because it is the difference between his
- * account and new accounts: in production the owner has a profile photo and
- * whoever just arrived does not.
+ * And it carries a portrait on purpose, because that is the difference between
+ * his account and the new ones: in production the owner has a profile photo and
+ * newcomers do not.
  */
 let dono: Peer
 
@@ -171,14 +171,14 @@ describe("os nomes na sala comum", () => {
     await until(() => segundo.session.channels.includes(COMUM), "o segundo é admitido")
     await until(() => nomeQueVe(segundo, dono.address) === "Duarte", "o segundo vê o nome do dono")
 
-    // And now her, who is complaining.
+    // And now her, the one who complained.
     const ela = await peer("Joana")
     await until(() => ela.session.channels.includes(COMUM), "ela é admitida")
 
     await until(() => nomeQueVe(ela, dono.address) === "Duarte", "ela vê o nome do dono")
     await until(() => nomeQueVe(ela, segundo.address) === "Segundo", "ela vê o nome do segundo")
 
-    // And said backwards, which is how the defect was reported: neither of them
+    // And stated the other way round, which is how the defect was reported: neither of them
     // shows as the first word of the address.
     expect(nomeQueVe(ela, dono.address)).not.toBe(primeiraPalavraDoEndereco(dono.address))
     expect(nomeQueVe(ela, segundo.address)).not.toBe(primeiraPalavraDoEndereco(segundo.address))
@@ -188,21 +188,21 @@ describe("os nomes na sala comum", () => {
   }, 120_000)
 
   /**
-   * And the case that republish on GROWTH does not cover by design: who was
-   * offline when the group grew.
+   * And the case that republishing on GROWTH does not cover by design: a member
+   * who was offline when the group grew.
    *
-   * `#noteMembership` lives in memory and is not saved. Who had the app closed
-   * when someone joined does not go through the receive path in that moment;
+   * `#noteMembership` lives in memory and is not saved. A member who had the app
+   * closed when someone joined does not go through the receive path at that moment;
    * when they return, they recover the commit and that is when the count
-   * happens. It is the tightest loop of the whole mechanism, and would explain
-   * an asymmetry, the name of who was online arrives, the name of who was
-   * offline does not.
+   * happens. It is the narrowest path in the whole mechanism, and the one that
+   * would explain an asymmetry (the name of whoever was online arrives, the name
+   * of whoever was offline does not).
    */
   it("quem estava fora quando ela entrou dá-lhe o nome ao voltar", async () => {
     const ausente = await peer("Ausente")
     await until(() => ausente.session.channels.includes(COMUM), "o ausente entra na sala comum")
 
-    // Closes the app. The owner stays, and he is who admits whoever arrives.
+    // Close the app. The owner stays, and he admits whoever arrives.
     ausente.session.disconnect()
     await new Promise((resolve) => setTimeout(resolve, 300))
 

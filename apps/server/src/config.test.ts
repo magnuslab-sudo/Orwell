@@ -5,8 +5,8 @@ import { loadConfig } from "./config.js"
  * What startup accepts from the environment, and what it refuses loudly.
  *
  * Retention is the case that matters: the value goes into `hello.ok` as
- * `retentionDays`, whose template requires an integer. A `1.5` accepted here
- * was a server starting up fine and sending everyone a message no client reads.
+ * `retentionDays`, whose schema requires an integer. A `1.5` accepted here
+ * would mean a server that starts fine and sends everyone a frame no client can read.
  */
 describe("ENCLAVE_RETENTION_DAYS", () => {
   const com = (valor: string | undefined) =>
@@ -48,7 +48,7 @@ describe("ENCLAVE_ORCAMENTO_VIDEO_MBPS e ENCLAVE_RESERVA_VOZ_MBPS", () => {
   })
 })
 
-/** Video cut near the monthly quota. See `quota-mensal.ts`. */
+/** The video cutoff near the monthly quota. See `quota-mensal.ts`. */
 describe("ENCLAVE_QUOTA_*", () => {
   const com = (env: Record<string, string>) => loadConfig(env as NodeJS.ProcessEnv).quota
 

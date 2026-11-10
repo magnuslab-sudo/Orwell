@@ -16,7 +16,7 @@ import {
 } from "./relato.js"
 
 /**
- * "Send report" (phase 4 of settings 0.9): `POST /_enclave/relato`.
+ * "Send log" (phase 4 of the 0.9 settings): `POST /_enclave/relato`.
  *
  * Via `inject`, no port needed: the route is HTTP and requires no network.
  */
@@ -95,7 +95,7 @@ describe("POST /_enclave/relato", () => {
 
   it("10 por hora por endereço; o 11.º leva 429", async () => {
     for (let i = 0; i < RELATOS_POR_HORA; i += 1) {
-      // A different IP per request: the cap on the address is measured here.
+      // A different IP per request: what we measure here is the per-address cap.
       expect((await enviar({ endereco: "@rui:orwell.pt", versao: "0.9.2", texto: `n${i}` }, `198.51.100.${i}`)).statusCode).toBe(200)
     }
     const decimo = await enviar({ endereco: "@rui:orwell.pt", versao: "0.9.2", texto: "a mais" }, "198.51.100.200")

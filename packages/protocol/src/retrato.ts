@@ -6,33 +6,33 @@ import { ItemRelatado } from "./autoria.js"
  *
  * **The problem.** When someone joins a channel they cannot decrypt anything
  * that was said there before (forward secrecy). The name, the rooms, the
- * categories, who founded it, the roles and member names only reached them if
- * someone in the channel told them again. With an empty house, a joiner saw
- * "general" and nothing else.
+ * categories, the founder, the roles and the member names only reached them if
+ * someone online sent them again. With nobody else online, a joiner saw
+ * "geral" and nothing else.
  *
- * **The mechanism.** Whoever commits the join writes into the `GroupInfo` of the
- * Welcome a private extension (`EXTENSAO_RETRATO`, private use range of RFC 9420
+ * **The mechanism.** Whoever commits the join puts into the Welcome's `GroupInfo`
+ * a private extension (`EXTENSAO_RETRATO`, private use range of RFC 9420
  * §17.3) with the ORIGINAL payloads of the channel state, each one with the
- * authorship of whoever wrote it. The `GroupInfo` of the Welcome travels encrypted
+ * authorship of whoever wrote it. The Welcome's `GroupInfo` travels encrypted
  * under the `welcome_secret` (RFC 9420 §12.4.3.1): only the joiner reads it, and
- * the server sees only the size and nothing else.
+ * the server sees the size and nothing else.
  *
  * **The joiner does not trust the inviter.** Each item goes through
- * `receberItem` in the core, with the same rules as telemetry reports: schema,
+ * `receberItem` in the core, with the same rules as relays: schema,
  * signature, account device, blocking. Roles go through `#mandaEm`. A forged
- * item is grounds for refusal, never a room.
+ * item is a reason to reject, never a foothold.
  *
  * **A 1.0.x client knows nothing of this.** Its `joinGroup` reads only the tree
- * and discards extensions it does not know. The inviter only includes the snapshot
- * when the joiner's leaf declares `EXTENSAO_RETRATO` in capabilities; and the
- * declaration does not go in `required_capabilities`, which would have ejected old
+ * and drops extensions it does not know. The inviter only includes the snapshot
+ * when the joiner's leaf declares `EXTENSAO_RETRATO` in its capabilities; and the
+ * declaration does not go in `required_capabilities`, which would have evicted old
  * leaves.
  */
 
 /** The extension type: "orwell-retrato-v1", in the private use range (0xF000 to 0xFFFF). */
 export const EXTENSAO_RETRATO = 0xf0f0
 
-/** The snapshot cap, in bytes of JSON. A Welcome fits in 12 MiB of frame; this leaves ample room. */
+/** The snapshot cap, in bytes of JSON. A Welcome fits in a 12 MiB frame; this leaves plenty of room. */
 export const RETRATO_MAX_BYTES = 256 * 1024
 
 /** The cap on items. */
@@ -43,14 +43,14 @@ export const Retrato = z.object({
   /** The channel the snapshot describes. A snapshot of another channel does not apply. */
   canal: z.string().min(1).max(300),
   itens: z.array(ItemRelatado).max(RETRATO_ITENS_MAX),
-  /** The clock of whoever built it. Diagnostic only: decides nothing. */
+  /** The builder's clock. Diagnostic only: it decides nothing. */
   geradoEm: z.number().int().nonnegative(),
 })
 export type Retrato = z.infer<typeof Retrato>
 
 /**
- * The priority order of the cut: what decides who sends before what depends on
- * them, and profiles at the end. A type not listed here goes after everything.
+ * The priority order for trimming: what decides who is in charge comes before what
+ * depends on it, and profiles come last. A type not listed here goes after everything.
  */
 const PRIORIDADE: Record<string, number> = {
   "room.created": 0,
@@ -74,8 +74,8 @@ const versaoDoPerfil = (item: ItemRelatado): number => {
 
 /**
  * An item to include in the snapshot. `leve` is the smaller alternative of the
- * same item when the full one does not fit: a profile without the snapshot bytes
- * (the signature still verifies, because it only binds the name and attachment type).
+ * same item when the full one does not fit: a profile without the picture bytes
+ * (the signature still verifies, because it only binds the attachment's name and type).
  */
 export interface CandidatoDoRetrato {
   item: ItemRelatado
@@ -95,10 +95,10 @@ const codificador = new TextEncoder()
 const bytesDe = (valor: unknown): number => codificador.encode(JSON.stringify(valor)).length
 
 /**
- * Build the snapshot within the cap, cutting by priority: founder, roles,
+ * Build the snapshot within the cap, trimming by priority: founder, roles,
  * assignments, categories, rooms, banner, and the newest profiles first. An item
- * that does not fit tries the light form; if that does not fit either, it goes
- * out, and the following items (smaller) may still fit.
+ * that does not fit tries its light form; if that does not fit either, it is left
+ * out, and the following (smaller) items may still fit.
  */
 export function partirRetrato(
   canal: string,
@@ -161,7 +161,7 @@ export function codificarRetrato(retrato: Retrato): Uint8Array {
  * Read a snapshot that arrived in a Welcome for this channel. `null` if it is
  * not a snapshot, exceeds the cap, fails the schema, or is for another channel.
  * Never throws: a malformed snapshot leaves the joiner on the old path, and the
- * Welcome opens anyway.
+ * Welcome still opens.
  */
 export function lerRetrato(bytes: Uint8Array, canal: string): Retrato | null {
   if (bytes.length > RETRATO_MAX_BYTES) return null

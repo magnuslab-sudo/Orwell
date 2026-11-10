@@ -14,18 +14,18 @@ import {
  * Rooms reach newcomers without an admin online.
  *
  * Reported by the owner on 2/11/2026 (1.0.6): "users on mobile are not seeing the
- * community rooms". Whoever enters a channel cannot decrypt the `channel.meta` of each
- * room: it was encrypted in an earlier epoch (forward secrecy). Two paths give them
- * rooms: republishing by whoever manages the channel (`republishRooms`, admin only) and
- * telemetry from anti-entropy (S4), which any member sends with the original authorship.
+ * community rooms". Whoever joins a channel cannot decrypt the `channel.meta` of each
+ * room: it was encrypted in an earlier epoch (forward secrecy). Two paths give them the
+ * rooms: republishing by whoever arranges the channel (`republishRooms`, only with `renomear`)
+ * and anti-entropy reports (S4), which any member sends with the original authorship.
  *
  * The second fails sometimes. Measured here, with the admin offline and one member
- * online: in 24 runs, two hangs over 30 s, one over 2.5 min with just "faults", no
- * "press" and no idea who founded the room. With the first path tied to the admin,
- * nothing fixes it. In the common room, whoever joins on mobile joins this way almost
- * always: from the page, any time, with no admin online.
+ * online: in 24 runs, two stalls over 30 s, one over 2.5 min with only "avarias", no
+ * "prensa" and no idea who founded the room. With the first path tied to the admin,
+ * nothing repairs it. In the common room, whoever joins on mobile almost always joins
+ * this way: from the page, at any hour, with no admin online.
  *
- * Common room cases disable anti-entropy in whoever is already there and in newcomers.
+ * The common room cases disable anti-entropy on the existing members and on the newcomer.
  * This is the bad case, made deterministic: rooms must still arrive, and authority
  * does not change hands.
  */
@@ -55,7 +55,7 @@ async function duasContas(servidor: ServidorDeTeste): Promise<[ContaDeTeste, Con
 }
 
 /**
- * Carla is born ONLY when she is called. A connected account joins the common room
+ * Carla is created ONLY when she is needed. A connected account joins the common room
  * on its own at the end of the handshake: created early, it would join while Ana was
  * still online.
  */
@@ -69,14 +69,14 @@ async function carlaChega(servidor: ServidorDeTeste, antes?: (carla: ContaDeTest
 const nomesDasSalas = (conta: ContaDeTeste, canal: string): string[] => conta.session.roomsOf(canal).map((sala) => sala.name)
 
 /**
- * Ana starts the common room, becomes founder and manages it; Bruno joins and learns
+ * Ana starts the common room, becomes founder and arranges it; Bruno joins and learns
  * who is in charge. Returns the common room address.
  */
 async function salaComumArrumada(servidor: ServidorDeTeste, ana: ContaDeTeste, bruno: ContaDeTeste): Promise<string> {
   const comum = servidor.sala
   await ana.session.ensureCommonRoom()
   await ate(() => ana.session.channels.includes(comum), "a Ana está na sala comum")
-  // Whoever starts the common room becomes founder; claims it only if they did not.
+  // Whoever starts the common room becomes founder; it claims the room only if that failed.
   if (!ana.session.founderOf(comum)) await ana.session.claimFounder(comum)
   await ate(() => ana.session.founderOf(comum) === ana.address, "a Ana funda a sala comum")
   await ana.session.upsertCategory(comum, { category: "Adega", position: 1 })
@@ -87,7 +87,7 @@ async function salaComumArrumada(servidor: ServidorDeTeste, ana: ContaDeTeste, b
   await ate(() => nomesDasSalas(bruno, comum).includes("prensa"), "a sala chega ao Bruno", 30_000)
   await ate(() => bruno.session.founderOf(comum) === ana.address, "o Bruno sabe quem manda", 30_000)
   expect(bruno.session.mayEditChannel(comum)).toBe(false)
-  // The gate opens before Ana leaves (see `sala-comum-sem-ninguem.test.ts`).
+  // The gate is set before Ana leaves (see `sala-comum-sem-ninguem.test.ts`).
   await ate(() => servidor.enclave.store.hasGroupInfo(comum), "o cartão está no servidor", 30_000)
   return comum
 }
@@ -98,7 +98,7 @@ async function esperarAsSalas(carla: ContaDeTeste, comum: string, rotulo: string
   await ate(() => carla.session.categoriesOf(comum).some((c) => c.category === "Adega"), "a categoria chega à Carla")
 }
 
-/** How many rooms and categories this account manages from now on, counted at session exit. */
+/** How many rooms and categories this account sends from now on, counted on the way out of the session. */
 function contarSalasQueSaem(conta: ContaDeTeste, canal: string): () => number {
   let quantas = 0
   const enviar = conta.session.send.bind(conta.session)
@@ -106,7 +106,7 @@ function contarSalasQueSaem(conta: ContaDeTeste, canal: string): () => number {
     if (destino === canal && (payload.t === "channel.meta" || payload.t === "channel.category")) quantas++
     return enviar(destino, payload as Parameters<typeof enviar>[1])
   }) as typeof conta.session.send
-  // Rooms and categories go out in batch (`sendBatch`, slow-after-enter): they are also counted there.
+  // Rooms and categories go out in a batch (`sendBatch`, slow-after-join): they are counted there too.
   const emLote = conta.session.sendBatch.bind(conta.session)
   conta.session.sendBatch = (async (destino: string, payloads: { t?: string }[]) => {
     if (destino === canal) quantas += payloads.filter((p) => p.t === "channel.meta" || p.t === "channel.category").length
@@ -149,8 +149,8 @@ describe("as salas sem administrador ligado", () => {
     await esperarAsSalas(carla, comum, "a sala chega à Carla pelo Bruno")
     expect(doBruno()).toBeGreaterThan(0)
 
-    // Authority does not pass through those who do not have it: Bruno does not
-    // republish someone else's founding, and is not owner in anyone's eyes.
+    // Authority does not pass through someone who lacks it: Bruno does not
+    // republish someone else's founding, and becomes owner in nobody's eyes.
     expect(carla.session.founderOf(comum)).not.toBe(bruno.address)
     expect(bruno.session.founderOf(comum)).toBe(ana.address)
   }, 120_000)
@@ -160,7 +160,7 @@ describe("as salas sem administrador ligado", () => {
     const [ana, bruno] = await duasContas(servidor)
     const comum = await salaComumArrumada(servidor, ana, bruno)
 
-    // The house is empty: it is the middle of the night, and it is the phone of whoever arrives.
+    // The house is empty: it is the small hours, and it is the newcomer's phone.
     ana.session.disconnect()
     bruno.session.disconnect()
     bruno.session.antiEntropiaLigada = false
@@ -168,7 +168,7 @@ describe("as salas sem administrador ligado", () => {
     await carla.session.ensureCommonRoom()
     await ate(() => carla.session.channels.includes(comum), "a Carla entra sozinha", 30_000)
 
-    // Bruno connects, and he does not manage. Ana stays offline.
+    // Bruno, who is not an admin, connects. Ana stays offline.
     await bruno.session.connect()
     await esperarAsSalas(carla, comum, "a sala chega à Carla pelo Bruno, quando ele se liga")
     expect(carla.session.founderOf(comum)).not.toBe(bruno.address)
@@ -180,7 +180,7 @@ describe("as salas sem administrador ligado", () => {
     const canal = await canalComTodos(servidor, ana, [bruno])
     await ana.session.upsertCategory(canal, { category: "Adega", position: 1 })
     await ana.session.upsertRoom(canal, { room: "prensa", name: "prensa", category: "Adega" })
-    // Bruno only invites: he does not manage the channel or assign roles, so his cascade carries nothing.
+    // Bruno only invites: he does not arrange the channel or manage roles, so his cascade carries nothing.
     await ana.session.defineRole(canal, { role: "porteiro", name: "Porteiro", powers: ["convidar"] })
     await ana.session.assignRoles(canal, bruno.address, ["porteiro"])
     await ate(() => bruno.session.rolesFor(canal, bruno.address).includes("porteiro") && nomesDasSalas(bruno, canal).includes("prensa"), "o Bruno é porteiro e tem as salas")
@@ -221,7 +221,7 @@ describe("as salas sem administrador ligado", () => {
     await carla.session.ensureCommonRoom()
     await ate(() => carla.session.channels.includes(comum), "a Carla entra", 30_000)
     await esperarAsSalas(carla, comum, "a sala chega à Carla")
-    // Bruno's rotation waits at most `REVEZAMENTO_DAS_SALAS_MS.ate`, plus margin.
+    // Bruno's fallback waits at most `REVEZAMENTO_DAS_SALAS_MS.ate`, plus margin.
     await new Promise((resolve) => setTimeout(resolve, Session.REVEZAMENTO_DAS_SALAS_MS.ate + 2_000))
     expect(doBruno()).toBe(0)
   }, 120_000)

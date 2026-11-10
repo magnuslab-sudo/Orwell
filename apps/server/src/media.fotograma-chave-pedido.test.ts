@@ -8,8 +8,8 @@ import { INTERVALO_DO_FOTOGRAMA_CHAVE_PEDIDO, MotorDeMedia, RecusaDeMedia } from
  *
  * Against a real mediasoup worker, like `media.chave-do-ecra.test.ts`.
  * Without a browser there is no RTP: we count what the engine ASKS
- * (`requestKeyFrame`). The periodic screen clock is turned off here
- * (`intervaloDaChaveDoEcra: 0`) so the count is only from requests.
+ * (`requestKeyFrame`). The periodic screen timer is turned off here
+ * (`intervaloDaChaveDoEcra: 0`) so the count covers only the requests.
  */
 
 let motor: MotorDeMedia
@@ -71,7 +71,7 @@ describe("o fotograma-chave a pedido de quem vê", () => {
     const antes = motor.chavesPedidasPorQuemVe
     const t0 = 1_000_000
     expect(motor.pedirFotogramaChave(outro, recepcao.id, consumido.id, t0)).toBe(true)
-    // Ten in a burst in the same second: none follow.
+    // A burst of ten in the same second: none goes through.
     for (let i = 1; i <= 10; i++) expect(motor.pedirFotogramaChave(outro, recepcao.id, consumido.id, t0 + i * 90)).toBe(false)
     expect(motor.pedirFotogramaChave(outro, recepcao.id, consumido.id, t0 + 999)).toBe(false)
     expect(motor.pedirFotogramaChave(outro, recepcao.id, consumido.id, t0 + 1000)).toBe(true)
@@ -98,7 +98,7 @@ describe("o fotograma-chave a pedido de quem vê", () => {
     const antes = motor.chavesPedidasPorQuemVe
     // The intruder with the other's transport: the lock of `#meuTransporte`.
     expect(() => motor.pedirFotogramaChave(intruso, recepcao.id, consumido.id)).toThrow(RecusaDeMedia)
-    // The intruder with THEIR transport and the consumer of the other: not from that transport.
+    // The intruder with ITS OWN transport and the other's consumer: it does not belong to that transport.
     expect(motor.pedirFotogramaChave(intruso, doIntruso.id, consumido.id)).toBe(false)
     expect(motor.chavesPedidasPorQuemVe).toBe(antes)
     // And the owner can still ask.

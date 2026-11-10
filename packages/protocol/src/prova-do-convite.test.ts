@@ -4,7 +4,7 @@ import { toBase64 } from "./canonical.js"
 import { chaveDaProvaDoConvite, provarCodigoDoConvite, verificarProvaDoConvite } from "./prova-do-convite.js"
 
 /**
- * The proof of an invite code (1.0 "Arca", slice 2). What matters: the key
+ * The proof of an invite code (1.0 "Arca", slice 2). What is pinned: the key
  * comes from the code and only the code; the proof is valid for THIS request and
  * this account and no other; and what sits in the database (the hash and public
  * key) does not sign anything.

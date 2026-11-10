@@ -82,7 +82,7 @@ describe("o vídeo no esquema de hoje", () => {
     })
     expect(autoria.m).toEqual(resumosDosAnexos(normal))
     expect(verificarAutoria("!c:orwell.pt", "@ana:orwell.pt", { ...normal, autoria }).ok).toBe(true)
-    // Another bytes checksum gives another m: the bytes of another video do not pass through these.
+    // A different digest of the bytes gives a different m: another video's bytes do not pass for these.
     const outro = Payload.parse({ ...POST, media: [{ ...ANEXO_DE_VIDEO, partes: { ...ANEXO_DE_VIDEO.partes, sha256: "B".repeat(43) } }] })
     expect(resumosDosAnexos(outro as Record<string, unknown>)).not.toEqual(autoria.m)
   })
@@ -118,7 +118,7 @@ describe.each(["0.5.7", "0.7.2", "0.8.0"] as const)("um cliente %s", (versao) =>
 
 describe("a autoria convive com a 0.8.0 (a forma assinada não mudou)", () => {
   /**
-   * `autoria.forma.test.ts` ties the form of each schema with authorship to
+   * `autoria.forma.test.ts` pins the form of each schema with authorship to
    * `Autoria.v`. The two new fields on `Attachment` changed the fingerprints of
    * `message`, `post` and `space.meta`, and the version did NOT bump. The reason,
    * proved here:
@@ -128,7 +128,7 @@ describe("a autoria convive com a 0.8.0 (a forma assinada não mudou)", () => {
    * 2. On attachments in `attachments` and `media`, the signed form stores only
    *    `name` and `mediaType`. A post with video has the same signed form
    *    normalized by 0.8.0 (which drops `poster` and `partes`) and by this one.
-   *    Therefore 0.8.0 verifies the authorship of a report with video.
+   *    Therefore 0.8.0 verifies the authorship of a relayed copy with video.
    *
    * The `m` still covers the entire attachment. A 0.8.0 client never checks it
    * on a video, because a video attachment has no bytes in `inline`.

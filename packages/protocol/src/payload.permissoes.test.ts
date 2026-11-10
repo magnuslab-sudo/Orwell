@@ -7,8 +7,8 @@ import { PODERES_ANTIGOS } from "./permissoes.js"
 /**
  * The format of the permissions model (1.2, section 4.2 of the parity plan): new
  * names at the end of `POWERS`, the `rank` in `role.define`, and `perms` in
- * `channel.meta` and `channel.category`. Locks the round trip, downgrade to a
- * 1.1.0 client, and a malformed value doesn't take the record with it.
+ * `channel.meta` and `channel.category`. Pins the round trip, the downgrade to a
+ * 1.1.0 client, and a malformed value not taking the record down with it.
  */
 
 const bytes = (valor: unknown): Uint8Array => new TextEncoder().encode(JSON.stringify(valor))

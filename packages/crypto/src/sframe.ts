@@ -100,10 +100,10 @@ export async function deriveSframeKey(session: GroupSession, keyId: number, send
 
 /**
  * The `keyId` is the MLS epoch truncated to 16 bits, so it repeats after
- * 65,536 member changes in the same channel. It does not choose a key, the
- * identity of a key is its material, and that is how the sender and receivers
- * decide, but at that point the header starts saying a number that was already
- * used. It is noted because this is the kind of thing found out late.
+ * 65,536 member changes in the same channel. It does not select a key (a key's
+ * identity is its material, and that is how the sender and receivers
+ * decide), but at that point the header starts showing a number that was already
+ * used. Noted here because this is the kind of thing you find out late.
  *
  * Header: keyId(u16) senderId(u16) counter(u48), big-endian, unencrypted but
  * authenticated as AAD. The SFU needs the key and sender ids to know it is
@@ -125,31 +125,31 @@ export interface FrameHeader {
 }
 
 /**
- * Plaintext byte format of the codec (version 1) for video.
+ * The format with the codec bytes in the clear (version 1), for video.
  *
  * **Why.** The SFU (mediasoup, `RTC::RTP::Codecs::VP8::Parse`) and Chrome's RTP
  * unpacker decide if a packet starts a keyframe by checking bit 0 of the FIRST
  * byte of the VP8 frame (RFC 6386, section 9.1). With the entire frame encrypted
  * and the SFrame header at the front, that byte was the high byte of `keyId`: in
- * an epoch below 256, all frames looked like keys; between 256 and 511, none did.
+ * an epoch below 256, all frames looked like keyframes; between 256 and 511, none did.
  * A viewer joining mid-screen received differential frames treated as keyframes,
  * the decoder applied them over an image that was never complete, and no one
  * requested a keyframe (PLI) because Chrome saw nothing missing. That was the
- * pixelated screen sharing on November 2, 2026.
+ * "pixelated" screen share of 2 November 2026.
  *
- * **How.** The first `n` bytes of the frame go plaintext, the same ones Jitsi
- * and the WebRTC end-to-end cipher sample leave (see `bytesEmClaroDoVp8`), and
- * the header moves to the END, where it does not interfere with the SFU. The
- * plaintext bytes enter the additional authenticated data for AES-GCM: changing
- * them rejects the frame.
+ * **How.** The first `n` bytes of the frame go in the clear, the same ones Jitsi
+ * and the WebRTC end-to-end encryption sample leave (see `bytesEmClaroDoVp8`), and
+ * the header moves to the END, where it does not get in the SFU's way. The
+ * plaintext bytes go into the AES-GCM additional data: altering
+ * them makes the frame fail.
  *
  *   [ n bytes of VP8 plaintext ][ ciphertext + tag ][ keyId u16 · senderId u16 · counter u48 · n u8 · 0xAF · 0x01 ]
  *
- * **What stays visible** to whoever forwards: whether the frame is a key,
+ * **What stays visible** to whoever forwards: whether the frame is a keyframe,
  * the image dimensions and the size of the first partition. Nothing of the content.
  *
  * Audio does not change: no plaintext bytes, the sender writes version 0 as
- * always, and a 1.0.5 receiver can still open it.
+ * before, and a 1.0.5 receiver can still open it.
  */
 const TRAILER_BYTES = 13
 const MARCA_DO_TRAILER = 0xaf
@@ -158,9 +158,9 @@ const TAG_BYTES = 16
 
 interface Enquadramento {
   header: FrameHeader
-  /** How many bytes at the front go plaintext. Zero in the old format. */
+  /** How many bytes at the front go in the clear. Zero in the old format. */
   claro: number
-  /** Where the authenticated bytes that do not encrypt are (header or trailer). */
+  /** Where the authenticated but unencrypted bytes are (header or trailer). */
   aad: Uint8Array
   cifrado: Uint8Array
 }
@@ -185,8 +185,8 @@ function enquadramentoAntigo(frame: Uint8Array): Enquadramento | undefined {
  * The new format: trailer at the end, with marker and version in the last
  * two bytes.
  *
- * The marker exists so an old frame does not accidentally read as new: the last
- * byte of an old frame is a GCM tag, random. With marker and version, a mistake
+ * The marker exists so an old frame is not read as new by accident: the last
+ * byte of an old frame is part of the GCM tag, so it is random. With marker and version, a mistake
  * costs one decrypt attempt per 65,536 frames, and `SframeReceiver.decrypt`
  * then tries the old format.
  */
@@ -215,12 +215,12 @@ export function readHeader(frame: Uint8Array): FrameHeader | undefined {
 }
 
 /**
- * How many bytes of a VP8 frame go plaintext.
+ * How many bytes of a VP8 frame go in the clear.
  *
- * A 3-byte tag on any frame, and on a keyframe 7 more: the start code and
+ * The 3-byte frame tag on any frame, and 7 more on a keyframe: the start code and
  * dimensions, which Chrome's unpacker reads (RFC 6386, section 9.1). Same rule
- * as Jitsi and the WebRTC end-to-end cipher sample. Read from the frame itself,
- * not from the WebRTC `type`, so the rule is one and the same on both sides and
+ * as Jitsi and the WebRTC end-to-end encryption sample. Read from the frame itself,
+ * not from the WebRTC `type`, so there is a single rule on both sides and
  * across all three engines.
  */
 export function bytesEmClaroDoVp8(frame: Uint8Array): number {
@@ -246,18 +246,18 @@ function nonceFor(salt: Bytes, counter: number): Bytes {
  * force a rekey well before the 2^48 header limit.
  *
  * **And "the sender" is not just this object: it is the account, across all
- * application restarts.** The media key derives from the MLS epoch and leaf
+ * app restarts.** The media key derives from the MLS epoch and leaf
  * index, and neither changes when someone closes the window and comes back. A
- * sender built with zero at the start would then repeat all nonces from the
- * previous call with the same key. That is why the initial counter comes in
- * from outside, and whoever picks it reserves it in a place that survives the
- * restart, see `reservarContadorSframe`.
+ * sender that started at zero would then repeat every nonce from the
+ * previous call under the same key. That is why the initial counter is passed
+ * in from outside, and the caller that picks it reserves it somewhere that survives the
+ * restart (see `reservarContadorSframe`).
  *
- * The symptom was worse than the failure seemed to suggest: `SframeReceiver`
+ * The symptom was worse than the bug suggested: `SframeReceiver`
  * rejects a counter it has seen before, and also rejects those that fall behind
  * its window (see `SframeReceiver.WINDOW`). A user who reloaded the app in the
- * middle of a call came back with the counter at zero and went silent to others,
- * with the connection still up and the card on screen. Three people, one reloads,
+ * middle of a call came back with the counter at zero and went silent to the others,
+ * with the connection still up and their tile on screen. Three people, one reloads,
  * two hear each other.
  */
 export class SframeSender {
@@ -267,14 +267,14 @@ export class SframeSender {
     private readonly key: SframeKey,
     /**
      * Where it starts counting. Zero is only safe for a sender that never used
-     * this key, which, after a restart, cannot be assumed.
+     * this key, which cannot be assumed after a restart.
      */
     contadorInicial = 0,
   ) {
     this.#counter = contadorInicial
   }
 
-  /** For whoever reserves blocks to know how far this sender has already gone. */
+  /** Lets the code that reserves blocks know how far this sender has already got. */
   get counter(): number {
     return this.#counter
   }
@@ -284,8 +284,8 @@ export class SframeSender {
   }
 
   /**
-   * @param emClaro how many bytes from the front stay plaintext (authenticated). Zero,
-   * for audio, is the old format always; video passes `bytesEmClaroDoVp8`. See
+   * @param emClaro how many bytes at the front stay in the clear (authenticated). Zero,
+   * for audio, is the usual format; video passes `bytesEmClaroDoVp8`. See
    * `TRAILER_BYTES`.
    */
   async encrypt(plaintext: Bytes, emClaro = 0): Promise<Bytes> {
@@ -356,18 +356,18 @@ export class SframeReceiver {
    * 30): the window of 128 covered little more than ONE SECOND of stream. One
    * second is not enough for a keyframe. A keyframe is ten to twenty times larger
    * than a normal frame, travels split into many packets and is the first to
-   * delay when bandwidth tightens, and arriving outside the window it gets
-   * rejected as a repeat, silently: no error, no log. On the viewer side, the
-   * image freezes on the last good one and stays that way until the next keyframe,
-   * which by the same path can also be lost. On a shared screen, which only
-   * refreshes when something changes, that reads as a failure.
+   * be delayed when bandwidth tightens, and if it arrives outside the window it gets
+   * rejected as a replay, silently: no error, no log. On the viewer side, the
+   * image freezes on the last good frame and stays that way until the next keyframe,
+   * which can be lost the same way. On a shared screen, which only
+   * refreshes when something changes, that looks like a breakdown.
    *
    * 1024 gives about nine seconds across all three streams together (50 + 30 + 30
    * counters per second since the screen went to 30 frames on 2/11/2026), and
-   * does not weaken anything: each counter is still accepted exactly once, what
-   * changes is how much network misalignment can occur before an honest frame is
-   * treated as an attack. The cost is the mask growing to 1024 bits, shifted once
-   * per frame, which next to one AES-GCM per frame does not register.
+   * does not weaken anything: each counter is still accepted exactly once. What
+   * changes is how much reordering the network can cause before an honest frame is
+   * treated as an attack. The cost is a 1024-bit mask, shifted once
+   * per frame, which is negligible next to one AES-GCM per frame.
    */
   static readonly WINDOW = 1024
 

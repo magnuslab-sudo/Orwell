@@ -15,9 +15,9 @@ import {
 import { ArquivoDeDenuncias, CaixaDeEntrega } from "./denuncia.js"
 
 /**
- * The decision to the reporter (Task 9, article 16, section 5 of the DSA),
+ * The decision sent to the reporter (Task 9, DSA Article 16(5)),
  * end-to-end with real clients: Ana founds the channel, Bruno writes, Carla
- * reports. Someone closes the report (`fechar`, what the VPS script does), and
+ * reports. A person closes the report (`fechar`, what the VPS script does), and
  * the decision goes to Carla's inbox with no delay. Only to Carla.
  *
  * The clock: `Date.now` runs ahead by a skew that only grows. We never wait
@@ -44,8 +44,8 @@ const decididas = new Map<string, Decidida[]>()
 
 beforeAll(async () => {
   vi.spyOn(Date, "now").mockImplementation(() => relogioReal() + desvio)
-  // Copy to the founder with no delay: so Ana has a full inbox, and it shows the
-  // decision does not arrive there.
+  // The founder's copy with no delay: Ana has a full inbox, which shows the
+  // decision does not end up there.
   servidor = await levantarServidor({ denunciaAtrasoHoras: [0, 0] })
   ;[ana, bruno, carla] = (await contasDeTeste(servidor, ["Ana", "Bruno", "Carla"])) as [ContaDeTeste, ContaDeTeste, ContaDeTeste]
   abertas.push(ana, bruno, carla)
@@ -108,7 +108,7 @@ async function carlaDenunciaOBruno(corpo: string): Promise<number> {
   return nova!.numero
 }
 
-/** All files in the inbox of all accounts, in full. */
+/** The inbox files of every account, in full. */
 function ficheirosDaCaixa(): string[] {
   const pasta = join(pastaDasDenuncias(), "caixa")
   if (!existsSync(pasta)) return []
@@ -144,9 +144,9 @@ describe("a decisão a quem denunciou, com clientes reais", () => {
         expect(evento).not.toContain(proibido)
       }
 
-      // In the vault, once per id, and the id given by seen in the same write. The
-      // `day` is that of `received` (the route saves it with `new Date()`, the real
-      // clock), not the closure day, one day later.
+      // In the vault, once per id, and the id marked as seen in the same write. The
+      // `dia` is that of `recebida` (the route saves it with `new Date()`, the real
+      // clock), not the closing day, one day later.
       const dia = fechada.recebida.slice(0, 10)
       expect(dia).not.toBe(diaUtc(agora))
       const feitas = carla.vault.contents.denunciasFeitas ?? []
@@ -155,7 +155,7 @@ describe("a decisão a quem denunciou, com clientes reais", () => {
       ])
       expect(carla.vault.contents.caixaVista ?? []).toContain(`d-${numero}`)
 
-      // The next read tells the server it has been saved: the server deletes it and never returns it.
+      // The next read tells the server it has been saved: the server deletes it, and it does not come back.
       await carla.session.recolherDenuncias()
       expect(decididas.get("Carla")!.length).toBe(1)
       expect(await decisoesNaCaixa(carla)).toEqual([])
@@ -221,7 +221,7 @@ describe("a decisão a quem denunciou, com clientes reais", () => {
     expect(decididas.get("Carla")!.length).toBe(1)
     expect((carla.vault.contents.denunciasFeitas ?? []).filter((f) => f.numeroLocal === `d-${numero}`).length).toBe(1)
     expect(carla.vault.contents.caixaVista ?? []).toContain(`d-${numero}`)
-    // Mark as read: the next read deletes it on the server and never returns it.
+    // Marked as seen: the next read deletes it on the server, and it does not come back.
     await carla.session.recolherDenuncias()
     expect(await decisoesNaCaixa(carla)).toEqual([])
     expect(decididas.get("Carla")!.length).toBe(1)

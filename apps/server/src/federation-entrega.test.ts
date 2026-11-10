@@ -18,33 +18,33 @@ import { loadOrCreateServerKey, type ServerConfig } from "./config.js"
 import { currentSecond } from "./db.js"
 
 /**
- * The allowlist on the DELIVERY side, the forgotten sister of the key package
+ * The allowlist on the DELIVERY side: the forgotten sibling of the key package
  * route.
  *
- * Audit asked us to look at the route that serves key packages, and that got
- * covered in `federation-keypackage.test.ts`. When mutating `#allowed` to prove
- * those tests, the mutation fell by accident into the OTHER call, the
- * `receive` one, and the entire server test suite passed anyway: one hundred
- * sixty tests, none of them looking at the line that decides who can deliver
- * here. A guard without a test is a guard that the next cleanup erases.
+ * The audit asked us to look at the route that serves key packages, and that got
+ * covered in `federation-keypackage.test.ts`. While mutating `#allowed` to prove
+ * those tests, the mutation landed by mistake on the OTHER call (the `receive`
+ * one), and the whole server suite passed anyway: a hundred and sixty tests,
+ * none of them looking at the line that decides who can deliver here. A guard
+ * without a test is a guard the next cleanup deletes.
  *
- * What it prevents is written in its comment and it is not small. An accepted
- * `receive` does three things, and the third is the one that hurts:
+ * What it blocks is written in its own comment, and it is no small thing. An
+ * accepted `receive` does three things, and the third is the one that hurts:
  *
- *  1. `appendEvent`, writes the event to the database, with retention paying
+ *  1. `appendEvent`: writes the event to the database, with retention paying
  *     for it.
- *  2. `broadcast`, pushes it to all subscribers of the channel.
- *  3. `addChannelPeer`, **enrolls the sender as a peer of that channel**, and
- *     from then on all FUTURE traffic of the channel gets forwarded to it.
+ *  2. `broadcast`: pushes it to all subscribers of the channel.
+ *  3. `addChannelPeer`: **enrolls the origin as a peer of that channel**, and
+ *     from then on all FUTURE traffic of the channel is forwarded to it.
  *
  * The third turns a delivery into a permanent subscription. MLS encryption
- * holds, whoever has no place in the group decrypts nothing, but the server
- * starts sending all channel messages to it, including welcomes, which carry the
- * address of who is entering. Whoever has a domain and a key signs their own way
- * in: the verification key comes from the directory that the sender ITSELF
- * publishes, so the signature proves no legitimacy, only that whoever signed
- * owns the name they said. The allowlist, and only it, separates a peer from a
- * stranger.
+ * holds (whoever has no seat in the group decrypts nothing), but the server
+ * starts sending it every message of the channel, including Welcomes, which carry
+ * the address of whoever is joining. Anyone with a domain and a key signs its own
+ * way in: the verification key comes from the directory the origin ITSELF
+ * publishes, so the signature proves no legitimacy, only that the signer owns
+ * the name it claimed. The allowlist, and only the allowlist, separates a peer
+ * from a stranger.
  */
 
 const NOS = parseServerName("casa.example")
@@ -92,9 +92,9 @@ const CORPO: FederationBody = { channel: CANAL, kind: "application", ciphertext:
 /**
  * An envelope really signed by the key given to it.
  *
- * The key goes into cache BEFORE signing because, without it, the envelope dies
- * in `unknown-key` and the test passed without reaching the allowlist, the
- * right refusal for the wrong reason. It is the same cache that `#ensurePeerKey`
+ * The key goes into the cache BEFORE signing because, without it, the envelope
+ * would die in `unknown-key` and the test would pass without reaching the
+ * allowlist: the right refusal for the wrong reason. It is the same cache that `#ensurePeerKey`
  * would fill by going to the peer's directory over HTTPS, which a test does not
  * do.
  */
@@ -121,7 +121,7 @@ async function entregar(envelope: FederationEnvelope): Promise<number> {
   return resposta.statusCode
 }
 
-/** What the delivery left inside here: events written and peers subscribed. */
+/** What the delivery left behind here: events written and peers enrolled. */
 function rasto(): { eventos: number; pares: string[] } {
   const leitor = generateIdentity(NOS)
   return {
@@ -138,7 +138,7 @@ afterEach(async () => {
 describe("entregar num canal daqui, com a federação LIGADA", () => {
   /**
    * The positive control, and it is not decoration: without it, the tests below
-   * passed the same way if `receive` were broken and refused everyone. Proving a
+   * would pass just the same if `receive` were broken and refused everyone. Proving a
    * door closes requires proving first that it opens.
    */
   it("um par a sério entrega, e fica inscrito no canal", async () => {
@@ -154,9 +154,9 @@ describe("entregar num canal daqui, com a federação LIGADA", () => {
    * The flaw in its exact form: the signature checks out, and that is not what
    * decides.
    *
-   * The stranger signs with their own key, over their own name, and their
+   * The stranger signs with its own key, over its own name, and its
    * directory would confirm it. Everything lines up except the only thing that
-   * matters, they are not a peer.
+   * matters: it is not a peer.
    */
   it("um servidor fora da allowlist não entrega, e não fica inscrito no canal", async () => {
     await montar([PAR])
@@ -164,12 +164,12 @@ describe("entregar num canal daqui, com a federação LIGADA", () => {
 
     const { eventos, pares } = rasto()
     expect(eventos).toBe(0)
-    // What hurts most if this fails: an accepted delivery enrolled them as a peer
-    // of the channel, and all future traffic went to them next.
+    // What hurts most if this fails: an accepted delivery would enroll it as a peer
+    // of the channel, and all future traffic would follow it.
     expect(pares).toEqual([])
   })
 
-  /** Announcing yourself is not the same as entering: a server is not a peer of itself. */
+  /** Claiming to be this server does not get you in: a server is not its own peer. */
   it("um envelope que se diz vindo deste mesmo servidor é recusado", async () => {
     await montar([PAR, NOS])
     const nosso = loadOrCreateServerKey(dataDir)
@@ -198,8 +198,9 @@ describe("entregar num canal daqui, com a federação DESLIGADA", () => {
 
 describe("entregar um commit atrasado, com a federação LIGADA", () => {
   /**
-   * The rule of one commit per epoch is not just the gateway's. A peer delivers
-   * via `receive`, which writes and broadcasts through the same `appendEvent`,    * and if the rule lived in the gateway, a late commit from outside would break
+   * The one-commit-per-epoch rule does not belong only to the gateway. A peer delivers
+   * via `receive`, which stores and broadcasts through the same `appendEvent`,
+   * and if the rule lived in the gateway, a late commit from outside would split
    * the group through the side door, exactly as commits from inside used to.
    */
   it("o segundo commit para a mesma epoch não fica guardado", async () => {
@@ -233,7 +234,7 @@ describe("entregar um commit atrasado, com a federação LIGADA", () => {
   }, 30_000)
 
   it("o mesmo commit entregue outra vez é aceite sem se guardar de novo, e o par deixa de insistir", async () => {
-    // Delivery is at least once: a peer whose response was lost sends again.
+    // Delivery is at-least-once: a peer whose response was lost sends again.
     // With 403, it retried twelve times for a commit already here.
     await montar([PAR])
     const fundacao = await rotateEpoch(await createChannel(generateIdentity(NOS), CANAL))

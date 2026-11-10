@@ -1,6 +1,6 @@
 // The payload.ts from 0.8.0, as released (commit 5004d0b, packages/protocol/src/payload.ts).
-// For compatibility tests only: outside src/, does not enter tsc -b nor dist/.
-// Only change: the import of canonical.js points to src/ (the file has not changed since).
+// For compatibility tests only: it lives outside src/, so it is in neither tsc -b nor dist/.
+// The only change: the canonical.js import points to src/ (that file has not changed since).
 // @ts-nocheck
 import { z } from "zod"
 import { CapacidadesDeAparelho, PAYLOADS_DE_ESTADO } from "./estado.js"
@@ -25,57 +25,57 @@ const MessageId = z.string().min(8).max(64)
  * Bytes written as text, in the same alphabet as the rest of the protocol.
  *
  * Here the narrowness is safe, unlike `NarrowName`: this is not vocabulary
- * that grows, it is an encoding that either works or fails to decode. Rejecting
- * at the sender what the receiver could never decode is catching the defect
- * where someone can see it.
+ * that grows, it is an encoding that is either right or fails to decode.
+ * Rejecting at the sender what the receiver could never decode catches the
+ * defect where someone can see it.
  */
 const Base64Url = z.string().min(1).regex(/^[A-Za-z0-9_-]+$/, "expected unpadded base64url")
 
 /**
  * A category name chosen from a list that will grow over time.
  *
- * **Why not `z.enum` of today's list.** A `z.enum` does not let an unknown value
- * through: it rejects the entire payload, and a rejected payload is silently
- * discarded, counts as an ignored event, and enough of them mark the channel
- * deaf (see `DEAF_FAILURES` in the core), which triggers a reseat and takes
- * the history with it. The cost of one future value would become the whole
- * profile, the whole message, or the whole post, just to not draw an icon.
- * Decoration must never kill structure. This is the argument that `ROLE_COLOURS`
- * already made, and this type applies it where it was missing.
+ * **Why not `z.enum` of today's list.** A `z.enum` does not just drop a value
+ * it does not know: it rejects the ENTIRE payload, and a rejected payload is
+ * silently discarded, counts as an ignored event, and a run of them marks the
+ * channel deaf (see `DEAF_FAILURES` in the core), which triggers a reseat and
+ * takes the history with it. One future value would cost the whole profile,
+ * the whole message or the whole post, all to avoid drawing one icon.
+ * Decoration must never kill structure. `ROLE_COLOURS` already made this
+ * argument, and this type applies it where it was missing.
  *
  * **What this prevents, then.** Garbage, and nothing else. A free string here
  * would accept an entire `style`, a `url(...)`, or half a megabyte of junk in
  * a field whose content is always a word. The reader still judges the value
- * against the list they know and treats the rest as absent, that is where the
- * decision belongs, because that is where you know what the version can draw.
+ * against the list it knows and treats the rest as absent. That is where the
+ * decision belongs, because that is where the version knows what it can draw.
  *
  * **The limits are loose on purpose**, and more than `colour`'s: a colour is
  * always a short word and always a word, a file format is not. A future name
- * that does not pass here is a rejected payload, that is, the bug again, but
- * rarer and harder to find. Digits went in for exactly that reason, not by
- * choice: the first real name invented to test this was `modelo3d`, and the
- * earlier version of this format rejected it. If a random example did not fit,
- * the real ones would not either.
+ * that does not pass here is a rejected payload, that is, the same bug again,
+ * only rarer and so harder to find. Digits went in for exactly that reason, not
+ * by taste: the first name made up in earnest to test this was `modelo3d`, and
+ * the earlier version of this format rejected it. If an example picked at
+ * random did not fit, the real ones would not either.
  *
  * The rule for whoever adds a name to the list this field draws from: one word
  * only, starting with a letter, ASCII lowercase and digits, up to twenty four
- * characters. No spaces, no hyphens, no dots, `liberapay` and `kofi` already
- * show the convention. A compound name is written as one.
+ * characters. No spaces, no hyphens, no dots: `liberapay` and `kofi` already
+ * show the convention. A compound name is written as one word.
  *
  * **When NOT to use this.** When the list names a structural choice in the
- * product and not a thing in the world, the number of cases is defined by us
- * and not by reality, so it does not grow by itself. See `channel.meta.kind`,
- * which stays closed for that reason and says so in the place.
+ * product and not a thing in the world. Then we define the number of cases,
+ * not reality, so it does not grow by itself. See `channel.meta.kind`, which
+ * stays closed for that reason and says so where it is defined.
  */
 const NarrowName = z.string().regex(/^[a-z][a-z0-9]{1,23}$/)
 
 /**
  * An account address, `@<id>:<servidor>`, written as text.
  *
- * Format only, and strict: no spaces, a `@` at the front and a `:` to separate. Real
- * validation (the server, the key digest) is in `parseAddress`, which the caller
- * invokes; here we just prevent an address field from accepting anything else,
- * or half a megabyte of noise.
+ * Format only, and strict: no spaces, a `@` at the front and a `:` as separator.
+ * Real validation (the server, the key digest) is done by `parseAddress`, which
+ * whoever uses the address calls; here we only stop an address field from
+ * carrying anything else, or half a megabyte of noise.
  */
 const UserAddressText = z
   .string()
@@ -136,42 +136,47 @@ export type Attachment = z.infer<typeof Attachment>
  * into a page that is otherwise sealed.
  */
 /**
- * The permissions a role can grant, and their nature.
+ * The powers a role can grant, and their nature.
  *
- * `expulsar` stands alone on the encryption side: once done, it removes the leaf from the
- * MLS tree and advances the epoch, and no one undoes it. The others are convention that
- * honest clients apply. Exported from here, not copied to each layer, because the interface
- * must separate the two and a second hand-written list would end up disagreeing with this.
+ * `expulsar` stands alone on the cryptography side: once done, it cuts the leaf
+ * from the MLS tree and advances the epoch, and no one undoes it. The others
+ * are convention that honest clients apply. Exported from here, not copied to
+ * each layer, because the interface must separate the two and a second
+ * hand-written list would end up disagreeing with this one.
  *
- * `eliminar` came last and is the most serious on the list: it ends the channel for
- * everyone, posting `space.removed`. It deserves its own entry instead of coming attached
- * to `renomear`, whoever tidies the sidebar is not, by that fact, who decides the channel
- * ceases to exist. And it is assignable, which is half the request that "only the
- * administrator" did not meet: whoever founds and whoever has `admin` get it free, as they
- * get all of them, and any role can take it.
+ * `eliminar` came last and is the most serious on the list: it ends the channel
+ * for everyone, posting `space.removed`. It deserves its own entry instead of
+ * riding along with `renomear`: whoever tidies the sidebar is not, for that
+ * reason, the one who decides the channel stops existing. And it is assignable,
+ * which is the half of the request that "only the admin" did not meet: the
+ * founder and whoever has `admin` get it for free, as they get every power, and
+ * any role can carry it.
  *
- * Despite its weight, it is convention like the other three: an altered client ignores the
- * tombstone and keeps what it had. The role editor note says so, and must keep saying it.
+ * Despite its weight, it is convention like the other three: an altered client
+ * ignores the tombstone and keeps what it had. The role editor note says so,
+ * and must keep saying it.
  *
- * `fixar` is the lightest of all: it puts a message at the top of the room, and removes it
- * from there. Convention like the others, with the particularity of being the only one
- * whose undo is the SAME gesture, unpinning is not repairing damage, it is the other half
- * of the permission. It does not go in `IRREVERSIBLE_POWERS` for this reason, and does not
- * go in `CRYPTOGRAPHIC_POWERS` because the room key is the channel key: whoever is there
- * reads the pinned message whether it is pinned or not. Pinning tidies, it does not
- * protect.
+ * `fixar` is the lightest of all: it puts a message at the top of the room, and
+ * takes it down. Convention like the others, with the quirk that it is the only
+ * one whose undo is the SAME gesture: unpinning does not repair damage, it is
+ * the other half of the power. It is not in `IRREVERSIBLE_POWERS` for this
+ * reason, and not in `CRYPTOGRAPHIC_POWERS` because the room key is the channel
+ * key: whoever is there reads the pinned message whether it is pinned or not.
+ * Pinning tidies, it does not protect.
  *
- * `atender` is the newest, and it governs ticket rooms: take a ticket for yourself, say
- * what state it is in, and close it. Convention like `convidar`, `renomear` and `mover`,  * an altered client writes whatever state it likes, and what stops it from working is every
- * honest client refusing to count what came from whoever does not have it. See `ticketsOf`,
- * in the core, which is where that discount happens.
+ * `atender` is the newest, and it governs ticket rooms: claim a ticket, say
+ * what state it is in, and close it. Convention like `convidar`, `renomear` and
+ * `mover`: an altered client writes any state it wants, and what stops that
+ * from counting is every honest client refusing to count what came from
+ * someone without the power. See `ticketsOf`, in the core, which is where that
+ * filtering happens.
  *
- * The person who opened the ticket changes the state of THEIR ticket without needing it.
- * It is not an exception to the rule, it is the scope of it: `atender` is the permission
- * to act on OTHERS' tickets, and whoever wrote the report never needed a license to say it
- * is already resolved.
+ * Whoever opened the ticket changes the state of THEIR ticket without needing
+ * the power. It is not an exception to the rule, it is the scope of it:
+ * `atender` is the power to touch OTHER people's tickets, and whoever filed the
+ * complaint never needed permission to say it is resolved.
  *
- * Add at the END, always. The order of this list is the order permissions are read on
+ * Always add at the end. The order of this list is the order powers appear on
  * screen, and `powersOf` filters by it.
  */
 export const POWERS = ["expulsar", "convidar", "renomear", "mover", "eliminar", "fixar", "atender"] as const
@@ -185,19 +190,21 @@ export const CRYPTOGRAPHIC_POWERS: readonly Power[] = ["expulsar"]
  *
  * It is not the same question as `CRYPTOGRAPHIC_POWERS`, and that is why it is
  * another list. That one asks what the cipher guarantees against an altered
- * client; this one asks what happens to whoever obeys. `expulsar` advances the
+ * client; this one asks what happens to clients that obey. `expulsar` advances the
  * epoch and locks out whoever left; `eliminar` posts the tombstone and every
  * honest client drops the channel and deletes what it had of it. Neither has an
  * inverse gesture.
  *
  * It exists for one decision only, and it is written in `powersOf`: in a channel
  * whose founding is unknown, grant what can be undone and deny what cannot. The
- * person adding a power to `POWERS` must decide here whether it can be undone,  * and silence counts as "yes", which is the answer that risks giving too much.
+ * person adding a power to `POWERS` must decide here whether it can be undone,
+ * and silence counts as "yes", which is the answer that risks granting too much.
  * So: decide, do not leave it blank.
  *
  * `atender` was decided and stays out: a closed ticket reopens, a claimed
- * ticket is released, and a ticket's state is always the last word of whoever
- * had authority to speak it. Nothing that handling does stays done forever.
+ * ticket is released, and a ticket's state is always the latest statement of
+ * someone with the authority to make it. Nothing `atender` does stays done
+ * forever.
  */
 export const IRREVERSIBLE_POWERS: readonly Power[] = ["expulsar", "eliminar"]
 
@@ -205,12 +212,12 @@ export const IRREVERSIBLE_POWERS: readonly Power[] = ["expulsar", "eliminar"]
  * The colours a role can have. Names, and never values.
  *
  * **Names and not `#rrggbb`, because whoever picks the colour does not know
- * where it will be read.** A hand-picked hex is a hex over the background of
- * who picked it, and the same text shows up later in an 11px sub-line, in a
+ * where it will be read.** A hand-picked hex is chosen against the picker's
+ * own background, and the same text later shows up in an 11px sub-line, in a
  * lighter card and in a property sheet. Publishing the name leaves the choice
- * of what pixel draws it with whoever has the background in front, and that is
- * what lets you measure contrast once, for all surfaces, instead of praying
- * over each new role. The table of values lives in the interface
+ * of pixel to whoever has the background in front of them, and that is what
+ * lets us measure contrast once, for all surfaces, instead of hoping for the
+ * best with each new role. The table of values lives in the interface
  * (`roleColours.ts`), with the measurements.
  *
  * **Closed, for the reason of `POWERS`:** a colour invented by a client is a
@@ -226,9 +233,9 @@ export const IRREVERSIBLE_POWERS: readonly Power[] = ["expulsar", "eliminar"]
  * becomes absent, the same safe filtering that `rolesOf` already does for a
  * power this version does not know.
  *
- * This argument was written here and applied to half a dozen fields that still
- * were `z.enum`, `powers` leading the way. It was pulled out into `NarrowName`,
- * where it lives now, with the criterion for when to use it and when not.
+ * This argument was written here and also applied to half a dozen fields that
+ * were still `z.enum`, `powers` first. It was moved into `NarrowName`, where it
+ * lives now, with the criterion for when to use it and when not.
  *
  * Intentionally no neutral tone: a grey would be indistinguishable from a role
  * with no colour, which is the normal case and must keep reading as no choice.
@@ -242,8 +249,8 @@ export type RoleColour = (typeof ROLE_COLOURS)[number]
  * How long a typing indicator lasts, counted from when it is sent.
  *
  * It lives here, not in the interface, because whoever WRITES the `until` field
- * and whoever READS it to clear the indicator are different layers, two hosts
- * build the payload, the interface is what expires it. Two copies of the number
+ * and whoever READS it to clear the indicator are different layers: two hosts
+ * build the payload, and the interface is what expires it. Two copies of the number
  * would end up disagreeing, and the symptom would be a flickering indicator or
  * one stuck with no visible cause anywhere.
  *
@@ -257,23 +264,22 @@ export const TYPING_TTL_MS = 6_000
 /**
  * The minimum interval between nudges, requested by the owner.
  *
- * Five seconds. It lives here for the same reason as the timeout above: whoever
- * sends enforces it, and whoever receives enforces it, two layers, one number.
- * Without a throttle, the buzz goes back to what it was on MSN, a cheap way to
- * bother someone; with it, it keeps serving to grab the attention of someone
+ * Five seconds. It lives here for the same reason as the timeout above: the
+ * sender throttles itself by it, and the receiver rejects by it. Two layers, one
+ * number. Without a throttle, the buzz goes back to what it was on MSN, a cheap
+ * way to annoy someone; with it, it still serves to get the attention of someone
  * distracted, which is what it is for.
  */
 export const BUZZ_INTERVAL_MS = 5_000
 
 /**
- * Until what age a nudge still vibrates.
+ * How old a nudge can be and still be felt.
  *
- * A buzz has no timer inside itself like the typing indicator, it is an
- * instant, not a state. But a playback that slipped through the cut cannot
- * shake someone's screen with a tap from yesterday, so whoever receives
- * compares `at` with their own clock. Thirty seconds: long enough for clock
- * skew and for slow networks, short enough that nothing from another session
- * leaks through.
+ * Unlike the typing indicator, a buzz carries no deadline: it is an instant,
+ * not a state. But a replay that slipped past the cutoff must not shake
+ * someone's screen with a nudge from yesterday, so the receiver compares `at`
+ * with its own clock. Thirty seconds: long enough for clock skew and slow
+ * networks, short enough that nothing from another session gets through.
  */
 export const BUZZ_MAX_AGE_MS = 30_000
 
@@ -284,8 +290,8 @@ export const LinkCard = z.object({
    * `NarrowName`.
    *
    * It is the most exposed of all: a `LinkCard` travels in every message and
-   * every post that carries an address, so a future type, a `stream`, a
-   * `pdf`, a `map`, rejected here would throw away the text the person wrote
+   * every post that carries an address, so a future type (a `stream`, a
+   * `pdf`, a `map`) rejected here would throw away the text the person wrote
    * around it. Whoever reads a name it does not know draws the card as `link`,
    * which is the general case and the default.
    */
@@ -302,7 +308,7 @@ export type LinkCard = z.infer<typeof LinkCard>
 /**
  * An image picked and ALREADY COMPRESSED, waiting to go into a message.
  *
- * It is not a thread type, it is the form the compose box hands to the host,
+ * It is not a wire type: it is the form the compose box hands to the host,
  * which expands it to `Attachment` before encrypting. It lives here, not in the
  * interface, for a practical reason: the Electron main process builds the
  * message and does not load React, so it cannot import the interface to know
@@ -322,16 +328,16 @@ export interface OutgoingImage {
 /**
  * A file that is NOT an image, picked and waiting to go into a message.
  *
- * The form is exactly like `OutgoingImage`, bytes as data URL, name, type,
- * size, and so it is an alias, not a second declaration: two copies of the
+ * The form is exactly that of `OutgoingImage` (bytes as data URL, name, type,
+ * size), so it is an alias, not a second declaration: two copies of the
  * same format would end up disagreeing, and the one that disagreed would break
- * sends on one side or the other.
+ * sending on one side or the other.
  *
  * What changes is the path to here, and that is why the field is different. An
  * image passes through the compressor before being encrypted; a PDF goes through
  * no compressor, because it already comes compressed and recompressing it only
- * makes it grow. Calling the field that carries a `zip` by the name `images`
- * was writing a lie the next person to read this would believe.
+ * makes it grow. Calling the field that carries a `zip` `images` would be
+ * writing a lie that the next person to read this would believe.
  */
 export type OutgoingFile = OutgoingImage
 
@@ -344,8 +350,8 @@ export interface MessageExtras {
   /**
    * The addresses named in the message, already resolved by the sender.
    *
-   * They arrive ready and are not looked up in the body: same reason the
-   * `mentions` field in the payload already gave, sending a notification must
+   * They arrive ready and are not looked up in the body, for the reason the
+   * payload's `mentions` field already gave: routing a notification must
    * never need to run a regex over the text. See `mentions.ts` in the interface,
    * where names are swapped for addresses on send.
    */
@@ -353,7 +359,7 @@ export interface MessageExtras {
   /**
    * The poll this message is, when it is one.
    *
-   * The body stays and carries the question and options in full, see `Poll`.
+   * The body is still sent and carries the question and options in full (see `Poll`).
    * Optional like everything else here: a text box that knows nothing of polls
    * still builds messages without touching this field.
    */
@@ -363,16 +369,17 @@ export interface MessageExtras {
 /**
  * An invite to a channel, inside the private message that announces it.
  *
- * Not its own payload type, and the reason is survival not housekeeping. A `t`
+ * Not its own payload type, and the reason is survival, not housekeeping. A `t`
  * the receiver does not know fails validation, gets dropped whole, counts as an
- * ignored event, and a series of them marks the channel deaf, triggers a reset
- * and takes the history with it for future secrecy. An optional field inside
+ * ignored event, and a run of them marks the channel deaf, which triggers a
+ * reseat and takes the history with it (forward secrecy). An optional field inside
  * `message` does not run that risk: an old client strips the field it does not
  * know (that is what `z.object` does by default) and shows the message, with
- * the text the inviter wrote. They learn they were invited, even without a
- * button to tap.
+ * the text the inviter wrote. The invitee learns they were invited, even
+ * without a button to tap.
  *
- * And it solves where this has to show up: the Friends conversation list and
+ * And it settles, along the way, where this has to show up: the Friends
+ * conversation list and
  * the conversation itself only draw `message` payloads. An invite that was
  * something else would reach the vault and never reach anyone's eyes.
  */
@@ -397,19 +404,19 @@ export type ChannelInviteReply = z.infer<typeof ChannelInviteReply>
 /**
  * How long an address-based invite stays live: fourteen days.
  *
- * An invite is not a key left in a lock, it is a standing order given to the
- * device of the inviter, who must commit the addition without being there. If
- * accepted three months later, it would admit someone to a channel that is no
- * longer what was shown to them: different people, different talk, and maybe
- * no longer wanted by the inviter.
+ * An invite is not a key left waiting in a lock: it is a standing order given
+ * to the inviter's device, which must commit the Add without the inviter being
+ * there. Accepted three months later, it would admit someone to a channel that
+ * is no longer the one they were shown: different people, different talk, and
+ * maybe no longer what the inviter wants.
  *
- * Fourteen days: wide for someone on holiday or with the app on an old phone,
- * short enough the channel has not changed its people meanwhile. Want more time,
- * invite again, it is a one-click gesture.
+ * Fourteen days: generous for someone on holiday or with the app on an old
+ * phone, short enough that the channel's membership has not changed meanwhile.
+ * Anyone who wants more time invites again: it is a one-click gesture.
  *
- * The deadline is measured against the invite timestamp. On the receiver side
- * it is the other person's clock, and serves only to display; on the accept
- * side it is the timestamp they wrote themselves, and that is what settles it.
+ * The deadline is measured against the invite timestamp. On the receiving side
+ * that is the other person's clock, and it is for display only; on the
+ * admitting side it is the timestamp that device wrote itself, and that one decides.
  */
 export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -418,36 +425,36 @@ export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
  *
  * **Not a new `t`, and the reason is always the same in this file.** A `t` the
  * receiver does not know fails the whole union, the payload is dropped in
- * silence, counts as an ignored event, and ignored ones in a row mark the
- * channel deaf, triggers a reset and takes the history with it for future
- * secrecy. A poll travels as an OPTIONAL field of things that already exist:
+ * silence, counts as an ignored event, and a run of ignored events marks the
+ * channel deaf, which triggers a reseat and takes the history with it (forward
+ * secrecy). So a poll travels as an OPTIONAL field of things that already exist:
  * of `message`, in chat, and of `post`, on the board. Whoever does not know it
  * strips the field (that is what `z.object` does by default) and is left with
  * the text around it.
  *
- * **And the text around it is written to stand alone.** Who publishes the poll
+ * **And the text around it is written to stand alone.** Whoever publishes the poll
  * writes the question and the options also in the message body (or in the post
  * caption), numbered, so a client that cannot draw this still shows what is
- * being asked and what the answers are. Cannot vote with one click, but knows
- * what is happening and can answer in words, the same choice `ChannelInvite`
+ * being asked and what the answers are. It cannot vote with one click, but it knows
+ * what is happening and can answer in words: the same choice `ChannelInvite`
  * makes, and for the same reason.
  *
- * **`.catch(undefined)` at the place this is used, and it is the piece that
+ * **`.catch(undefined)` where this is used, and it is the piece that
  * makes these limits safe.** An optional field with a tight schema inside can
  * still kill the whole payload: if the poll does not validate, the `z.object`
- * holding it fails with it. With the catch, an unreadable poll, from a future
- * version with more options, or from an altered client, means no poll, and the
- * message passes anyway with the text inside. **Decoration must never kill the
- * structure**, and here it is mechanized instead of promised.
+ * holding it fails with it. With the catch, an unreadable poll (from a future
+ * version with more options, or from an altered client) counts as no poll, and
+ * the message still passes with the text inside. **Decoration must never kill the
+ * structure**, and here that is enforced in code instead of promised.
  *
  * The price, stated whole: the sender also loses an invalid poll in silence,
  * because `encodePayload` validates with this same schema. So the sender's check
  * happens BEFORE, where there is a person to tell: the poll creation sheet
- * (`NovaVotacao.tsx`) demands the question and two options written just to let
- * you tap the button. The catch stays to protect only the read side, where no
- * one is there to warn.
+ * (`NovaVotacao.tsx`) requires the question and two options before it even
+ * enables the button. The catch stays to protect only the read side, where
+ * there is no one to warn.
  *
- * What is NOT here, and it is choice not oversight:
+ * What is NOT here, and it is a decision, not an oversight:
  *
  * - **No secret field.** In an MLS group everyone decrypts everything the group
  *   says: a vote traveling as a group event is readable by any member, and a
@@ -455,13 +462,13 @@ export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
  *   attributable, the interface says so in words, and whoever wants a truly
  *   secret vote needs encryption this product does not have. See
  *   `post.reaction.vote`.
- * - **No deadline or close.** No shared clock, each payload timestamp is an
- *   assertion of the sender's clock, and without an arbiter a deadline closes
- *   at different instants on each screen, accepting on one device a vote the
- *   other refuses. A poll stays open while it exists. What it would take to
+ * - **No deadline or close.** There is no shared clock (each payload timestamp
+ *   is only what the sender's clock claims), and without an arbiter a deadline
+ *   would close at different instants on each screen, accepting on one device a
+ *   vote another refuses. A poll stays open while it exists. What it would take to
  *   close it for real is in `docs/PENDENTES.md`.
- * - **No multiple choice.** One vote per person, and counting happens without a
- *   counter for that reason, see `post.reaction.vote`.
+ * - **No multiple choice.** One vote per person, and that is exactly why
+ *   counting needs no counter at all (see `post.reaction.vote`).
  */
 export const Poll = z.object({
   /** The question. One line, and it names the poll across the whole interface. */
@@ -472,11 +479,11 @@ export const Poll = z.object({
    * **Order is the identifier**: a vote names the INDEX of the option, never the
    * text. Text repeats ("Yes" twice by accident) and does not compare well
    * between versions; an index is exact and fits in a number. It is safe because
-   * a poll does not edit: there is no path in this protocol that touches the
+   * a poll cannot be edited: there is no path in this protocol that touches the
    * options after publishing, and `edit` only touches the body and caption.
    *
    * Two at minimum, because a question with one answer is not a question. Ten
-   * at maximum, what fits on a card without becoming a form.
+   * at most, which is what fits on a card without it becoming a form.
    */
   options: z.array(z.string().min(1).max(120)).min(2).max(10),
 })
@@ -487,13 +494,13 @@ export type Poll = z.infer<typeof Poll>
  *
  * A cap, not a preference: the list travels inside the `channel.meta` of the
  * room, and the `channel.meta` is republished to each person who enters the
- * channel (see `republishRooms`). What gets pinned is paid once per room and
- * per arrival.
+ * channel (see `republishRooms`). Whatever is pinned is paid for once per room
+ * and per arrival.
  *
- * Twenty, by the count: twenty entries of `PINNED_BODY_MAX` give a bit over
+ * Twenty, with the maths done: twenty entries of `PINNED_BODY_MAX` give a bit over
  * twenty kilobytes in the worst case, and the normal case is sentences. It is
  * the order of magnitude of a message with a small image, and one order of
- * magnitude below the 124 kB avatars that once filled a real server's base. Above
+ * magnitude below the 124 kB avatars that once filled a real server's database. Above
  * this it stops being a list someone reads and becomes a second history with
  * another name.
  */
@@ -503,35 +510,36 @@ export const MAX_PINNED = 20
  * The default room, as it is before anyone publishes anything to it.
  *
  * The empty identifier is not a pretty name for a room: it is literally the
- * missing `room` field that all messages before rooms had, and it is empty which
- * is why the move to the rooms model needed no migration. It exists always, even
+ * missing `room` field that all messages from before rooms have, and being empty
+ * is why the move to the rooms model needed no migration. It always exists, even
  * without any `channel.meta` to declare it.
  *
  * **It is here, not in the interface, because it stopped being interface-only.**
- * While the default room was just drawn, the factory name could live next to the
- * drawing. Pinning a message in it means PUBLISHING the `channel.meta` it never
+ * While the default room was only drawn, the factory name could live next to the
+ * drawing. Pinning a message in it requires PUBLISHING the `channel.meta` it never
  * had, and a `channel.meta` without a name fails the schema, and one with the
  * wrong name renames the room for everyone when pinning. Both ends need the same
  * value, and two hand-written copies would end up disagreeing: the symptom would
  * be the room changing name, or place in the sidebar, at the first pinned
  * message.
  *
- * `position` negative: while factory it shows at the head, and obeys the
- * published order once someone drags it. Republishing with zero would send it
- * to the middle of the others without anyone having touched it.
+ * Negative `position`: while it is still the factory default it shows at the
+ * top, and it follows the published order once someone drags it. Republishing
+ * it with zero would send it to the middle of the others without anyone having
+ * touched it.
  */
 export const DEFAULT_ROOM = { room: "", name: "geral", position: -1 } as const
 
 /**
  * How many names fit, at most, in the list of who is being viewed (`aVer`).
  *
- * **Exported because it must be READ by who writes it.** The schema refuses a
- * list bigger than this, and `encodePayload` does `Payload.parse`, so passing
+ * **Exported because it must be READ by whoever writes it.** The schema refuses a
+ * list bigger than this, and `encodePayload` does `Payload.parse`, so going over
  * the cap is not a truncated field, it is an exception rising from inside the
  * presence announcement. Whoever serializes the list cuts it at this number, and
  * the number must be the SAME: two constants written by hand, one here and one
  * in `call.ts`, would disagree the day someone changed one, and the way they
- * disagree is the call breaks in silence at the seventeenth name.
+ * would disagree is the call breaking in silence at the seventeenth name.
  *
  * Sixteen because it is the cap of a call like this, and because the list names
  * people whose screen you are watching: half a dozen is the real case.
@@ -539,38 +547,39 @@ export const DEFAULT_ROOM = { room: "", name: "geral", position: -1 } as const
 export const TECTO_DO_AVER = 16
 
 /**
- * The room the presence question says it has, which is not a room at all.
+ * The room the presence question claims to be in, which is no room at all.
  *
- * **This is the guard that protects clients 0.3.3, and lives here because it is
+ * **This is the guard that protects 0.3.3 clients, and it lives here because it is
  * protocol.** The question ("who is in the room?") travels as a `voice.leave`
  * so an old client can receive it without choking (see `quemEsta`, below). In an
  * old client it reads as a goodbye, and a goodbye removes the person from the
  * call roster. The absent `room` reads as `""`, which is exactly the room of a
- * channel call or a direct chat: in those cases a question from our device would
+ * channel call or a direct chat: in those cases a question from one of our devices would
  * erase the OTHER device of the same account from the screen of whoever was
  * there, because rosters are indexed by ACCOUNT address not device address.
  *
  * With a room that cannot exist, the old client's room filter discards it before
- * it reaches the roster, the hangup sound, and the presence map. Nothing is lost
- * by them discarding it: they cannot answer the question anyway.
+ * it reaches the roster, the leave sound and the presence map. Nothing is lost
+ * when it discards it: it cannot answer the question anyway.
  *
- * **It cannot hit a real room, and it does not:** the room identifiers this
+ * **It cannot collide with a real room, and it does not:** the room identifiers this
  * software generates are `forum-word-word` or `contio-word-word` (see
  * `roomIdFromBytes` in `names.ts`), and the empty string is the default room.
  * The `?` does not appear in any of them, and there is no interface that lets
  * you type a room identifier by hand.
  *
  * **And it is RESERVED on input, on the two remote paths where an arbitrary room
- * identifier enters.** No interface writes it is not the same as no path: the
+ * identifier enters.** No interface writing it is not the same as no path: the
  * list of rooms in a channel comes from `channel.meta` messages from other
  * members (`upsertRoom` in `session.ts`), and the `voice.move` is obeyed
  * without checking the room exists (`Call.handleSignal`). Both reject it. In a
- * 0.4.0 nothing would be lost by obeying, the sentinel is just an empty room,  * but whoever went there would start announcing with `room: "?quem"`, and to a
+ * 0.4.0 nothing would be lost by obeying (the sentinel is just an empty room),
+ * but whoever went there would start announcing with `room: "?quem"`, and to a
  * 0.3.3 victim in the same room those announcements read as the goodbye this
  * constant exists to prevent.
  *
  * A 0.4.0 client handles the question BEFORE the room filter, as it handles the
- * `voice.move`, and keeps answering it. See `Call.handleSignal`.
+ * `voice.move`, and so it still answers it. See `Call.handleSignal`.
  */
 export const SALA_DA_PERGUNTA = "?quem"
 
@@ -580,15 +589,15 @@ export const SALA_DA_PERGUNTA = "?quem"
  * **The copy is not decoration, it is the only way a pinned message exists for
  * whoever arrives.** The original body was encrypted in an earlier epoch and
  * forward secrecy guarantees whoever joined later will never open it; and even
- * for who was already there, the channel history has a cap and dumps the oldest
- *, pinning a January message and coming back in March gives a list of
+ * for whoever was already there, the channel history has a cap and drops the
+ * oldest: pin a message in January, come back in March, and you get a list of
  * identifiers pointing to nothing. Saving the text next to the identifier is
  * what makes "pinned" mean something two months later.
  *
- * One thousand characters, and the identifier always travels: who has the
- * original message in the vault reads it in full and by it, and the copy is
- * what is left for who does not have it. A summary is honest, the lie would be
- * an empty list.
+ * One thousand characters, and the identifier always travels: whoever has the
+ * original message in the vault reads it in full from there, and the copy is
+ * what is left for whoever does not have it. An excerpt is honest; the lie would
+ * be an empty list.
  */
 export const PINNED_BODY_MAX = 1_000
 
@@ -597,8 +606,8 @@ export const PINNED_BODY_MAX = 1_000
  *
  * `sender` and `body` are a COPY made by whoever pins it, not an authenticated
  * quote. MLS authenticates the sender of `channel.meta`, that is, who pinned
- * it. Whoever has the original message prefers that. The `id` links them, and
- * travels with the message even when the text does. The copy is what remains
+ * it. Whoever has the original message prefers it. The `id` is what links them,
+ * which is why it travels even when the text travels too. The copy is what remains
  * for people who don't have the original, which is everyone who arrived later.
  *
  * `pinnedBy` is explicit, not inferred from the sender. The list is republished
@@ -614,7 +623,7 @@ export const PinnedMessage = z.object({
   body: z.string().max(PINNED_BODY_MAX),
   sentAt: Timestamp,
   pinnedAt: Timestamp,
-  /** Address of whoever pinned it. See above: we don't infer this from the sender. */
+  /** Address of whoever pinned it. See above for why it is not taken from the sender. */
   pinnedBy: z.string().max(128),
 })
 export type PinnedMessage = z.infer<typeof PinnedMessage>
@@ -625,8 +634,8 @@ export type PinnedMessage = z.infer<typeof PinnedMessage>
  * **Optional field inside `message`, never a new `t`.** It follows the path of
  * `ChannelInvite`, for the same survival reason: a `t` the receiver doesn't
  * know fails validation, gets discarded in full, counts as an ignored event,
- * and a series of them marks the channel deaf, triggering a reseat and pulling
- * history in for forward secrecy. An optional field carries no such risk: an
+ * and a series of them marks the channel deaf, triggering a reseat that takes
+ * the history with it (forward secrecy). An optional field carries no such risk: an
  * old client strips what it doesn't know (that's what `z.object` does by
  * default) and shows the message.
  *
@@ -637,11 +646,11 @@ export type PinnedMessage = z.infer<typeof PinnedMessage>
  * underneath: a conversation.
  *
  * **One flag, not three event types.** Every ticket message carries `id`, which
- * links it to the others. What makes it stand out is what it carries in
- * addition. With `subject`, it opens; with `state` or `assignee`, it decides;
+ * links it to the others. What sets it apart is what it carries ON TOP of
+ * that. With `subject`, it opens; with `state` or `assignee`, it decides;
  * with nothing else, it's a reply. Three optional fields in one object instead
  * of three different objects, because all three happen in the same place and
- * the same message can do two at once, taking a ticket is saying who will
+ * the same message can do two at once: taking a ticket says who will
  * handle it AND that it's now in progress.
  *
  * **Whoever opened it and whoever wrote it are always the sender authenticated
@@ -656,8 +665,9 @@ export const TicketMark = z.object({
    *
    * The first message is what names it, and the name doesn't repeat on every
    * line. Repeating it would let two versions of it travel and force a choice
-   * between them. To change the subject, change it where it was said, that's
-   * an edit. See `edit`, and see what's left to do in `docs/PENDENTES.md`.
+   * between them. Whoever wants to change the subject changes it where it was
+   * said, which is an edit. See `edit`, and see what's left to do in
+   * `docs/PENDENTES.md`.
    */
   subject: z.string().max(120).optional(),
   /**
@@ -665,12 +675,12 @@ export const TicketMark = z.object({
    *
    * `open` · `working` · `closed`. **Narrow name, not `z.enum`**, see
    * `NarrowName`, and see what `powers` and `colour` already decided for the
-   * same reason: a state invented by a later version can't fail this message,
-   * because failing it here would cost the TEXT the person wrote rather than
-   * fail to paint a label. Decoration can never kill structure.
+   * same reason: a state invented by a later version can't reject the message,
+   * because rejecting it here would cost the TEXT the person wrote, all to avoid
+   * painting a label. Decoration can never kill structure.
    *
-   * The reader judges the value against the list they know and treats the rest
-   * as absent, they keep the previous state instead of inventing one. The
+   * The reader judges the value against the list it knows and treats the rest
+   * as absent: it keeps the previous state instead of inventing one. The
    * decision belongs there, because that's where the version knows what it can
    * draw.
    */
@@ -699,8 +709,8 @@ export type TicketMark = z.infer<typeof TicketMark>
  *
  * Three, not four. A separate "resolved" from "closed" would force users to
  * pick between them every time they close one, and the difference is about
- * process, not outcome. Whoever needs it has the documents and subjects to say
- * it. Add to the END, like the other lists.
+ * process, not outcome. Whoever needs it has roles and subjects to express it.
+ * Add to the END, like the other lists.
  */
 export const TICKET_STATES = ["open", "working", "closed"] as const
 export type TicketState = (typeof TICKET_STATES)[number]
@@ -832,7 +842,8 @@ export const Payload = z.discriminatedUnion("t", [
    *
    * Shakes the other person's window and plays a sound. It works because it's
    * physical: not a notification asking for attention, but a tap on the
-   * shoulder of someone distracted. Only makes sense between two people,    * thirty nudges at once aren't a nudge, they're an alarm, but that's an
+   * shoulder of someone distracted. It only makes sense between two people
+   * (thirty nudges at once aren't a nudge, they're an alarm), but that's an
    * interface rule, not a schema rule: here only the intent travels.
    *
    * **Ephemeral, like the typing signal, and for the same reason taken
@@ -842,8 +853,8 @@ export const Payload = z.discriminatedUnion("t", [
    * shaking their screen. The cut is in `#applyEvent`, before the vault and
    * before the conversation.
    *
-   * `at` is the clock of whoever sends it, so the receiver can reject a nudge
-   * absurdly old that a replay might have let through. Not a cryptographic
+   * `at` is the clock of whoever sends it, so the receiver can reject an
+   * absurdly old nudge that a replay might have let through. Not a cryptographic
    * defense: the same caution as the typing signal's deadline.
    */
   z.object({ t: z.literal("buzz"), at: Timestamp }),
@@ -855,8 +866,8 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * Absent is the default room, like in `message`. Without this, someone
      * typing in a room would appear typing in all other rooms in the same
-     * channel, the cryptographic group is one, and this field splits the
-     * conversations.
+     * channel: there is only one cryptographic group, and this field is what
+     * separates the conversations.
      */
     room: z.string().max(64).optional(),
     until: Timestamp,
@@ -864,19 +875,19 @@ export const Payload = z.discriminatedUnion("t", [
      * What the device that sent this knows how to do (phase 5). Only in the
      * device signal.
      *
-     * The device signal is a `typing` with `until` already past: all clients
-     * have known it forever, none show it (the interface throws away a signal
+     * The device signal is a `typing` with `until` already past: every client
+     * has always known it, none shows it (the interface throws away a signal
      * born expired) and an old client throws this field away without failing
      * the payload, because schemas aren't `strict()`. This is how a device tells
-     * the account's siblings it can enter the account's channel, and that it
-     * proves alive when a sibling asks for a slot. See `#sinalDeAparelho` in
+     * the account's siblings it can enter the account's channel, and how it
+     * proves it is alive when a sibling asks for a place. See `#sinalDeAparelho` in
      * the core.
      */
     capacidades: CapacidadesDeAparelho.optional(),
     /**
-     * Account sync reports (phase S4), in the same vehicle as the device signal:
-     * a `typing` with `until: 0`. A 0.5.7 decrypts it, throws the field away and
-     * shows nothing, and decrypting restores its deafness count. See
+     * Reports from the sync between accounts (phase S4), in the same vehicle as
+     * the device signal: a `typing` with `until: 0`. A 0.5.7 decrypts it, throws
+     * the field away and shows nothing, and decrypting resets its deafness count. See
      * `RelatosNoFio` in `autoria.ts`.
      */
     relatos: RelatosNoFio.optional(),
@@ -917,10 +928,10 @@ export const Payload = z.discriminatedUnion("t", [
      * nothing to say here.
      *
      * Narrow name, not `z.enum`, see `NarrowName`. A future state (an
-     * `ausente`, which is the most obvious missing one) would fail here and
-     * cost the entire profile of whoever published it, name, portrait,
-     * biography, and support links, and the old client would see that person
-     * as someone who never filled anything in. Absent is already the normal
+     * `ausente`, the most obvious one missing) rejected here would not cost the
+     * colour of a dot: it would cost the entire profile of whoever published it
+     * (name, portrait, biography and support links), and the old client would
+     * see that person as someone who never filled anything in. Absent is already the normal
      * case, and an unknown name reads as absent.
      */
     activity: NarrowName.optional(),
@@ -943,9 +954,9 @@ export const Payload = z.discriminatedUnion("t", [
            *
            * This list ages faster than any other in the file: payment methods
            * come and go on a rhythm that's not ours. And the price of a new
-           * name was disproportionately high, the entire profile failed because
+           * name was absurdly out of proportion: the entire profile rejected because
            * someone added a line saying how to receive five euros. Whoever reads
-           * a name they don't know shows the entry as `other`, with the label
+           * a name it doesn't know shows the entry as `other`, with the label
            * the person wrote.
            */
           kind: NarrowName,
@@ -999,15 +1010,15 @@ export const Payload = z.discriminatedUnion("t", [
    * first is what made the categories split: `space.meta` carries the channel icon
    * embedded, and you do not republish an image to say one word. The second is
    * deeper: `removed` in `space.meta` was a reversible field in a message that gets
-   * rewritten. It would take one client that had not seen it change the channel name
-   * with a newer timestamp and `removed` at its default value to resurrect it. Here
+   * rewritten. All it took was one client that had not seen it renaming the channel,
+   * with a newer timestamp and `removed` at its default value, to resurrect it. Here
    * there is no default value to fall back to: the tombstone can only be stated, and
    * once stated it cannot be undone.
    *
-   * No `expulsion` accompanying it, deliberately. Expelling everyone advances the
+   * No `expulsion` goes with it, deliberately. Expelling everyone advances the
    * epoch and closes whatever comes next, but nothing comes after this, so it
    * protects nothing. And it would cost: the tombstone travels INSIDE the group, so
-   * anyone expelled before reading it was left out without ever knowing why, and
+   * anyone expelled before reading it would be left out without ever knowing why, and
    * would see an expulsion where there was the end of a channel.
    */
   z.object({ t: z.literal("space.removed"), removedAt: Timestamp }),
@@ -1016,7 +1027,7 @@ export const Payload = z.discriminatedUnion("t", [
    * "I left this channel: remove my leaf."
    *
    * The twin of `friend.remove`, generalized to any channel, and it exists for the
-   * reason that made this line get written: **MLS does not let anyone remove
+   * reason this line was written: **MLS does not let anyone remove
    * themselves.** A commit that removes the leaf of whoever signs it is invalid
    * (RFC 9420 §12.2, proposal list), so leaving for real always requires ANOTHER
    * member to make the commit. Without this, leaving was a local gesture: the
@@ -1024,7 +1035,7 @@ export const Payload = z.discriminatedUnion("t", [
    * tree for everyone, with the epoch frozen, meaning whoever left could read
    * everything that came next if they had kept the keys.
    *
-   * This is how deleting the account left the person visible in channels: calling
+   * That is why deleting the account used to leave the person visible in channels:
    * `Vault.destroy()` cleaned the vault and nothing else.
    *
    * **What this is, exactly:** an encrypted request to the client of whoever stays,
@@ -1051,7 +1062,7 @@ export const Payload = z.discriminatedUnion("t", [
    * groups, and those continue to be channels like they always were.
    *
    * `room` is a short identifier, chosen by the creator and never shown: the name
-   * changes, it does not, or renaming a room would lose its messages.
+   * changes, the identifier does not, or renaming a room would lose its messages.
    */
   z.object({
     t: z.literal("channel.meta"),
@@ -1072,16 +1083,16 @@ export const Payload = z.discriminatedUnion("t", [
      * and not by reality.
      *
      * This is the second kind. A room either carries application messages or carries
-     * a WebRTC call, and that fork is what all voice signaling assumes. `voice.join`
-     * and its friends exist on one side and not the other. A "forum" or an "bulletin
-     * board" are text rooms with a different layout, and a "lounge" is a voice room
+     * a WebRTC call, and that fork is what all voice signaling assumes: `voice.join`
+     * and the rest exist on one side and not the other. A "forum" or an "announcements"
+     * room are text rooms with a different layout, and a "lounge" is a voice room
      * with different rules: they ask for a display field, not a third `kind`.
      *
      * **What it costs if this reading is wrong, for whoever comes next.** An unknown
      * `kind` rejects the entire `channel.meta`, and with it go the name, category,
      * position and, what matters, the tombstone `removed`. A rejected tombstone
      * resurrects the room, because silence does not propagate. Whoever adds a third
-     * value has, in the same move, to swap this for `NarrowName`. The alternative is
+     * value must, in the same change, swap this for `NarrowName`. The alternative is
      * watching deleted rooms come back on their own.
      */
     kind: z.enum(["text", "voice"]).default("text"),
@@ -1093,22 +1104,22 @@ export const Payload = z.discriminatedUnion("t", [
      * is literally the case it anticipated: it carries application messages like any
      * text room, and what changes is the layout you read them in.
      *
-     * **Why it was not a new `kind`, stated in full.** It is not just that a rejected
-     * `removed` tombstone kills with a rejected `channel.meta`. It is that swapping
+     * **Why it was not a new `kind`, stated in full.** It is not just that the
+     * `removed` tombstone dies with a rejected `channel.meta`. It is that swapping
      * that `z.enum` for an open format today would not save anyone: the clients out
      * there have the `z.enum` they already downloaded, and THEIR validation decides
      * what happens to a room we publish. Today's schema only protects whoever comes
      * next. A new field protects both sides, and protects them now.
      *
      * **What a client that does not know it sees:** a text room, with the ticket
-     * conversation inside, in messages whose body reads itself. It loses the layout
+     * conversation inside, in messages whose body reads on its own. It loses the layout
      * and loses nothing of what was said, which is the right degradation, and it is
      * what `voice.join.muted` already chose.
      *
      * **Narrow name, not `z.enum`**, unlike the `kind` above, and the difference is
-     * what `NarrowName` explains: `kind` names a fork of ours with two branches:
-     * application messages or WebRTC. This list names ways to display, and those
-     * keep appearing. A forum, a bulletin board, a board. Whoever reads a display
+     * what `NarrowName` explains: `kind` names a fork of ours with two branches
+     * (application messages or WebRTC); this list names ways to display, and those
+     * keep appearing: a forum, an announcements board, a board. Whoever reads a display
      * they do not know draws the usual conversation, which is what absent already
      * means.
      *
@@ -1143,8 +1154,8 @@ export const Payload = z.discriminatedUnion("t", [
      * reason always written out in `voice.join.muted`: a `t` the old client does not
      * know fails the entire union, the payload is discarded in silence, counts as an
      * ignored event, and consecutive ignored events mark the channel deaf and trigger
-     * the repair that DELETES HISTORY. A field it does not know drops into its read
-     * with no cost: it still sees the room, just does not know something is pinned
+     * the repair that DELETES HISTORY. A field it does not know costs it nothing on
+     * read: it still sees the room, it just does not know something is pinned
      * there.
      *
      * **ABSENT IS NOT AN EMPTY LIST, and it is the decision that makes this feature
@@ -1154,8 +1165,8 @@ export const Payload = z.discriminatedUnion("t", [
      * of different people, with different responsibilities, and the same form carries
      * both. Without this distinction, renaming the room, or closing it, or dragging it
      * to another category would unpin everything in silence, and whoever renamed it
-     * would never know. Whoever reads keeps what they knew while no one tells them
-     * otherwise; see `#drainRecords` in the core, where the rule holds.
+     * would never know. The reader keeps what it knew until someone tells it
+     * otherwise; see `#drainRecords` in the core, where the rule is enforced.
      *
      * And it is also what spares the old client from knowing about it: it republishes
      * the `channel.meta` without the field, and the pin survives that republication
@@ -1168,7 +1179,7 @@ export const Payload = z.discriminatedUnion("t", [
   }),
 
   /**
-   * A channel category: that it exists, and the order you read it in.
+   * A channel category: that it exists, and the order it is read in.
    *
    * A category is still, above all, the name written in the `category` field of each
    * room, which fills it. What this record adds is the only thing that field cannot
@@ -1177,14 +1188,14 @@ export const Payload = z.discriminatedUnion("t", [
    *
    * Without it, creating an empty category was impossible to express: there was
    * nowhere to write it, and it only came to exist when the first room landed there.
-   * This forced you to create room and category in one gesture, and they are two
+   * That forced you to create room and category in one gesture, and they are two
    * gestures.
    *
    * Not in `space.meta` on purpose, even though it is tempting. `space.meta` carries
    * the channel icon embedded, and republishing it with every category change would
    * send the whole image to everyone each time someone organized the sidebar. Replicated
-   * icons already were almost the entire database of a real server; the mistake does
-   * not repeat for schema convenience.
+   * icons once made up almost the entire database of a real server; we do not
+   * repeat the mistake for schema convenience.
    *
    * `category` is both the name and the key, unlike rooms and roles, where the
    * identifier and the label are different things. It is deliberate and follows from
@@ -1212,8 +1223,8 @@ export const Payload = z.discriminatedUnion("t", [
      * cryptographic group, it is a label inside the channel's group (see `channel.meta`,
      * which already says it). A hidden room still gets messages encrypted with the key
      * everyone has, and an altered client reads them with no effort. What this does is
-     * remove lines from the list of those who do not need them, which is useful and is
-     * all.
+     * remove lines from the list of those who do not need them, which is useful, and
+     * that is all.
      *
      * Real separation is still a separate channel, which is a separate group, with a
      * separate MLS tree. Whoever needs to hide conversations from channel members needs
@@ -1246,10 +1257,10 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * A channel role: name and the responsibilities it grants.
    *
-   * Empty `powers` is what the owner requested first and what's easiest to
-   * lose: a role that grants no management power, just marks that this person
-   * has access to the channel. It's not a form to fill in; it's the thing
-   * itself.
+   * Empty `powers` is the case the owner asked for first and the easiest to
+   * lose: a role that grants no management power and only says that this person
+   * has access to the channel. It's not a list waiting to be filled in; it's the
+   * thing itself.
    *
    * **The four responsibilities are not equal, and the interface must say so.**
    * `expulsar` removes the leaf from the MLS tree, advances the epoch, and the
@@ -1259,7 +1270,7 @@ export const Payload = z.discriminatedUnion("t", [
    * modified client invites anyway, ignores the new name anyway, and refuses to
    * be moved anyway. Promising all four with the same face is promising
    * protection where there is only organization, the same care already written
-   * for public channels in `channel.meta`.
+   * for public rooms in `channel.meta`.
    *
    * Withholding a responsibility is never cryptographic, `expulsar` included:
    * any member can commit a removal, and what stops it from happening is each
@@ -1291,7 +1302,7 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * **And the `enum` saved nothing.** Who decides what a role grants is
      * `rolesOf`, which filters by `POWERS` and never returns a name this
-     * version does not know, the discount happens on read, and it must happen
+     * version does not know: the filtering happens on read, and it must happen
      * there: the reader's filter runs only after the payload reaches the vault,
      * and an `enum` would reject it before that. Refusing here did not protect
      * against granting the unknown; it protected against storing a role.
@@ -1313,13 +1324,13 @@ export const Payload = z.discriminatedUnion("t", [
      * events in a row that marks the channel deaf.
      *
      * **Narrow format, not `z.enum(ROLE_COLOURS)`.** What this field must
-     * prevent is garbage, a free string here would accept an entire `style`, a
+     * prevent is garbage: a free string here would accept an entire `style`, a
      * `url(...)`, or half a megabyte of nothing, and what reaches the screen is
      * chosen by a name. Lowercase ASCII and sixteen characters is enough to name
      * a color and not enough for anything else. The `enum` would be narrower
      * and worse: a future color would reject the payload, and a discarded
-     * `role.define` takes the entire role with it. The reader is who discounts
-     * what it does not know.
+     * `role.define` takes the entire role with it. It is the reader that
+     * discards what it does not know.
      */
     colour: z
       .string()
@@ -1336,9 +1347,9 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * What roles this person holds in this channel.
    *
-   * The whole list, not a change: the latest from the authority wins, and an
+   * The whole list, not a change: the latest from someone with authority wins, and an
    * empty list means "none". An incremental format would require all clients to
-   * have seen every step, and whoever joins mid-call never saw them.
+   * have seen every step, and whoever joins the channel midway never saw them.
    *
    * `admin` is the built-in role, which grants all four responsibilities and
    * also the power to manage roles. It is not defined or deleted, and it is
@@ -1380,24 +1391,24 @@ export const Payload = z.discriminatedUnion("t", [
    * admits it died, and the announcement of the person returning must tear it
    * down to start fresh. But the same frame is also the answer the highest
    * address broadcasts to each arrival, so the lowest can offer, and that
-   * reaches people already connected to him. Without this distinction, either
+   * reaches people already connected to it. Without this distinction, either
    * the return does not connect, or everyone entering breaks every good
    * connection in the room.
    */
   /**
    * `muted` says the microphone of the person announcing is muted.
    *
-   * Optional field in an existing frame, and NEVER a new `t`, the choice is
-   * deliberate and opposite from what seemed tidier. An old client receiving an
-   * unknown `t` fails the entire merge, discards the payload in silence, counts
+   * Optional field in an existing frame, and NEVER a new `t`: the choice is
+   * deliberate and the opposite of what seemed tidier. An old client receiving an
+   * unknown `t` fails the entire union, discards the payload in silence, counts
    * it as an ignored event, and several ignored events in a row mark the
    * channel deaf: the cascade that erased history once. These schemas are not
    * `strict()`, so a field the old client does not know is dropped on read at
-   * no cost, it keeps hearing the call, just not knowing who is muted.
+   * no cost: it keeps hearing the call, just without knowing who is muted.
    *
    * Absent means "unknown", not "speaking". An old client never sends it, and
-   * assuming `false` would put on screen the claim that the person is speaking
-   *, which is precisely the lie this field exists to undo.
+   * assuming `false` would put on screen the claim that the person is speaking,
+   * which is precisely the lie this field exists to undo.
    */
   z.object({
     t: z.literal("voice.join"),
@@ -1416,14 +1427,14 @@ export const Payload = z.discriminatedUnion("t", [
     alone: z.boolean().default(false),
     muted: z.boolean().optional(),
     /**
-     * Which LIFE of this person is this announcement.
+     * Which LIFE of this person this announcement belongs to.
      *
      * A new value each time they join the call, same across all frames of that
      * join. The receiver compares with what it saved: different value is a new
      * session, and what was left from the previous one dies no matter its state;
      * same value is the same announcement repeated, and nothing moves.
      *
-     * It exists for one reason `alone` is not enough. `alone` says "I have no
+     * It exists because `alone` is not enough. `alone` says "I have no
      * peer", which is true both for someone just joining and someone still
      * negotiating, and the difference between the two is the difference between
      * cleaning a phantom and breaking a good negotiation in half. Without this
@@ -1432,8 +1443,8 @@ export const Payload = z.discriminatedUnion("t", [
      * and to no one else.
      *
      * It is not a secret or an identity: it is a serial number for a join,
-     * read only by those already in the group. Whoever fakes it only gets their
-     * own connection remade.
+     * read only by those already in the group. Whoever fakes it only gets a
+     * connection to themselves remade.
      */
     joinId: z.string().max(64).optional(),
     /**
@@ -1445,7 +1456,7 @@ export const Payload = z.discriminatedUnion("t", [
      * call.
      *
      * The case, measured: the connection between two people dies on one side
-     * only, network drop, the connection timer fires. Whoever loses it cleans
+     * only (a network drop, the connection timer firing). Whoever loses it cleans
      * it and reannounces, but with the same `joinId`, because they did not
      * rejoin anywhere: the network fell out from under them. On the other side,
      * the same `joinId` triggers no cleanup, `alone` is false because there is
@@ -1456,10 +1467,10 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * Whoever sees themselves in this list knows their connection no longer
      * exists on the other side, and tears it down. It is the only missing piece,
-     * and no other field tells it.
+     * and it cannot be inferred from any other field.
      *
      * It reveals nothing the reader does not already know: it only reaches those
-     * in the channel, and names people in the same call as them. The cap exists
+     * in the channel, and names people in the same call as the reader. The cap exists
      * because a mesh this size does not grow past half a dozen people.
      */
     reparar: z.array(z.string().max(128)).max(16).optional(),
@@ -1468,14 +1479,14 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * Optional field in an existing frame, for the third time and for the same
      * reason as always: a new `t`, `voice.screen`, would fail the entire
-     * merge in an old client, the payload would be discarded, count as an
+     * union in an old client, the payload would be discarded, count as an
      * ignored event, and ignored events in a row mark the channel deaf and
      * trigger the repair that wipes history.
      *
-     * This field, not the arrival of a track, decides if there is screen on
-     * screen. The video transceiver reserved for this exists on EVERY
+     * This field, not the arrival of a track, decides whether a shared screen
+     * is shown. The video transceiver reserved for this exists on EVERY
      * connection, with or without sharing (see `#buildPeer`), so the other side
-     * always gets a track in that slot, moving, empty, waiting. Drawing it
+     * always gets a track in that slot: muted, empty, waiting. Drawing it
      * without this would put a black rectangle on everyone's screen all the
      * time.
      *
@@ -1487,10 +1498,12 @@ export const Payload = z.discriminatedUnion("t", [
     /**
      * The identifier of the `MediaStream` that carries the screen when it travels with one.
      *
-     * The honest caveat, because this field is optional instead of baked in:
-     * with a reserved transceiver and `replaceTrack`, the band goes on air WITHOUT `msid`,      * the `msid` fixes when the sender is born from a `addTrack(faixa, stream)`,
-     * and changing it afterwards requires renegotiation, which is exactly what
-     * this feature refuses to do. On the other end, `event.streams` arrives empty and there
+     * The honest caveat, and the reason this field is optional instead of the
+     * backbone of the feature: with a reserved transceiver and `replaceTrack`,
+     * the track goes on air WITHOUT `msid` (the `msid` is fixed when the sender is
+     * created by `addTrack(faixa, stream)`, and changing it afterwards requires
+     * renegotiation, which is exactly what this feature refuses to do). On the
+     * other end, `event.streams` arrives empty and there
      * is no id to compare.
      *
      * It stays because it is not always so: a client that renegotiates (none today,
@@ -1503,7 +1516,7 @@ export const Payload = z.discriminatedUnion("t", [
      * The person announcing is on a version that talks to the SFU, not the mesh.
      *
      * Optional field in an existing frame, for the fourth time and for the
-     * reason as always, a new `t` would fail the entire merge in an old client,
+     * usual reason: a new `t` would fail the entire union in an old client,
      * the payload would be discarded, count as an ignored event, and ignored
      * events in a row mark the channel deaf and trigger the repair that WIPES
      * HISTORY. What changes between clients goes in fields, never in types.
@@ -1512,19 +1525,19 @@ export const Payload = z.discriminatedUnion("t", [
      * old client too old to know the field is, by construction, a client that
      * only knows peer-to-peer negotiation. There is no third option to infer.
      *
-     * It exists for one reason only, and it is a display reason: **there is no
+     * It exists for one reason only, and it is a UI reason: **there is no
      * interoperability between a mesh client and an SFU client in the same
      * call** (see `docs/PLANO_SFU.md`, section 3). The mesh one offers and the
      * SFU one never answers, because it has no one to answer to. Without this
-     * field, what you saw was "connecting…" for thirty seconds and then nothing
-     *, the exact symptom of a network outage, pointing the wrong way. With it,
-     * whoever is on the mesh can tell on screen that the other person is on a
-     * version they cannot reach, and the fix is to reload. An honest sentence
+     * field, what you saw was "connecting…" for thirty seconds and then nothing,
+     * the exact symptom of a network outage, pointing the wrong way. With it,
+     * the mesh client can say on screen that the other person is on a version
+     * it cannot reach, and that the fix is to reload. An honest sentence
      * instead of a spinning clock.
      *
      * Nobody sends it today: it is born now, within the full restart window,
-     * because a field declared late does not help the version already out there
-     *, and who will send it is the `call-sfu.ts` of Phase 2. It is not a secret
+     * because a field declared late does not help the version already out there,
+     * and what will send it is the `call-sfu.ts` of Phase 2. It is not a secret
      * or authority: it says which transport engine the other end uses, something
      * the first media packet would reveal anyway.
      */
@@ -1538,27 +1551,27 @@ export const Payload = z.discriminatedUnion("t", [
      * ignored events declare the channel deaf and trigger a repair that DELETES
      * HISTORY. What changes between clients is expressed in fields, never in types.
      *
-     * Exists because of the symmetric hole in the owner's request on October 5,
+     * It exists because of the mirror-image gap in the owner's request on October 5,
      * 2026: he asked that someone's screen only be seen by choice, and the same
-     * piece has another side: the sharer does not know who is watching. With the
+     * piece has another side: **the sharer does not know who is watching.** With the
      * choice in place, it becomes information that is genuinely missing: before
      * this everyone watched, and knowing who watched said nothing.
      *
      * **Not read from the SFU, which is why it travels here.** The server knows
      * who consumes what, but the sharer has no way to ask it: there is no frame
      * that says it, and inventing one would make the server answer about people
-     * instead of relaying frames. Each person's client states what CHOSE, which
+     * instead of relaying frames. Each person's client states what it CHOSE, which
      * is the honest answer: it is a claim by whoever makes it, not a server
      * record.
      *
-     * Reveals nothing that the reader does not already know, by the same account
-     * as `repair`: it only reaches those in the channel, and names people in the
+     * It reveals nothing that the reader does not already know, by the same reasoning
+     * as `reparar`: it only reaches those in the channel, and names people in the
      * same call. The cap is the same and for the same reason: a call of this
      * nature does not exceed half a dozen shared screens at once.
      *
      * Absent means "did not say", and reads as not watching: a client too old to
      * know this field is also too old to choose, because the screen always
-     * arrives in it. The read lies in the safe way: the sharer sees "0 watching"
+     * arrives in it. The reading errs on the safe side: the sharer sees "0 watching"
      * instead of counting people who chose nothing.
      *
      * **The cap is `TECTO_DO_AVER`, and whoever writes the list must read it.**
@@ -1579,18 +1592,18 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * Someone opening the app in the middle of a call sees no one inside, and it
      * is not a design defect: the list is made from `voice.join` messages this
-     * device HEARD, and those who already left are not recovered in the snapshot:
-     * voice signaling only works live, on purpose (see `session.ts`). Until now
-     * the answer was to wait for a heartbeat from whoever was there, which is
-     * 50 seconds. The owner reported it twice: "some people do not see who is in
+     * device HEARD, and joins sent earlier are not recovered in the catch-up:
+     * voice signaling only counts live, on purpose (see `session.ts`). Until now
+     * the answer was to wait for the heartbeat of whoever was there, which comes
+     * every 50 seconds. The owner reported it twice: "some people do not see who is in
      * the room before they enter".
      *
      * The server warns others when someone arrives, and those in the call answer
      * that warning (`Call.reafirmarPresenca`), but **someone arriving invisible is
      * not announced**, and rightly so: invisible is invisible (`#announcePresence`,
      * in the gateway). The missing half is the symmetric one: whoever arrives ASKS.
-     * One round trip instead of 50 seconds, and it works invisibly, because the
-     * question is ours and not an announcement of ours.
+     * One round trip instead of 50 seconds, and it works while invisible, because
+     * the question is ours and not an announcement of ours.
      *
      * **Optional field in a frame that already exists, for the fifth time and for
      * the usual reason:** a new `t`, `voice.who`, would fail the entire union in
@@ -1604,21 +1617,21 @@ export const Payload = z.discriminatedUnion("t", [
      * An old client reads it as someone's goodbye, and this is where the first
      * version of this got it wrong: the goodbye of someone who "was never there"
      * would be harmless, but **rosters are indexed by ACCOUNT address, not by
-     * device**: and a device that asks may have the OTHER device of the same
+     * device**, and a device that asks may have the OTHER device of the same
      * account in that call. In that case the question erased it from the roster
-     * of those there, with the output sound playing, until the next heartbeat.
+     * of those there, with the leave sound playing, until the next heartbeat.
      *
-     * **The guard is the room: the question is made of `SALA_DA_PERGUNTA`**, which
-     * cannot be any room identifier. An old client's room filter discards it
-     * before the roster, before the audio and before the presence map: and nothing
-     * is lost, because it does not know how to answer it. See the constant, where
-     * it is written why it does not collide.
+     * **The guard is the room: the question claims to come from
+     * `SALA_DA_PERGUNTA`**, which cannot be any room identifier. An old client's
+     * room filter discards it before the roster, before the sound and before the
+     * presence map, and nothing is lost, because it does not know how to answer
+     * it. See the constant, which explains why it does not collide.
      *
      * Measured in `call.quem-esta.test.ts`, including with a reader that plays
-     * the 0.3.3 order (room filter before goodbye), which fails without the
+     * the 0.3.3 order (room filter before goodbye), which goes red without the
      * sentinel. And run against dist 0.3.3 for real in
      * `scripts/e2e-cliente-antigo.mjs`, where the question with the call's room
-     * REMOVES people from the roster: it is the defect, measured: and the
+     * REMOVES people from the roster (the defect, measured), and the
      * question as it comes out of this code removes no one.
      *
      * The premise must be true, and that is why someone in a call in THIS channel
@@ -1643,12 +1656,12 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * **`voice.offer`, `voice.answer` and `voice.ice` never leave this union. Ever.**
    *
-   * The move to SFU stops EMITTING them: with an SFU there is one connection per
-   * client and it negotiates with the server, not with peers: and the next
+   * The move to SFU stops EMITTING them (with an SFU there is one connection per
+   * client, negotiated with the server, not with peers), and the next
    * temptation is to delete the schemas along with the code that produced them.
    * It is the same cascade through the back door: a client that no longer knows
    * these `t` treats signaling from an old client as an unknown type, fails the
-   * entire union, discards the payload, counts it as an ignored event: and
+   * entire union, discards the payload, counts it as an ignored event, and
    * consecutive ignored events declare the channel deaf and trigger a repair that
    * DELETES HISTORY. Someone in an old version trying to call another then starts
    * deleting the history of those who already updated.
@@ -1693,7 +1706,7 @@ export const Payload = z.discriminatedUnion("t", [
      * the `voice.join` of the offerer, and without this would assume THEIR OWN
      * video state to describe the other person. Today it is not seen because the
      * interface reads the track list instead of this field, which means the field
-     * was simply lying without consequence: and a field that lies ends up being
+     * was simply lying without consequence, and a field that lies ends up being
      * trusted by someone.
      */
     video: z.boolean().optional(),
@@ -1703,8 +1716,8 @@ export const Payload = z.discriminatedUnion("t", [
      * Travels here for the third time for the same reason as `sframe` and
      * `video`: an announcement is only heard by those ALREADY in the call, and
      * whoever arrives mid-call never heard anyone's. Without this, joining a call
-     * showed everyone talking until each one touched their microphone: and
-     * someone already muted there for ten minutes appeared to the newcomer as if
+     * showed everyone talking until each one touched their microphone, and
+     * someone who had been there muted for ten minutes appeared to the newcomer as if
      * answering them.
      */
     muted: z.boolean().optional(),
@@ -1749,9 +1762,9 @@ export const Payload = z.discriminatedUnion("t", [
      * Whether the answerer is muted. See `muted` in `voice.join`.
      *
      * The symmetric of the offer field, not a redundancy: the offerer may also
-     * never have heard the announcement from the other side: this is the case of
+     * never have heard the announcement from the other side. This is the case of
      * someone in a call receiving someone who enters. The answer is the first
-     * thing that person says about themselves.
+     * thing that person tells it about themselves.
      */
     muted: z.boolean().optional(),
     /**
@@ -1795,22 +1808,24 @@ export const Payload = z.discriminatedUnion("t", [
   z.object({ t: z.literal("voice.key"), keyId: z.number().int().nonnegative(), rotatedAt: Timestamp }),
 
   /**
-   * Ask someone's client to change voice rooms.
+   * Ask someone's client to switch voice rooms.
    *
-   * **Convention, not encryption.** It has the same status as `convidar` and `renomear`,
-   * and the opposite of `expulsar`: whoever receives this is the CLIENT of the person being
-   * moved, and it is that client who leaves one call and joins the other. An altered client
-   * ignores the request and stays where it is, and nothing at this layer stops it, the
-   * only thing the cipher guarantees here is that only channel members can send and read it.
-   * See `POWERS` and `CRYPTOGRAPHIC_POWERS`: the interface that offers this must say what
-   * nature it is.
+   * **Convention, not cryptography.** It has the same standing as `convidar` and
+   * `renomear`, and the opposite of `expulsar`: whoever receives this is the CLIENT
+   * of the person being moved, and it is that client that leaves one call and enters
+   * another. An altered client ignores the request and stays where it is, and
+   * nothing in this layer stops it: the only thing the cipher guarantees here
+   * is that only channel members can send and read it. See `POWERS` and
+   * `CRYPTOGRAPHIC_POWERS`: the interface that offers this must say what its
+   * nature is.
    *
-   * It is not session transfer. The call is of the ROOM, so moving is leaving one and
-   * joining another, the WebRTC links from the first die and others are born, as in any
-   * join.
+   * It is not session transfer. The call belongs to the ROOM, so moving means
+   * leaving one and entering another: the WebRTC connections from the first
+   * die and new ones are born, like in any entry.
    *
-   * Empty `room` is the channel's default room, as in all voice signaling. `subject` is who
-   * is moved, not who moves: who moves is the sender, whom MLS already authenticates.
+   * `room` empty is the default room of the channel, as in all voice signaling.
+   * `subject` is who is moved, not who moves: who moves is the sender, whom MLS
+   * already authenticates.
    */
   z.object({
     t: z.literal("voice.move"),
@@ -1888,8 +1903,8 @@ export const Payload = z.discriminatedUnion("t", [
      * the same.
      *
      * And there is one more reason for it to be INSIDE `post` and not beside it:
-     * `republishPosts` says the whole wall again to each person who enters the
-     * feed, because nothing published before they had place in the group will be
+     * `republishPosts` re-sends the whole board to each person who enters the
+     * feed, because nothing published before they had a place in the group will be
      * readable to them. A poll traveling separately would not go in that
      * reemission, and someone arriving would see the post without the poll it is.
      */
@@ -1902,7 +1917,7 @@ export const Payload = z.discriminatedUnion("t", [
    * A comment on a post, sent to the feed of whoever published it.
    *
    * Goes to the author's group because that is where the people who read the
-   * post are: and the same membership that already gives access to it gives
+   * post are, and the same membership that already gives access to it gives
    * access to the comment. There is no comment box on any server: whoever has no
    * place in the group does not receive the bytes, and whoever has it could
    * already read them another way.
@@ -1922,13 +1937,14 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * A like or dislike, tied to a member, never a counter.
    *
-   * The difference is not just organization. A counter is a number the group must
+   * The difference is not a matter of tidiness. A counter is a number the group must
    * agree to increment, and agreeing without a server requires either a shared
    * clock or an arbiter; one vote per person resolves on each device from the
    * messages there, and two people with different histories reach different totals
    * without either being wrong.
    *
-   * `id` so that a reaction is a distinct entry in history like any other message,    * without it, two of our reactions in the same channel would be indistinguishable,
+   * `id` so that a reaction is a distinct entry in history like any other message:
+   * without it, two of our reactions in the same channel would be indistinguishable,
    * because our sends never gain `seq`.
    *
    * `at` so that each person's most recent vote wins. Without a timestamp, the order
@@ -1955,7 +1971,7 @@ export const Payload = z.discriminatedUnion("t", [
      * thrown away by anyone who doesn't know it.
      *
      * **`emoji` goes empty when this is filled**, and that's what makes an old
-     * client ignore the vote instead of counting it as a thumbs up: his `engagementOf`
+     * client ignore the vote instead of counting it as a thumbs up: its `engagementOf`
      * already discards a reaction whose emoji is not a thumbs up. The rule on read
      * must be the same both ways, and it is: a reaction with `vote` does not count
      * for thumbs, one without `vote` does not count for the poll.
@@ -1968,13 +1984,13 @@ export const Payload = z.discriminatedUnion("t", [
      * **The vote is visible, and must be.** In an MLS group everyone decrypts
      * everything the group says: whoever is in the channel sees this event, knows who
      * it came from (the sender comes authenticated by MLS and never from a field in
-     * here) and knows which option they voted for. There is nothing to hide that
-     * encryption could hide, so there is no field to fake it.
+     * here) and knows which option they voted for. There is nothing here the
+     * cipher could hide, so there is no field that pretends to.
      *
      * And there is a second reason, which is technical and points the same way:
      * **it is the identity of who votes that makes the count secure**. Votes arrive as
      * events, and the same event arrives more than once, from the vault and the
-     * network, from the snapshot and the retransmission. The count is a table from
+     * network, from the catch-up and the re-send. The count is a table from
      * voter to option, so the same vote stated ten times is still one vote. An
      * anonymous vote would have no way to be deduplicated, and the real choice would
      * not be between secrecy and transparency: it would be between transparency and
@@ -1984,7 +2000,7 @@ export const Payload = z.discriminatedUnion("t", [
      *
      * `.catch(undefined)` for the reason of `Poll`: an absurd index means no vote,
      * never loss of the payload. An index that does not fit the poll's options is
-     * discounted by the reader, who has the options in front of them.
+     * discarded by the reader, which has the options in front of it.
      */
     vote: z.number().int().nonnegative().optional().catch(undefined),
     /** The signature of the device that wrote this (phase S4). See `autoria.ts`. */
@@ -2039,12 +2055,12 @@ export const Payload = z.discriminatedUnion("t", [
     /**
      * "I'm withdrawing my request", not "I refuse yours".
      *
-     * The same phrasing works for both gestures because both close a request and
+     * The same message works for both gestures because both close a request and
      * neither grants access to anything; what changes is WHICH request closes. Without
-     * the field, whoever sends closes the other's request (refusal). With it, closes
-     * their own (cancellation). See `foldFriendTies`.
+     * the field, whoever sends closes the other's request (refusal). With it, they
+     * close their own (cancellation). See `foldFriendTies`.
      *
-     * New field and not new `t`, by house rules: an unknown `t` in an old client is
+     * New field and not new `t`, by house rule: an unknown `t` in an old client is
      * a rejected payload, and consecutive rejects declare the channel deaf. Client
      * 0.5.x does not know the field, throws it away (schemas are not `strict()`) and
      * reads a refusal of a request it never made: a no-op. The cost of that is in
@@ -2058,11 +2074,11 @@ export const Payload = z.discriminatedUnion("t", [
    *
    * A friendship is two slots, one in each feed, and only the owner of a feed can
    * remove someone from theirs. Whoever ends it removes the other's slot from their
-   * own feed, that is a commit and a fact, and sends this so the client on the
+   * own feed (that is a commit, and a fact) and sends this so the client on the
    * other side removes ours. A friendship ended halfway is worse than none: the
    * interface says it ended and access continues.
    *
-   * What is stated so we don't promise more: whoever already got posts keeps them.
+   * Stated so we don't promise too much: whoever already got posts keeps them.
    * Leaving an MLS group applies to the future, and calling it something else would
    * be lying.
    */
@@ -2076,17 +2092,17 @@ export const Payload = z.discriminatedUnion("t", [
    * the field. Not here. The `profile` goes to every room the person belongs to, and
    * a friends list cannot go to a room of thirty strangers: it must travel only in
    * the feed of whoever shows it, where the friends are and no one else. A `post` is
-   * something else (enters the wall, has comments, reactions and tombstones), and a
+   * something else (it enters the board, has comments, reactions and a tombstone), and a
    * list disguised as a post would appear as a post in all old clients.
    *
    * **The cost in an old client is small, and measured.** It rejects this payload
    * and counts it as ignored; five ignored in a row, with thirty seconds between
    * first and last, declare the channel deaf (`DEAF_FAILURES`). The window limits
-   * duration not rate: five changes spread across a quiet feed could add up. So the
+   * duration, not rate: five changes spread across a quiet feed would be enough. So the
    * core batches the changes (only the last goes out) and stops at three in a row
-   * until another event in the feed opens, which resets the old client's count.
-   * `scripts/e2e-cliente-antigo.mjs` measures both sides: without the measure the old
-   * one asks for new space, with it does not.
+   * until another event appears in the feed, which resets the old client's count.
+   * `scripts/e2e-cliente-antigo.mjs` measures both sides: without the fix the old
+   * client asks for a new place, with it it does not.
    *
    * **Opt-in.** Nobody publishes this without choosing it, and an empty list is how
    * you stop showing it.
@@ -2097,7 +2113,7 @@ export const Payload = z.discriminatedUnion("t", [
    * it. And it does not go out at each change: only the last one, with a delay, and
    * never more than three in a row without another event in the feed (see
    * `setShownFriends` in the core). There is no comparison to the list of who reads
-   * it ("mutual friends"): the owner's choice, and the core does not offer it.
+   * it ("mutual friends"): the owner's decision, and the core does not offer it.
    *
    * Five hundred is the read limit, ample: a larger list is not a friends list
    * anyone will read, and each address weighs on the same byte limit.
@@ -2121,7 +2137,7 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * The state of the account across its devices (phase 5). See `estado.ts`.
    *
-   * Only in the account channel, where only leaves that know about it are: in a
+   * Only in the account channel, where every leaf knows these payloads: in a
    * channel with a 0.5.7 client they would be rejected and count toward deafness.
    */
   ...PAYLOADS_DE_ESTADO,
@@ -2131,12 +2147,12 @@ export const Payload = z.discriminatedUnion("t", [
   /**
    * An account saying that one of its devices is no longer its device.
    *
-   * **The one who issues it is revocation** (`revogarAparelho`, in
+   * **It is issued by revocation** (`revogarAparelho`, in
    * `client-core/src/revogacao.ts`), once in each account channel. It was born
    * before there was anyone to issue it, for a calendar reason: a `t` the receiver
    * does not know is an entire rejected payload, and consecutive rejected payloads
    * declare the channel deaf, see `DEAF_FAILURES` in the core. So a 0.5.7 client
-   * reads it without deafness: decrypts, does not store it, and moves on.
+   * reads it without going deaf: it decrypts it, does not store it, and moves on.
    *
    * **The signature does not cover `revokedAt`, and does not need to.** It covers
    * the device and the address (`deviceRevocationMessage`). Repeating a revocation is
@@ -2144,11 +2160,12 @@ export const Payload = z.discriminatedUnion("t", [
    *
    * **Why it carries a signature, if MLS already authenticates the sender.** MLS
    * authenticates the LEAF, and a leaf is a device. Without account signature, a
-   * stolen device could revoke its siblings and stay alone speaking for the person,    * revocation would become a weapon for the person it exists to disarm. The receiver
+   * stolen device could revoke its siblings and stay alone speaking for the person:
+   * revocation would become a weapon for the very person it exists to disarm. The receiver
    * verifies `sig` against the ACCOUNT key in the credential of whoever sent it, the
-   * same chain that already validated to admit the leaf.
+   * same chain already validated to admit the leaf.
    *
-   * Honesty the interface must repeat when this gets used: revocation cuts read from
+   * Honesty the interface must repeat when this gets used: revocation cuts reading from
    * the next epoch on. What the device already had, it keeps.
    */
   z.object({

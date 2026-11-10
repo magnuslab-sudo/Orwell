@@ -16,10 +16,10 @@ import {
 /**
  * "Merge accounts" (phase 8.2 of 0.9), with real accounts and server.
  *
- * Ana is the extra account (the secondary): friend of Bruno and member of a channel
+ * Ana is the extra account (the secondary): Bruno's friend and a member of a channel
  * founded by Carla. Dora is the main one. Ana merges into Dora: her device pairs
- * with Dora, notifies Bruno and the channel, exits everything, and becomes
- * a Dora device.
+ * with Dora, notifies Bruno and the channel, leaves everything, and becomes
+ * one of Dora's devices.
  *
  * We measure what each VAULT knows, not what went on the wire. The server does not change.
  */
@@ -72,7 +72,7 @@ const amigos = (conta: ContaDeTeste): string[] => friendsOfTies(conta.session.fr
  * and whether the private key is there. `null` if the passphrase does not open it.
  *
  * The disk and not memory, and not "byte by byte": the session writes the vault all the
- * time (markers, groups), and what matters is that the account is there.
+ * time (markers, groups), and what matters is which account is there.
  */
 async function contaNoDisco(conta: ContaDeTeste, frase: string): Promise<{ chave: string | undefined; privada: boolean } | null> {
   const frio = new Vault(conta.backend)
@@ -85,8 +85,8 @@ async function contaNoDisco(conta: ContaDeTeste, frase: string): Promise<{ chave
 }
 
 /**
- * Ana with vault key derivation outside this thread, like in the browser
- * (the `kdf-worker` of the web): derivation returns control to the event loop, and in
+ * Ana with vault key derivation OUTSIDE this thread, as in the browser
+ * (the web's `kdf-worker`): derivation yields to the event loop, and in
  * that gap the screen can ask the session things.
  */
 async function contaComDerivacaoLenta(nome: string): Promise<ContaDeTeste> {
@@ -105,7 +105,7 @@ async function contaComDerivacaoLenta(nome: string): Promise<ContaDeTeste> {
   return conta
 }
 
-/** Ana and Bruno are friends, and Ana in a channel of Carla. */
+/** Ana and Bruno are friends, and Ana is in one of Carla's channels. */
 async function cenario(): Promise<{ ana: ContaDeTeste; bruno: ContaDeTeste; carla: ContaDeTeste; dora: ContaDeTeste; canal: string }> {
   const ana = await contaComDerivacaoLenta("Ana")
   const [bruno, carla, dora] = await contas("Bruno", "Carla", "Dora")
@@ -141,16 +141,16 @@ describe("juntar contas, de ponta a ponta", () => {
 
     await emparelharComADora(ana, dora)
     expect(ana.session.contaParaJuntar).toBe(dora.address)
-    // Step 1 did not touch the vault account: still Ana's, with her key.
+    // Step 1 did not touch the vault's account: it is still Ana's, with her key.
     expect(await contaNoDisco(ana, "frase-passe-de-teste")).toEqual(antes)
 
     await ana.session.juntarAvisar()
-    // Exited everything, and broke the friendship.
+    // It left everything, and ended the friendship.
     expect(ana.session.channels).toEqual([])
 
     const concluidoDora = esperarFase(dora.session, "concluido", 30_000)
     // The screen keeps asking the session things during the swap: it must never
-    // catch the session without identity (the "no identity loaded" of the browser).
+    // catch the session without an identity (the browser's "no identity loaded").
     let semIdentidade = 0
     const sonda = setInterval(() => {
       try {
@@ -163,15 +163,15 @@ describe("juntar contas, de ponta a ponta", () => {
     expect(address).toBe(dora.address)
     expect(semIdentidade).toBe(0)
     await concluidoDora
-    // The main account holds what Ana joined.
+    // The main account records that it merged Ana.
     expect(contasJuntadas(ana.session.preferencias())).toEqual([secundaria])
 
-    // Bruno: sees once "Ana became Dora", was a friend, and Ana leaves the friends.
+    // Bruno: sees "Ana is now Dora" once, was a friend, and Ana leaves his friends.
     await ate(() => bruno.session.sucessoes()[secundaria]?.para === dora.address, "a sucessão chega ao Bruno")
     expect(bruno.session.sucessoes()[secundaria]?.eraAmigo).toBe(true)
     await ate(() => !amigos(bruno).includes(secundaria), "a Ana sai dos amigos do Bruno")
 
-    // With a tap, the request to Dora; Dora accepts.
+    // One tap sends the request to Dora; Dora accepts.
     await bruno.session.adicionarSucessora(secundaria)
     expect(bruno.session.sucessoes()[secundaria]?.feitos).toContain("amigo")
     await ate(() => dora.session.friendTies().get(bruno.address)?.link === "pedido-recebido", "o pedido do Bruno chega à Dora")
@@ -183,7 +183,7 @@ describe("juntar contas, de ponta a ponta", () => {
     await ate(() => carla.session.sucessoes()[secundaria]?.canais.includes(canal) === true, "a sucessão chega à Carla pelo canal")
     await ate(() => !carla.session.membersOf(canal).map(String).includes(secundaria), "a Ana sai dos membros do canal")
 
-    // With a tap, the invite to Dora; one of Dora's devices asks to join on its own.
+    // One tap sends the invite to Dora; one of Dora's devices asks to join on its own.
     await carla.session.convidarSucessora(secundaria, canal)
     await ate(
       () => dora.session.channels.includes(canal) || ana.session.channels.includes(canal),
@@ -192,14 +192,14 @@ describe("juntar contas, de ponta a ponta", () => {
     )
     await ate(() => carla.session.membersOf(canal).map(String).includes(dora.address), "a Dora está nos membros do canal", 30_000)
 
-    // Ana's key no longer works: the disk has Dora, and without the account's private key.
+    // Ana's key no longer opens it: the disk holds Dora, without the account private key.
     expect(await contaNoDisco(ana, "frase-passe-de-teste")).toBeNull()
     const depois = await contaNoDisco(ana, "frase-nova-da-dora")
     expect(depois?.privada).toBe(false)
     expect(depois?.chave).not.toBe(antes?.chave)
     expect(ana.session.identity.address).toBe(dora.address)
 
-    // And an account does not join itself: this device is already Dora's.
+    // And an account does not merge into itself: this device is already Dora's.
     const sasDora = esperarFase(dora.session, "sas")
     const { link } = await dora.session.emparelharComoAnfitriao()
     const sasAqui = esperarFase(ana.session, "sas")
@@ -213,14 +213,14 @@ describe("juntar contas, de ponta a ponta", () => {
   }, 240_000)
 
   it("se o computador da principal desistir depois do certificado, nada se avisa nem se apaga", async () => {
-    // `contas` returns an account by name, in name order.
+    // `contas` returns one account per name, in name order.
     const [ana, dora] = (await contas("Ana", "Dora")) as [ContaDeTeste, ContaDeTeste]
     const antes = await contaNoDisco(ana, "frase-passe-de-teste")
     await emparelharComADora(ana, dora)
     expect(ana.session.contaParaJuntar).toBe(dora.address)
     dora.session.cancelarEmparelhamento()
-    // Dora's computer closed the vault: it would no longer publish this device.
-    // The vault closure reaches Ana through the server: half a second arrives.
+    // Dora's computer closed the box: it would no longer publish this device.
+    // The box closing reaches Ana through the server: half a second is enough.
     await new Promise((resolve) => setTimeout(resolve, 500))
     await expect(ana.session.juntarAvisar()).rejects.toThrow("the other device stopped waiting, nothing was deleted")
     expect(ana.session.contaParaJuntar).toBeNull()
@@ -239,7 +239,7 @@ describe("juntar contas, de ponta a ponta", () => {
     const falhou = esperarFase(ana.session, "falhou")
     ana.session.emparelharParaJuntar(link)
     await sasDora
-    // Dora says "They are not".
+    // Dora says "Não são" ("They are not").
     dora.session.recusarSas()
     await falhou
 

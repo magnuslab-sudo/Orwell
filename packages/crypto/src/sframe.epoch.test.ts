@@ -27,14 +27,14 @@ import { deriveSframeKeyMaterial, importSframeKey, readHeader, SframeReceiver, S
  *
  * Without that step, the promise the owner designed is an act of faith: A and B
  * at epoch 41; C joins, the commit advances everyone to 42, and C does not
- * derive 41. That is not code discipline, there is no line saying "do not
- * derive", it is future secrecy from MLS: the exporter secret of 41 has ceased
- * to exist in the state of anyone. These tests force that statement to be true.
+ * derive 41. That is not code discipline (there is no line saying "do not
+ * derive"), it is MLS future secrecy: the exporter secret of 41 no longer
+ * exists in anyone's state. These tests force that statement to be true.
  *
- * What replicates here from `Session.mediaKey`, and on purpose: `keyId` is the
+ * What is replicated here from `Session.mediaKey`, on purpose: `keyId` is the
  * epoch truncated to 16 bits and `senderId` is the leaf index. The goal is to
  * measure DERIVATION, and the `Session` that wraps it lives in another package
- * with a vault and a connection behind it, bringing it here would measure three
+ * with a vault and a connection behind it: bringing it here would measure three
  * things instead of one.
  */
 
@@ -59,7 +59,8 @@ function iguais(a: Uint8Array, b: Uint8Array): boolean {
 /**
  * The whole thing: A and B in a call, C joining mid-stream.
  *
- * Returns the two moments, because the comparison between them is the proof,  * and returns the old epoch material stored separately, which is the only way
+ * Returns the two moments, because the comparison between them is the proof,
+ * and returns the old epoch material stored separately, which is the only way
  * it can still exist after the commit. Storing it is exactly what
  * `#sframeReceivers` does in `call.ts` by holding on to the previous key.
  */
@@ -80,7 +81,7 @@ async function aEntradaDeCarla() {
 
   const chaveDaAnaAntes = await chaveDeMedia(anaAntes, ana.address)
 
-  // C joins: one commit, and everyone advances epochs.
+  // C joins: one commit, and everyone moves to the next epoch.
   const entrada = await addMembers(anaAntes, [decodeKeyPackage(pacoteCarla.wire)])
   const anaDepois = entrada.session
   const aplicado = await receive(brunoAntes, entrada.commit)
@@ -110,7 +111,7 @@ describe("a chave de media e a epoch", () => {
     expect(epochOf(anaDepois)).toBeGreaterThan(epochOf(anaAntes))
     expect(depois.keyId).not.toBe(chaveDaAnaAntes.keyId)
     // And Ana's leaf did not move: it is the SAME person, with a different key. If
-    // the material were the same, someone joining would not rekey anything and
+    // the material were the same, a join would not rekey anything and
     // this whole section of the design would be decorative.
     expect(depois.senderId).toBe(chaveDaAnaAntes.senderId)
     expect(iguais(depois.material, chaveDaAnaAntes.material)).toBe(false)
@@ -137,8 +138,8 @@ describe("a chave de media e a epoch", () => {
     )
     const frameAntigo = await emissor.encrypt(new Uint8Array([1, 2, 3, 4]))
 
-    // Carla reads the header, it is in plaintext, as it must be so the SFU can
-    // forward without any key, and knows exactly which key to ask for.
+    // Carla reads the header (it is in the clear, as it must be so the SFU can
+    // forward without any key) and knows exactly which key to ask for.
     const cabecalho = readHeader(frameAntigo)
     expect(cabecalho?.keyId).toBe(chaveDaAnaAntes.keyId)
     expect(cabecalho?.senderId).toBe(chaveDaAnaAntes.senderId)
@@ -155,11 +156,11 @@ describe("a chave de media e a epoch", () => {
     const receptor = new SframeReceiver(
       await importSframeKey(oQueACarlaConsegue, chaveDaAnaAntes.keyId, chaveDaAnaAntes.senderId),
     )
-    // Silence, not an error: the AES-GCM tag does not close and the frame drops. It
+    // Silence, not an error: the AES-GCM tag does not verify and the frame drops. It
     // is MLS future secrecy doing the work, without a line of code deciding
     // anything about Carla.
     expect(await receptor.decrypt(frameAntigo)).toBeUndefined()
-    // And Carla is a full member of the new epoch, her leaf exists, so what fails
+    // And Carla is a full member of the new epoch (her leaf exists), so what fails
     // above is really the epoch and not the tree.
     expect(leafIndexOf(carlaDepois.state.ratchetTree, carla.address)).toBeDefined()
     expect(leafIndexOf(carlaDepois.state.ratchetTree, ana.address)).toBeDefined()
@@ -169,18 +170,18 @@ describe("a chave de media e a epoch", () => {
     /*
       The consequence that forces the two-key window to exist, and which is easy
       to read backwards.
-      
-      Bruno was in the old epoch. That does not give him a way to derive it
+
+      Bruno was in the old epoch. That does not let him derive it
       again after applying the commit: the exporter secret it came from was
-      replaced in his own state. The only reason he continues to hear frames
-      still in flight is that he SAVED the previous key object, which is
-      precisely what `#sframeReceivers` does in `call.ts` with its `slice(0, 2)`.
-      
+      replaced in his own state. The only reason he still hears the frames
+      that were in flight is that he KEPT the previous key object, which is
+      exactly what `#sframeReceivers` does in `call.ts` with its `slice(0, 2)`.
+
       Put another way: the two-key window is not an implementation convenience
-      that can be removed in a refactor. It is the only thing that prevents each
-      person joining from cutting the sound to everyone for the time it takes two
-      clients to apply the same commit.
-      */
+      that can be removed in a refactor. It is the only thing that stops every
+      join from cutting the sound for everyone during the gap between two
+      clients applying the same commit.
+    */
     const { ana, brunoAntes, brunoDepois, chaveDaAnaAntes } = await aEntradaDeCarla()
 
     // Before the commit, Bruno derived Ana's key byte by byte.
@@ -200,9 +201,9 @@ describe("a chave de media e a epoch", () => {
 /**
  * The two-key window, fed by the real keys of the epoch.
  *
- * The mechanism already existed and is proven in `call.sframe.test.ts`, the
- * header carries `keyId` per frame, the receiver stores the key in use and the
- * previous one, and chooses by the one the frame declares. What was missing is
+ * The mechanism already existed and is proven in `call.sframe.test.ts`: the
+ * header carries `keyId` per frame, the receiver keeps the current key and the
+ * previous one, and picks the one the frame declares. What was missing is
  * proof that it works with material that real MLS produces, not just invented
  * bytes: two consecutive epochs of a real group, two frames, and the header
  * deciding which opens with which.
@@ -220,7 +221,7 @@ describe("a janela de duas chaves com epochs verdadeiras", () => {
     ).encrypt(new Uint8Array([0xb2]))
 
     // The chain that `#sharedReceiver` builds: the new key at the head, the
-    // previous one right after, cut in two.
+    // previous one right after, trimmed to two.
     const cadeia = [
       { keyId: chaveNova.keyId, receptor: new SframeReceiver(await importSframeKey(chaveNova.material, chaveNova.keyId, chaveNova.senderId)) },
       {
@@ -238,8 +239,9 @@ describe("a janela de duas chaves com epochs verdadeiras", () => {
     }
 
     expect(await abrir(novo)).toEqual(new Uint8Array([0xb2]))
-    // And what was still in flight from the previous epoch continues to open, // which is the difference between the call going on and everyone going silent
-    // half a second each time someone joins.
+    // And what was still in flight from the previous epoch still opens, which is
+    // the difference between the call carrying on and everyone going silent for half
+    // a second each time someone joins.
     expect(await abrir(antigo)).toEqual(new Uint8Array([0xa1]))
 
     // The counterfactual, so nobody confuses the window with generosity: a

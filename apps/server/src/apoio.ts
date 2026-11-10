@@ -2,32 +2,53 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
 /**
- * The counter for the "Support" section of the site: how much the GoFundMe campaign has raised.
+ * The meter for the "Support" section of the site: how much the GoFundMe
+ * campaign has raised.
  *
- * Owner request on 3 November 2026. The rule that never breaks: whoever visits orwell.pt never makes a request to GoFundMe. Whoever fetches the value is this server, from 15 em 15 minutos, and the site only reads the small JSON it returns in `/_enclave/apoiar.json`, on the same origin. The page still has no cookies, and the CSP still has only `'self'`.
+ * Owner request, 3 November 2026. The rule that never breaks: a visitor to
+ * orwell.pt never sends a request to GoFundMe. This server fetches the value
+ * every 15 minutes, and the site only reads the small JSON it serves at
+ * `/_enclave/apoiar.json`, on the same origin. The page still sets no cookies,
+ * and the CSP still allows only `'self'`.
  *
- * **The structured data, not the visible HTML.** GoFundMe has no public API. The campaign page is Next.js and brings the Apollo state inside the `<script id="__NEXT_DATA__">`, in `props.pageProps.__APOLLO_STATE__`. There is the `Fundraiser`, with `currentAmount`, `goalAmount`, `userDefinedGoalAmount` and `donationCount`. Read on 3 November 2026; the fixture, without donor data, is in `apps/server/testes/gofundme-campanha.html`.
+ * **The structured data, not the visible HTML.** GoFundMe has no public API.
+ * The campaign page is Next.js and carries the Apollo state in
+ * `<script id="__NEXT_DATA__">`, under `props.pageProps.__APOLLO_STATE__`. That
+ * holds the `Fundraiser`, with `currentAmount`, `goalAmount`,
+ * `userDefinedGoalAmount` and `donationCount`. Read on 3 November 2026; the
+ * fixture, with no donor data, is in `apps/server/testes/gofundme-campanha.html`.
  *
- * **The two targets.** The owner wants the bar against 2 200 € and, after passing that target, against 10 000 €. The first target is `PRIMEIRA_META`, fixed here, not the `goalAmount` from the page: GoFundMe has "smart goals" on this campaign, and the `goalAmount` (set by the system, `source: "SYSTEM"`) goes up by itself as it approaches. The total target is the `userDefinedGoalAmount`, which the owner wrote (`source: "USER"`).
+ * **The two goals.** The owner wants the bar measured against 2 200 € and, once
+ * that goal is passed, against 10 000 €. The first goal is `PRIMEIRA_META`,
+ * fixed here, not the page's `goalAmount`: this campaign has GoFundMe "smart
+ * goals" turned on, and the `goalAmount` (set by the system, `source: "SYSTEM"`)
+ * rises by itself as the total gets close. The total goal is the
+ * `userDefinedGoalAmount`, the one the owner set (`source: "USER"`).
  *
- * **On error, the last good value stays.** A failed request, a page that changed shape or a 403 dizem in the log and nothing changes what's served. The last good value also stays on disk, in `ENCLAVE_DATA_DIR`: a restart doesn't clear the bar, and doesn't make a new request if the last one is less than 15 minutos old.
+ * **On error, the last good value stays.** A failed request, a page that changed
+ * shape or a 403 is logged and does not change what is served. The last good
+ * value is also kept on disk, in `ENCLAVE_DATA_DIR`: a restart does not clear
+ * the bar, and does not send a new request if the last one is less than 15
+ * minutes old.
  *
- * **No workarounds.** A 15 em 15 minutos request, with a User-Agent that says who we are and how to reach us. If GoFundMe refuses, the bar stays at the last good value, or no bar. There's no masked retry.
+ * **No workarounds.** One request every 15 minutes, with a User-Agent that says
+ * who we are and how to reach us. If GoFundMe refuses, the bar stays at the
+ * last good value, or there is no bar. No disguised retry.
  */
 
-/** The first target of the campaign, in euros (owner's order, 3 November 2026). */
+/** The campaign's first goal, in euros (owner's request, 3 November 2026). */
 export const PRIMEIRA_META = 2200
 
-/** The total target, if the page does not bring it. */
+/** The total goal, if the page does not carry one. */
 export const META_TOTAL_POR_OMISSAO = 10_000
 
 /** How often the campaign is read. */
 export const INTERVALO_MS = 15 * 60_000
 
-/** How long the browser can store the JSON. */
+/** How long the browser may cache the JSON. */
 export const CACHE_DO_JSON_S = 60
 
-/** The largest body accepted. The page is ~640 kB without compression. */
+/** The largest body accepted. The page is ~640 kB uncompressed. */
 export const MAX_BYTES_DA_PAGINA = 4 * 1024 * 1024
 
 /** The maximum time for a request. */
@@ -45,7 +66,7 @@ export interface Apoio {
   lidoEm: string
 }
 
-/** What is extracted from the page, before combining the targets. */
+/** What is extracted from the page, before the goals are combined. */
 export interface DadosDaCampanha {
   angariado: number
   doacoes: number
@@ -94,7 +115,7 @@ function estadoDoApollo(html: string): Registo {
   return apollo
 }
 
-/** The campaign's `Fundraiser`: queried by root, or by slug if not found. */
+/** The campaign's `Fundraiser`: looked up from the root query, or by slug if not found there. */
 function campanhaNoApollo(apollo: Registo, slug: string): Registo {
   const raiz = apollo.ROOT_QUERY
   const consulta = ehRegisto(raiz) ? raiz[`fundraiser:${JSON.stringify({ slug })}`] : undefined
@@ -108,7 +129,7 @@ function campanhaNoApollo(apollo: Registo, slug: string): Registo {
   throw new ErroDaCampanha(`a página não traz a campanha ${slug}`)
 }
 
-/** Extracts the raised amount, donations, currency, and owner's goal from the page. */
+/** Extracts the amount raised, donation count, currency and owner's goal from the page. */
 export function extrairCampanha(html: string, slug: string): DadosDaCampanha {
   const campanha = campanhaNoApollo(estadoDoApollo(html), slug)
 
@@ -206,13 +227,13 @@ export interface OpcoesDaVigia {
   agora?: () => Date
 }
 
-/** Reads the campaign from 15 em 15 minutos and stores the last good value. */
+/** Reads the campaign every 15 minutes and keeps the last good value. */
 export class VigiaDaCampanha {
   readonly #opcoes: OpcoesDaVigia
   readonly #slug: string
   readonly #agora: () => Date
   #ultimoBom: Apoio | undefined
-  /** If the last read failed, records when it recovers. */
+  /** Set when the last read failed, so the recovery gets logged. */
   #emErro = false
 
   constructor(opcoes: OpcoesDaVigia) {
@@ -233,7 +254,7 @@ export class VigiaDaCampanha {
     if (guardado) this.#ultimoBom = guardado
   }
 
-  /** A read operation. Never rejects: an error goes to the log and the last good value persists. */
+  /** One read. Never rejects: an error is logged and the last good value stays. */
   async verificar(): Promise<Apoio | undefined> {
     try {
       const html = await buscarPagina(this.#opcoes.url, this.#opcoes.fazerPedido)
@@ -264,8 +285,8 @@ export class VigiaDaCampanha {
   }
 
   /**
-   * Load from disk. Read now if the stored value is older than 15 minutos, and
-   * then again after 15 em 15 minutos. Returns how to stop.
+   * Loads from disk. Reads now if the stored value is older than 15 minutes, and
+   * then every 15 minutes. Returns a function that stops it.
    */
   arrancar(intervaloMs = INTERVALO_MS): () => void {
     let relogio: ReturnType<typeof setInterval> | undefined

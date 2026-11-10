@@ -5,22 +5,22 @@
 #     itself, only possible when no other proxy holds those ports.
 #   - ":80": plain HTTP behind an existing reverse proxy (nginx/traefik) that
 #     terminates TLS for the domain and forwards here. TLS is not optional at
-#     the edge either way, outside localhost the client always dials wss://.
+#     the edge either way: outside localhost the client always dials wss://.
 #
-# Security headers on pages (X-Frame-Options, CSP with frame-ancestors and
-# 'wasm-unsafe-eval') come from the front nginx in infra/nginx-enclave.conf,
-# the production path. We don't repeat them here: behind nginx they'd duplicate.
+# Security headers for the pages (X-Frame-Options, CSP with frame-ancestors and
+# 'wasm-unsafe-eval') are set by the front nginx in infra/nginx-enclave.conf,
+# the production path. We don't repeat them here: behind nginx they'd be duplicated.
 # In standalone mode they're missing, and anyone using it has to copy them
 # from there.
-# The real IP of the caller (NET-01, 1.2.1). In production the path is host
+# The caller's real IP (NET-01, 1.2.1). In production the path is host
 # nginx > docker-proxy > this container, and the request arrives from the
 # compose network gateway (measured 4/11/2026: 172.18.0.1, enclave_default
-# network 172.18.0.0/16). Without trusting that pair, Caddy would swap the
-# X-Forwarded-For with its own IP, the server sees everyone with the same IP,
-# and IP caps (telemetry, reports) apply to the whole server. We trust ONLY
+# network 172.18.0.0/16). Without trusting that hop, Caddy would replace
+# X-Forwarded-For with its own IP, the server would see everyone with the same IP,
+# and the per-IP caps (telemetry, reports) would apply to the whole server. We trust ONLY
 # that address, and the front nginx overwrites X-Forwarded-For with
 # $remote_addr (doesn't accumulate), so a forged value from the caller won't
-# get through. Port 8080 binds only to 127.0.0.1 on the host (ENCLAVE_HTTP_BIND):
+# get through. Port 8080 is bound only to 127.0.0.1 on the host (ENCLAVE_HTTP_BIND):
 # nobody reaches here without going through nginx. If the compose network
 # changes subnets, this number changes with it. In standalone mode there's no
 # proxy in front and none of this applies (incoming connections arrive with
@@ -41,10 +41,10 @@
 
 	# The app, at /app/. Static files with fallback to index.
 	#
-	# Caching splits by what the name promises: assets carry the hash of their content
-	# and never change, so they are stored forever; index.html is the pointer to the
-	# current version and must revalidate always, without this, browsers cache it by
-	# heuristic and users get stuck on old bundles.
+	# Caching follows what the name promises: assets carry the hash of their content
+	# and never change, so they are cached forever; index.html is the pointer to the
+	# current version and must always revalidate. Without this, browsers cache it
+	# heuristically and users get stuck on old bundles.
 	#
 	# The fallback is to `/app/index.html` and not the root: the root became the public
 	# page, and a wrong path inside the app must land in the app.
@@ -59,12 +59,12 @@
 		header @entry Cache-Control "no-cache"
 
 		# The Service Worker (apps/web/public/sw.js). It does not inherit the page's policy:
-		# that is a <meta> in index.html, and a worker obeys only the header with which IT
-		# was served. Without this it ran with no policy at all. `default-src 'none'` is the
-		# right cap for a script that asks nothing of anyone, and what it cuts is the NETWORK:
-		# a request or an importScripts added later fails here. It does NOT cut the Cache API,
-		# which makes no request; what prevents a cache in sw.js is apps/web/src/pwa.test.ts.
-		# The `no-cache` already comes to it from @entry, and it must come: a sw.js cached
+		# that one is a <meta> in index.html, and a worker obeys only the header IT was
+		# served with. Without this it ran with no policy at all. `default-src 'none'` is the
+		# right ceiling for a script that requests nothing, and what it cuts is the NETWORK:
+		# a fetch or an importScripts added later fails here. It does NOT cut the Cache API,
+		# which makes no requests; what prevents a cache in sw.js is apps/web/src/pwa.test.ts.
+		# It already gets `no-cache` from @entry, and it must: a sw.js cached
 		# by the browser is a sw.js that cannot be replaced.
 		# Whoever adds `icon:` or `badge:` to showNotification must add `img-src 'self'` to
 		# this header IN THE SAME COMMIT, or the icon will not load.
@@ -72,12 +72,12 @@
 		header @sw Content-Security-Policy "default-src 'none'"
 
 		# Go doesn't know `.webmanifest`, and without this the type would depend on
-		# the mime.types the image carried.
+		# the mime.types that came with the image.
 		@manifesto path /app/manifest.webmanifest
 		header @manifesto Content-Type "application/manifest+json"
 
 		# Fallback to index only outside /app/assets/: an asset that doesn't exist
-		# gives 404 from file_server, not index.html with 200. Names carry a content
+		# gets a 404 from file_server, not index.html with 200. Names carry a content
 		# hash: a request for one that's not there is an old bundle or a `.map`, which
 		# stopped being published in 1.2.1 (apps/web/vite.config.ts).
 		@semFicheiro {
@@ -89,7 +89,7 @@
 	}
 
 	# The installers, served from their own volume: publishing a new file
-	# shouldn't force rebuilding the image.
+	# must not force a rebuild of the image.
 	handle /transferencias/* {
 		root * /srv
 		file_server browse
@@ -97,9 +97,9 @@
 
 	# The same page in Portuguese, since 3 November 2026. It lives in the same
 	# volume, in `pt/index.html` (written by scripts/publicar-instaladores.mjs),
-	# and is served at /pt/transferencias/ like other Portuguese pages. The rewrite
-	# goes to the file, not the folder: so file_server doesn't add or strip slashes
-	# from the public path.
+	# and is served at /pt/transferencias/ like the other Portuguese pages. The rewrite
+	# targets the file, not the folder, so file_server neither adds nor strips slashes
+	# on the public path.
 	handle /pt/transferencias/ {
 		root * /srv
 		rewrite * /transferencias/pt/index.html
@@ -110,7 +110,7 @@
 	# (friend) are what gets copied and what the QR carries; the app reads them at
 	# `/app/c` and `/app/a`. The fragment never reaches the server, and the browser
 	# preserves it across the redirect (RFC 9110, 10.2.2): the code and id stay out
-	# of this access log. 302 not 301, so no browser stores the destination forever
+	# of this access log. 302, not 301, so no browser stores the destination forever
 	# if it changes one day. See docs/planos/moradas-opacas-e-corte.md section 1.6
 	# and arca-fatia-4-servidor-relatorio.md section 5.
 	@curta path /c /c/
@@ -124,37 +124,37 @@
 	#
 	# The old Portuguese names lived at the root and there are shared links to them.
 	# They 301 to the same page at /pt/: the destination won't change again, and
-	# whoever followed a Portuguese link keeps reading Portuguese.
+	# anyone who followed a Portuguese link keeps reading Portuguese.
 	redir /embaixadores.html /pt/embaixadores.html 301
 	redir /privacidade.html /pt/privacidade.html 301
 	redir /termos.html /pt/termos.html 301
 
 	# English lives at the root, not in /en/. Anyone typing `orwell.pt/en` by hand
-	# (as with `/pt/`) would take 404 (3 November 2026). `/en` and `/en/`
-	# lead to 301 to the root, and `/en/<página>` to `/<página>`
-	# (`/en/privacy.html` for `/privacy.html`). No loop with 302 da
-	# on first visit: it only goes to /pt/, and /pt/ does not redirect anywhere.
-	# A browser in Portuguese asking for `/en/` ends up in /pt/, like anyone asking for
-	# the root; the "EN" in the picker takes them to English and keeps them there.
+	# (the way they type `/pt/`) got a 404 (3 November 2026). `/en` and `/en/`
+	# 301 to the root, and `/en/<página>` to `/<página>`
+	# (`/en/privacy.html` to `/privacy.html`). No loop with the first-visit
+	# 302: that one only goes to /pt/, and /pt/ does not redirect anywhere.
+	# A Portuguese-language browser asking for `/en/` ends up in /pt/, like one asking for
+	# the root; the "EN" in the picker takes it to English and it stays there.
 	#
-	# The expression only accepts letters, numbers and `._/-`, and starts with a letter or
-	# number. A Location `//exemplo.org` (or `/\exemplo.org`) the browser reads
-	# as another site. Caddy joins the slashes before comparing
-	# (`/en//exemplo.org` leads to `/exemplo.org`, inside here), and `\`, a tab or
-	# a line break become 404. `scripts/provar-linguas-caddy.sh` proves it.
+	# The pattern only accepts letters, digits and `._/-`, and starts with a letter or
+	# digit. The browser reads a Location `//exemplo.org` (or `/\exemplo.org`)
+	# as another site. Caddy merges the slashes before matching
+	# (`/en//exemplo.org` goes to `/exemplo.org`, on this site), and `\`, a tab or
+	# a line break end up as 404. `scripts/provar-linguas-caddy.sh` proves it.
 	@enRaiz path /en /en/
 	redir @enRaiz / 301
 	@enPagina path_regexp enPagina ^/en/([A-Za-z0-9][A-Za-z0-9._/-]*)$
 	redir @enPagina /{re.enPagina.1} 301
 
-	# The first visit, no JavaScript and no cookie: someone arriving at the root with
+	# The first visit, with no JavaScript and no cookie: someone arriving at the root with
 	# their browser set to Portuguese ahead of English goes to /pt/, with 302 (the choice
 	# depends on the browser and is not stored). The pattern accepts any language before
 	# pt as long as it is not en ("fr,pt,en" goes to /pt/, "en,pt" stays). It reads the
 	# order from the list without weighing q=, which browsers already write in order.
 	# Someone coming from a page on this same site is not redirected: that is how the
-	# "EN" selector, in /pt/, takes them to the root and keeps them there. To stay in
-	# English and enter the root again, use the selector; there is no cookie to remember
+	# "EN" selector, in /pt/, takes them to the root and they stay there. To stay in
+	# English and come in through the root again, use the selector; there is no cookie to remember
 	# the choice, and the footer can still say there are no cookies. The test in
 	# apps/site/testes/linguas.test.ts reads this pattern and runs it against the cases.
 	@primeiraVisitaPt {
@@ -168,10 +168,10 @@
 
 	# The downloads page follows the same rule: English at /transferencias/ and
 	# Portuguese at /pt/transferencias/. That's where the installed app sends people
-	# who need to update, so first visit picks the language like the root does. Just
-	# the page: the installers, checksums, and manifests inside the folder never
-	# redirect. The disk path (/transferencias/pt/) 301s to the public URL, to have
-	# one URL.
+	# who need to update, so the first visit picks the language like the root does. Only
+	# the page: the installers, checksums and manifests inside the folder never
+	# redirect. The disk path (/transferencias/pt/) 301s to the public path, so there is
+	# a single URL.
 	@primeiraVisitaPtTransferencias {
 		path /transferencias/
 		header_regexp Accept-Language `(?i)^(?:\s*(?:[^e,\s][^,]*|e[^n,][^,]*|e)?,)*\s*pt(?:[-;,\s]|$)`
@@ -184,14 +184,14 @@
 	@transferenciasPtNoDisco path /transferencias/pt /transferencias/pt/ /transferencias/pt/index.html
 	redir @transferenciasPtNoDisco /pt/transferencias/ 301
 
-	# And the root: the public page. No fallback to index, a path that doesn't
+	# And the root: the public page. No fallback to index at all: a path that doesn't
 	# exist here is an honest 404, not the homepage pretending to be everything.
 	handle {
 		root * /srv
 
-		# Only /assets/ carries a hash of the content in the name. Screenshots do not: with
+		# Only /assets/ carries a content hash in the name. Screenshots do not: with
 		# "immutable", a replaced screenshot would stay in the cache for a year for anyone
-		# who had already seen it (November 3, 2026, from the old hero conversation).
+		# who had already seen it (3 November 2026, the old hero conversation).
 		@estaticos path /assets/*
 		header @estaticos Cache-Control "public, max-age=31536000, immutable"
 

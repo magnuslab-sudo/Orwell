@@ -11,7 +11,7 @@ import { fromBase64, toBase64 } from "./canonical.js"
  * `invites` table. The table stores that same `codeHash`. Anyone with a copy of
  * the database (a stolen backup, a discarded drive) could request entry with it
  * without ever seeing the link, and the member who was online would admit them,
- * because the hash was one they had minted themselves.
+ * because the hash was one that member had minted.
  *
  * **The choice.** The code never reaches the server, neither in clear nor as a
  * hash that grants entry. An Ed25519 key pair is derived from the code (HKDF,
@@ -21,28 +21,28 @@ import { fromBase64, toBase64 } from "./canonical.js"
  * public key, and you cannot sign anything with a public key: a copy of the
  * database no longer suffices for entry.
  *
- * This was preferred over an HMAC of the code over a server challenge: to verify
+ * We chose this over an HMAC of the code over a challenge: to verify
  * an HMAC the server would have to store the HMAC key, and anyone who copied the
- * database would get it. This was preferred to sending the code and having the
+ * database would get it. We also chose it over sending the code and having the
  * server compare the hash, because then the server (and its logs) would see the
  * code in clear on each redemption.
  *
  * **What gets signed.** The domain, the `codeHash`, the caller's address, and
- * the `sha256` of the key package. No server challenge, and on purpose: a proof
- * replayed only requests entry again for the SAME account with the SAME key
- * package, and each request spends one use of the invite. A stolen proof does
- * not work for anyone else, because the server checks the address of the link.
+ * the `sha256` of the KeyPackage. No server challenge, on purpose: a replayed
+ * proof only requests entry again for the SAME account with the SAME
+ * KeyPackage, and each request spends one use of the invite. A stolen proof is
+ * useless to anyone else, because the server checks the connection's address.
  */
 const DOMINIO_DA_CHAVE = new TextEncoder().encode("orwell/convite/chave-da-prova/v1")
 const DOMINIO_DA_MENSAGEM = "orwell/convite/resgate/v1"
 
-/** The key pair for the proof, derived from the link code (the string as it appears in the URL). */
+/** The proof's key pair, derived from the link code (the string as it appears in the link). */
 export function chaveDaProvaDoConvite(codigo: string): { privada: Uint8Array; publica: Uint8Array } {
   const privada = hkdf(sha256, new TextEncoder().encode(codigo), undefined, DOMINIO_DA_CHAVE, 32)
   return { privada, publica: ed25519.getPublicKey(privada) }
 }
 
-/** The bytes being signed. See the module comment. */
+/** The signed bytes. See the module comment. */
 export function mensagemDaProvaDoConvite(pedido: { codeHash: string; address: string; keyPackage: string }): Uint8Array {
   const pacote = toBase64(sha256(fromBase64(pedido.keyPackage)))
   return new TextEncoder().encode([DOMINIO_DA_MENSAGEM, pedido.codeHash, pedido.address, pacote].join("\n"))

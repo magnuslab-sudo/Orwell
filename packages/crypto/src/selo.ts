@@ -4,20 +4,20 @@ import { hkdf } from "@noble/hashes/hkdf.js"
 import { sha256 } from "@noble/hashes/sha2.js"
 
 /**
- * The seal on the copy that goes to the owner (`docs/planos/denuncias-design.md`, §6.2).
+ * The seal on the copy that goes to the founder (`docs/planos/denuncias-design.md`, §6.2).
  *
- * The reporter seals the copy with the owner's ACCOUNT key (Ed25519,
- * converted to X25519 as in `ids.ts`). The seal carries no sender: the key
- * used to seal is ephemeral, generated for this seal and forgotten after. The
- * server stores and delivers it, but doesn't open it; the owner opens it and
- * doesn't know who sent it.
+ * The reporter seals the copy to the founder's ACCOUNT key (Ed25519,
+ * converted to X25519 as in `ids.ts`). The seal carries no sender: the sealing
+ * key is ephemeral, generated for this seal and discarded afterwards. The
+ * server stores and delivers it, but cannot open it; the founder opens it and
+ * does not learn who sent it.
  *
  * - key = HKDF-SHA256(x25519(ephemeral, account), empty salt,
  *   info "orwell-selo-v1\0" || e || contaEd25519, 32)
  * - XChaCha20-Poly1305, 24-byte nonce, AAD "orwell-denuncia-copia-v1\0" + aad
  *
- * The ephemeral and account go into `info`: the seal is locked to this account
- * and this ephemeral, and you can't change one without breaking the key.
+ * The ephemeral key and the account key go into `info`: the seal is bound to this account
+ * and this ephemeral key, and neither can change without breaking the key.
  */
 
 const INFO = new TextEncoder().encode("orwell-selo-v1\0")
@@ -33,7 +33,7 @@ export interface Selado {
 }
 
 function chaveDoSelo(partilhado: Uint8Array, efemera: Uint8Array, contaEd25519: Uint8Array): Uint8Array {
-  // A secret of zeros would be the same for any pair: the guard in `historico.ts`.
+  // A secret of zeros would be the same for any pair: same guard as in `historico.ts`.
   if (partilhado.every((byte) => byte === 0)) throw new Error("degenerate shared secret")
   const info = new Uint8Array(INFO.length + efemera.length + contaEd25519.length)
   info.set(INFO, 0)

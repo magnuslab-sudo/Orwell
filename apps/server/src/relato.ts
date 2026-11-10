@@ -4,12 +4,12 @@ import { parseAddress } from "@enclave/protocol"
 import type { FastifyInstance } from "fastify"
 
 /**
- * "Send report" (Help and diagnostics, phase 4 of settings 0.9).
+ * "Enviar registo" (send log; Help and diagnostics, phase 4 of the 0.9 settings).
  *
- * The app sends the session diagnostic report (the same text as "Copy report",
- * which has no messages or person text) with the address and version. The
- * server saves it in a file per day and per address, for 30 days, so whoever
- * maintains the server can read it when the person reports the problem.
+ * The app sends the session's diagnostic log (the same text as "Copiar registo",
+ * which holds no messages and no user text) with the address and version. The
+ * server keeps it in one file per day and per address, for 30 days, so the
+ * server operator can read it when the user describes the problem.
  *
  * **The route lives under `/_enclave/`**, not under `/relato` at the root: in
  * production Caddy only passes to the server what is under `/_enclave/*`
@@ -17,19 +17,19 @@ import type { FastifyInstance } from "fastify"
  * origin (`connect-src 'self'`). Nothing changes in the infra.
  *
  * **No authentication, so it has caps.** The address is what the app declares,
- * not proof: it serves to organize the file and to count, not to trust. The
- * caps protect the disk: 64 kB per report, 10 per hour per address, and 30 per
+ * not proof: it is used to file and to count, not to trust. The
+ * caps protect the disk: 64 kB per log, 10 per hour per address, and 30 per
  * hour per IP (the address is chosen by the caller; the IP is not). None of
  * this goes into the access log, which is off.
  */
 
-/** The largest report accepted, in bytes of text. A 200-event report stays well below. */
+/** The largest log accepted, in bytes of text. A 200-event log stays well below. */
 export const RELATO_MAX_BYTES = 64 * 1024
-/** How many reports per hour, per address. */
+/** How many logs per hour, per address. */
 export const RELATOS_POR_HORA = 10
-/** How many reports per hour, per IP: the cap that a declared address cannot bypass. */
+/** How many logs per hour, per IP: the cap a declared address cannot get around. */
 export const RELATOS_POR_HORA_POR_IP = 30
-/** How many days a report stays saved. */
+/** How many days a log is kept. */
 export const RELATO_DIAS = 30
 
 const HORA_MS = 3_600_000
@@ -39,9 +39,9 @@ const DIA_MS = 24 * HORA_MS
 const VERSAO = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:[-+][0-9A-Za-z.-]{1,24})?$/
 
 /**
- * A sliding one-hour window, per key. In memory: a restart begins counting again, and that is enough.
+ * A sliding one-hour window, per key. In memory: a restart starts the count over, and that is enough.
  *
- * `janelaMs` extends it: reviewing a suspension counts per day (`denuncia.ts`).
+ * `janelaMs` extends it: suspension review requests count per day (`denuncia.ts`).
  */
 export class JanelaDeUmaHora {
   readonly #vezes = new Map<string, number[]>()
@@ -50,7 +50,7 @@ export class JanelaDeUmaHora {
     readonly janelaMs = HORA_MS,
   ) {}
 
-  /** Count one more, if there is still room. Return whether it fit. */
+  /** Counts one more, if there is still room. Returns whether it fit. */
   tentar(chave: string, agora = Date.now()): boolean {
     const recentes = (this.#vezes.get(chave) ?? []).filter((quando) => agora - quando < this.janelaMs)
     if (recentes.length >= this.maximo) {
@@ -62,7 +62,7 @@ export class JanelaDeUmaHora {
     return true
   }
 
-  /** Forget keys with nothing in the last window, so the map does not grow forever. */
+  /** Forgets keys with nothing in the last window, so the map does not grow forever. */
   limpar(agora = Date.now()): void {
     for (const [chave, vezes] of this.#vezes) {
       if (vezes.every((quando) => agora - quando >= this.janelaMs)) this.#vezes.delete(chave)
@@ -73,7 +73,7 @@ export class JanelaDeUmaHora {
 /**
  * The short address, for the file name: the local part, only letters, numbers,
  * `-` and `_`. The full address goes inside the file, in the header of each
- * report; the name only needs to be safe and readable.
+ * log; the name only needs to be safe and readable.
  */
 export function enderecoCurto(endereco: string): string {
   const local = endereco.slice(1, endereco.indexOf(":") > 0 ? endereco.indexOf(":") : undefined)
@@ -81,7 +81,7 @@ export function enderecoCurto(endereco: string): string {
   return limpo || "anonimo"
 }
 
-/** `2026-10-28`, in UTC: the same day for whoever reads it on the server, no matter their timezone. */
+/** `2026-10-28`, in UTC: the same day for whoever reads it on the server, whatever the sender's timezone. */
 export function dataDoFicheiro(agora: Date): string {
   return agora.toISOString().slice(0, 10)
 }
@@ -101,7 +101,7 @@ export function lerPedidoDeRelato(corpo: unknown): { endereco: string; versao: s
   return { endereco, versao, texto }
 }
 
-/** Delete reports older than `RELATO_DIAS`. A failure on one file does not stop the others. */
+/** Deletes logs older than `RELATO_DIAS`. A failure on one file does not stop the others. */
 export async function varrerRelatos(pasta: string, agora = Date.now()): Promise<number> {
   let apagados = 0
   let nomes: string[]
@@ -127,8 +127,8 @@ export async function varrerRelatos(pasta: string, agora = Date.now()): Promise<
 }
 
 /**
- * Register `POST /_enclave/relato` and the daily sweep. Return how to stop the
- * sweep (the server's `close` calls it).
+ * Registers `POST /_enclave/relato` and the daily sweep. Returns a function that
+ * stops the sweep (the server's `close` calls it).
  */
 export function registarRelatos(app: FastifyInstance, dataDir: string): () => void {
   const pasta = join(dataDir, "relatos")
@@ -146,7 +146,7 @@ export function registarRelatos(app: FastifyInstance, dataDir: string): () => vo
       if (Buffer.byteLength(pedido.texto, "utf8") > RELATO_MAX_BYTES) {
         return reply.code(413).send({ error: "report-too-large" })
       }
-      // IP first: an address made up for each request cannot bypass the cap.
+      // IP first: an address made up for each request cannot get around the cap.
       if (!porIp.tentar(request.ip) || !porEndereco.tentar(pedido.endereco)) {
         return reply.code(429).send({ error: "too-many-reports" })
       }

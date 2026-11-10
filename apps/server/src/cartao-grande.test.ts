@@ -4,16 +4,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { Cliente, levantarServidor, type ServidorDeTeste } from "../testes/cliente-de-teste.js"
 
 /**
- * The card of the common room with more than ~68 leaves (3/11/2026, `!984`).
+ * The common room card with more than ~68 leaves (3/11/2026, `!984`).
  *
  * The card is the `GroupInfo` with the full tree: about 2.9 KB per leaf
- * (measured with real sessions, 3/11/2026). The mold of the `channel.groupinfo.put`
- * cut it into 262 144 caracteres of base64, that is 196 KB, about 68
- * leaves. In the `!984` (108 contas to 3/11) the `put` of each member, at each epoch,
- * was rejected by the parser as `bad-frame: unparseable frame` (the one from the owner's record
- * at 23:07:27), the server had no card (`group_infos` empty), and
- * from ~17 h on 3/11 onward it started to depend on a member connected to
- * admit who arrives.
+ * (measured with real sessions, 3/11/2026). The `channel.groupinfo.put` schema
+ * cut it at 262 144 base64 characters, i.e. 196 KB, about 68 leaves.
+ * In `!984` (108 accounts on 3/11) each member's `put`, at every epoch,
+ * was rejected by the parser as `bad-frame: unparseable frame` (the one in the owner's log
+ * at 23:07:27), the server was left without a card (`group_infos` empty), and
+ * from about 17:00 on 3/11 every join depended on a connected member to
+ * admit the newcomer.
  */
 
 let servidor: ServidorDeTeste

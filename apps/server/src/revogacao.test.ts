@@ -24,10 +24,10 @@ import type { ServerConfig } from "./config.js"
  *
  * The account removes a device by publishing the next manifest without it. What
  * the server does with that, and what we measure here: the revoked device that
- * is connected leaves right away (`device-revoked`, fatal); it cannot come back;
- * its packets waiting are gone; and no account manifest puts it back. What
- * CANNOT happen, and we also measure: the paired device that is not yet in the
- * manifest (the phone before `ready`) stays able to enter.
+ * is connected is dropped right away (`device-revoked`, fatal); it cannot rejoin;
+ * its unclaimed key packages are gone; and no account manifest puts it back. What
+ * MUST NOT happen, and we also measure it: the paired device that is not yet in the
+ * manifest (the phone before `pronto`) can still join.
  */
 
 let HOME: ReturnType<typeof parseServerName>
@@ -136,7 +136,7 @@ afterAll(async () => {
 
 type Identidade = ReturnType<typeof generateIdentity>
 
-/** Join with the chain: it is how every client since August 11 joins. */
+/** Join with the chain: this is how every client has joined since August 11. */
 async function entrar(identity: Identidade): Promise<{ client: TestClient; resposta: ServerFrame }> {
   const client = await TestClient.connect(gatewayUrl)
   client.send({ t: "hello", version: PROTOCOL_VERSION, capabilities: ["commit-after-echo"] })
@@ -173,7 +173,7 @@ async function publicar(client: TestClient, wire: ReturnType<typeof manifesto>, 
   return client.nextOf("manifest.published")
 }
 
-/** Three devices of the same account: the laptop (with the key), the phone, and a third one to pair. */
+/** Three devices of the same account: the computer (with the key), the phone, and a third one to pair. */
 function conta(): { computador: Identidade; telemovel: Identidade; novo: Identidade } {
   const computador = generateIdentity(HOME)
   return {
@@ -204,7 +204,7 @@ describe("gateway: revogar um aparelho", () => {
     await b.client.esperarFecho()
     expect(b.client.fechado).toBe(true)
 
-    // Who was revoked stays connected and served.
+    // The device that revoked stays connected and served.
     await a.client.sync()
     expect(a.client.fechado).toBe(false)
     a.client.close()
@@ -219,7 +219,7 @@ describe("gateway: revogar um aparelho", () => {
     const b = await entrar(telemovel)
     expect(b.resposta).toMatchObject({ t: "error", code: "device-revoked", fatal: true })
     await b.client.esperarFecho()
-    // And did not get logged as a seen device.
+    // And it was not recorded as a seen device.
     const vistos = enclave.store.devicesOf(computador.address).map((k) => toBase64(k))
     expect(vistos).not.toContain(toBase64(telemovel.deviceSigningPublicKey))
     a.client.close()
@@ -276,7 +276,7 @@ describe("gateway: revogar um aparelho", () => {
     expect(enclave.store.isDeviceRevoked(computador.address, telemovel.deviceSigningPublicKey)).toBe(false)
     b.client.close()
     await b.client.esperarFecho()
-    // A new connection comes in, and the next manifest can put it back.
+    // A new connection gets in, and the next manifest can put it back.
     const outraVez = await entrar(telemovel)
     expect(outraVez.resposta.t).toBe("auth.ok")
     expect((await publicar(a.client, manifesto(computador, 3, [computador, telemovel]))).ok).toBe(true)
@@ -302,8 +302,8 @@ describe("gateway: revogar um aparelho", () => {
     const a = await entrar(computador)
     const b = await entrar(telemovel)
     expect((await publicar(a.client, manifesto(computador, 1, [computador, telemovel]))).ok).toBe(true)
-    // Direct revoke in the vault, without going through the gate: it is the frame
-    // that arrives between the manifest and the connection close.
+    // Revoking directly in the database, without going through the gateway: this is
+    // the frame that arrives between the manifest and the connection close.
     enclave.store.putDeviceManifest(manifesto(computador, 2, [computador]), [toBase64(telemovel.deviceSigningPublicKey)])
     b.client.send({ t: "keypackage.publish", packages: [toBase64(new Uint8Array([9]))], replace: false })
     expect(await b.client.nextOf("error")).toMatchObject({ code: "device-revoked" })

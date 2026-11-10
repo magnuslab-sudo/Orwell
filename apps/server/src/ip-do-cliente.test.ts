@@ -6,10 +6,10 @@ import { PROXIES_DE_CONFIANCA } from "./app.js"
 
 /**
  * The requester's IP (NET-01, 1.2.1). Production: host nginx > docker-proxy
- * (leaves the compose network gateway, 172.18.0.1) > Caddy (172.18.0.x) >
+ * (traffic leaves from the compose network gateway, 172.18.0.1) > Caddy (172.18.0.x) >
  * server. nginx overwrites X-Forwarded-For with $remote_addr, and Caddy,
- * which trusts the gateway, adds it. The server must read the requester's public
- * IP, never a value forged by the requester.
+ * which trusts the gateway, appends it. The server must read the requester's public
+ * IP, never a value the requester put on the left.
  */
 async function ipVisto(remoteAddress: string, xff?: string): Promise<string> {
   const app = Fastify({ trustProxy: PROXIES_DE_CONFIANCA })

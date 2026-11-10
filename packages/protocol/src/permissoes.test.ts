@@ -21,11 +21,11 @@ import {
  * the hierarchy, and the escalation cases (giving another more than you have).
  */
 
-const ANA = "@ana:t" // fundadora
-const BRUNO = "@bruno:t" // moderator (rank 2) with manageroles
+const ANA = "@ana:t" // founder
+const BRUNO = "@bruno:t" // `guia` (rank 2) with `gerircargos`
 const CARLA = "@carla:t" // no role
 const DARIO = "@dario:t" // admin
-const EVA = "@eva:t" // porteira (rank 1)
+const EVA = "@eva:t" // `porteiro` (rank 1)
 
 function estado(opcoes: {
   cargos?: Record<string, CargoDefinido>
@@ -86,7 +86,7 @@ describe("permissoesEm", () => {
     })
     expect(permissoesEm(e, BRUNO, { sala: "arena" })).toContain("mover")
     expect(permissoesEm(e, BRUNO, { sala: "estudio" })).not.toContain("mover")
-    // The deny on move does not carry the implicit disconnect if stated apart; here it removes only move.
+    // A deny on `mover` does not take the implied disconnect if that is stated separately; here it removes only `mover`.
     expect(permissoesEm(e, BRUNO)).toContain("mover")
     expect(permissoesEm(e, CARLA, { sala: "arena" })).not.toContain("mover")
     expect(permissoesEm(e, CARLA, { sala: "estudio" })).not.toContain("mover")
@@ -103,11 +103,11 @@ describe("permissoesEm", () => {
         ],
       },
     })
-    // Category: everyone loses connect and write; the gatekeeper gets write back. Room: everyone gets connect back.
+    // Category: everyone loses `ligar` and `escrever`; `porteiro` gets `escrever` back. Room: everyone gets `ligar` back.
     expect(permissoesEm(e, CARLA, { sala: "palco" })).toContain("ligar")
     expect(permissoesEm(e, CARLA, { sala: "palco" })).not.toContain("escrever")
     expect(permissoesEm(e, EVA, { sala: "palco" })).toContain("escrever")
-    // In the category without the room: connect stays removed.
+    // In the category, outside the room: `ligar` stays removed.
     expect(permissoesEm(e, CARLA, { categoria: "Jogos" })).not.toContain("ligar")
   })
 
@@ -194,7 +194,7 @@ describe("hierarquia e escalada", () => {
     expect(podeAtribuir(e, BRUNO, ANA, [], ["porteiro"])).toBe(false)
     expect(podeAtribuir(e, BRUNO, "@fabio:t", ["guia"], ["guia", "porteiro"])).toBe(false)
     expect(podeAtribuir(e, BRUNO, DARIO, [CARGO_ADMIN], [])).toBe(false)
-    // Not to themselves either: they are at their own level.
+    // Not to themselves either: they are at their own rank.
     expect(podeAtribuir(e, BRUNO, BRUNO, ["guia"], ["guia", "porteiro"])).toBe(false)
   })
 
@@ -233,7 +233,7 @@ describe("sobreposições: quem as pode mudar", () => {
     expect(podeSobrepor(e, CARLA, { sala: "s" }, undefined, [{ role: CARGO_TODOS, allow: ["mover"], deny: [] }])).toBe(true)
     // Escalation: giving what they don't have.
     expect(podeSobrepor(e, CARLA, { sala: "s" }, undefined, [{ role: CARGO_TODOS, allow: ["fixar"], deny: [] }])).toBe(false)
-    // One rank above them.
+    // A role ranked above them.
     expect(podeSobrepor(e, CARLA, { sala: "s" }, undefined, [{ role: "chefe", allow: [], deny: ["mover"] }])).toBe(false)
     expect(podeSobrepor(e, CARLA, { sala: "s" }, undefined, [{ role: CARGO_ADMIN, allow: [], deny: [] }])).toBe(false)
   })

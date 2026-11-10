@@ -8,13 +8,13 @@ import { buildServer, type Enclave } from "./app.js"
 import type { ServerConfig } from "./config.js"
 
 /**
- * The state that already exists for whoever arrives later.
+ * The state that already exists, for whoever arrives later.
  *
- * Reproduces the owner's report from 18 August 2026: "when they enter, they
- * also don't see me in a call" and "no call shows up, users enter as if
- * everything were empty".
+ * Reproduces the owner's report from 18 August 2026: *"when they join, they
+ * don't see me in a call either"* and *"no call shows up: users join as if
+ * everything were empty"*.
  *
- * Someone in a voice room announces themselves once, in a `voice.join`, and that
+ * Someone in a voice room announces it once, in a `voice.join`, and that
  * announcement only reaches those already listening. Whoever joins the channel
  * afterwards never heard it, and unlike name or roles, nobody repeats it.
  */
@@ -71,16 +71,16 @@ async function until(predicate: () => boolean, label: string, timeoutMs = 15_000
 /**
  * Join a voice room with the call engine for real.
  *
- * Node has no WebRTC, so the two objects that entry touches are faked, as in
+ * Node has no WebRTC, so the two objects the join touches are faked, as in
  * `call.test.ts`, for the same reason. Everything else is the product: the real
  * `Call`, the real `Session`, the real server, and MLS encrypting each
  * announcement. No signaling line is written by hand.
  *
  * **The link between session and call lives here, and that is a known weakness:**
- * a bridge that forgot it would still pass this test. What covers it are the two
+ * a bridge that forgot it would still pass this test. What covers it is the two
  * sister tests, `apps/web/src/bridge.presenca.test.ts` and
  * `apps/client/src/renderer/bridge.presenca.test.ts`, one per bridge, each
- * failing alone if the line is missing.
+ * failing on its own if the line is missing there.
  */
 function ligarMotorDeChamada(quem: Peer): Call {
   const call = new Call({
@@ -91,7 +91,7 @@ function ligarMotorDeChamada(quem: Peer): Call {
     mediaKey: (channel: string, address: UserAddress) => quem.session.mediaKey(channel, address),
     reservarContadorSframe: (channel: string, keyId: number) => quem.session.reservarContadorSframe(channel, keyId),
   })
-  // The same two lines from both bridges, and that is what this test crosses.
+  // The same two lines both bridges have, and that is what this test runs through.
   quem.session.on("voice", (event) => {
     void call.handleSignal(event.channel, event.from, event.payload).catch(() => {})
   })
@@ -119,7 +119,7 @@ function quemEstaEmVoz(quem: Peer, channel: string): Map<string, string> {
  * The WebRTC that Node does not have, faked as in `call.test.ts`.
  *
  * Complete enough for an offer and answer to traverse the real server and a
- * connection to reach "connected", **and this is not test comfort, it is what
+ * connection to reach "connected", **and this is not a test convenience; it is what
  * makes the test rig measure the right thing.** See `assentarChamada`.
  */
 class LigacaoFingida {
@@ -178,7 +178,7 @@ function fingirWebRTC(): void {
  *
  * **This is the trap of this hunt, and it matters more than the test itself.**
  * The `#comecarAnuncio` in `call.ts` repeats `voice.join` every five seconds
- * while there is NO peer, and stops at the first. With one person alone in a
+ * while there is NO peer, and stops at the first one. With one person alone in a
  * voice room, that repeater covers any reaffirmation gap and makes the test pass
  * on its own: measured with the fix disabled, both tests below stayed green and
  * only got five seconds slower.
@@ -234,7 +234,7 @@ describe("quem chega e o que já lá estava", () => {
     await until(() => b.session.channels.includes(canal), "B entra no canal")
 
     // A and B join the voice room and the call settles. The contrast that gives
-    // meaning to the rest: the mechanism works for whoever witnesses the entry.
+    // meaning to the rest: the mechanism works for whoever witnesses the join.
     const chamadaDeA = ligarMotorDeChamada(a)
     const chamadaDeB = ligarMotorDeChamada(b)
     await chamadaDeA.join(canal, { room: "tasca" })
@@ -244,12 +244,12 @@ describe("quem chega e o que já lá estava", () => {
     await until(() => LigacaoFingida.instancias.length >= 2, "as duas ligações nascem")
     assentarChamada()
 
-    // Now Carla arrives, to the channel where the call is already running.
+    // Now Carla arrives in the channel where the call is already under way.
     await a.session.seat(canal, c.address)
     await until(() => c.session.channels.includes(canal), "C entra no canal")
 
-    // What the person sees: the voice room with who is in it. Both of them, not
-    // one: whoever is in a call is everyone in there.
+    // What the user sees: the voice room with whoever is inside. Both of them, not
+    // one: the people in a call are everyone who is there.
     await until(
       () => quemEstaEmVoz(c, canal).get(a.address) === "tasca" && quemEstaEmVoz(c, canal).get(b.address) === "tasca",
       "C vê A e B na sala de voz onde já estavam quando ela chegou",
@@ -264,15 +264,16 @@ describe("quem chega e o que já lá estava", () => {
   }, 60_000)
 
   /**
-   * And the most common case of all, which an entry to the channel does not
-   * cover: opening the app.
+   * And the most common case of all, which joining the channel does not
+   * cover: **opening the app**.
    *
    * Someone already a member does not move the epoch when they return. If
-   * reaffirmation depended only on the group growing, this would stay empty,    * and this is the owner's report: "users enter as if everything were empty".
-   * Who enters a channel enters once; who opens the app opens it every day.
+   * reaffirmation depended only on the group growing, this would stay empty,
+   * and this is the owner's report: *"users join as if everything were empty"*.
+   * Whoever joins a channel joins once; whoever opens the app opens it every day.
    *
    * The voice list lives in memory on the viewer's side, and nothing seeds it:
-   * a new connection starts knowing nothing about a call that already runs.
+   * a new connection starts knowing nothing about a call already in progress.
    */
   it("quem volta a abrir a aplicação fica a saber quem está na sala de voz", async () => {
     const a = await peer("Alice")
@@ -287,7 +288,7 @@ describe("quem chega e o que já lá estava", () => {
     await until(() => c.session.channels.includes(canal), "C entra no canal")
 
     // A and C in the voice room, call settled. B is a channel member and only
-    // watching, the state almost everyone is almost always in.
+    // watching, which is the state of almost everyone almost all the time.
     const chamadaDeA = ligarMotorDeChamada(a)
     const chamadaDeC = ligarMotorDeChamada(c)
     await chamadaDeA.join(canal, { room: "tasca" })
@@ -297,7 +298,7 @@ describe("quem chega e o que já lá estava", () => {
     assentarChamada()
 
     // B closes the app and comes back. Nobody left the call, and the epoch did
-    // not move: returning is not entering.
+    // not move: returning is not joining.
     b.session.disconnect()
     b.voz.length = 0
     await new Promise((resolve) => setTimeout(resolve, 500))

@@ -9,12 +9,12 @@ import { openDatabase } from "./db.js"
 import { Store } from "./store.js"
 
 /**
- * The arbitration of who creates a channel, and the record that a channel had life.
+ * The arbitration of who creates a channel, and the record that a channel was ever active.
  *
  * The two things the server keeps about the common room, and the two that nobody
  * can manually reset if they go wrong: the claim is the only thing that decides
  * who creates the group, and the activity mark is the only thing that tells a
- * silent private room from a brand new room.
+ * quiet private room from a newly created one.
  */
 
 let dataDir: string
@@ -60,7 +60,7 @@ describe("claimChannel", () => {
   })
 
   it("não caduca depois de a sala existir, por muito tempo que passe", () => {
-    // Honored: there was a message inside. From here on, swapping the owner would
+    // Honored: there was a message inside. From here on, swapping the assignee would
     // mean creating a SECOND group with the same identifier, which is the collision
     // this arbitration exists to prevent.
     vi.useFakeTimers()
@@ -76,8 +76,8 @@ describe("claimChannel", () => {
 /**
  * Sweep claims that no longer decide anything.
  *
- * The table was never cleaned, and grew faster once the tolerance of an unstarted
- * channel consults claims: one row for each identifier someone has ever claimed,
+ * The table was never cleaned, and grew faster once the tolerance for a not-yet-created
+ * channel started consulting claims: one row for each identifier someone has ever claimed,
  * forever.
  */
 describe("expireChannelClaims", () => {
@@ -87,7 +87,7 @@ describe("expireChannelClaims", () => {
     store.claimChannel(CANAL, "@ana:localhost")
     expect(store.claimantOf(CANAL)).toBe("@ana:localhost")
 
-    // Within the grace period do not touch: Ana may still be creating the room.
+    // Within the grace margin, leave it alone: Ana may still be creating the room.
     vi.setSystemTime(new Date("2026-08-06T03:01:00Z"))
     expect(store.expireChannelClaims()).toBe(0)
     expect(store.claimantOf(CANAL)).toBe("@ana:localhost")
@@ -96,8 +96,8 @@ describe("expireChannelClaims", () => {
     expect(store.expireChannelClaims()).toBe(1)
     expect(store.claimantOf(CANAL)).toBeUndefined()
 
-    // Inert, and that makes it safe: without the row, the next to request wins
-    //, exactly what they would win with it there, for having expired.
+    // Inert, and that makes it safe: without the row, the next requester wins,
+    // exactly as it would with the row there, since the claim has expired.
     expect(store.claimChannel(CANAL, "@bento:localhost")).toBe("@bento:localhost")
   })
 
@@ -116,9 +116,9 @@ describe("expireChannelClaims", () => {
   })
 
   it("também não a apaga quando a retenção já levou os eventos", () => {
-    // The activity mark survives intentional retention, and it is what tells a
-    // silent room from a room about to be born. The sweep must respect it, or it
-    // sends a dormant channel the look of a brand new channel.
+    // The activity mark survives retention on purpose, and it is what tells a
+    // quiet room from a room not yet created. The sweep must respect it, or it
+    // gives a dormant channel the look of a brand new one.
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-06T03:00:00Z"))
     store.claimChannel(CANAL, "@ana:localhost")
@@ -140,9 +140,9 @@ describe("channelNeverUsed", () => {
 
   it("continua falso depois de a retenção apagar tudo o que lá estava", () => {
     // Thirty days of silence in a private room and the event table goes empty.
-    // Just from being empty, the room would look brand new again and the gateway
-    // would reopen it to any account in the world, a handful of junk frames for
-    // each member to go deaf and the history to be lost to future secrecy.
+    // With only "it is empty", the room would look brand new again and the gateway
+    // would reopen it to any account in the world: a handful of junk frames for
+    // each member to declare itself deaf and the history to be lost to forward secrecy.
     store.appendEvent({ channel: CANAL, kind: "application", ciphertext: new Uint8Array([1]) }, { refundavel: false })
     expect(store.expireEvents(0)).toBeGreaterThan(0)
     expect(store.channelNeverUsed(CANAL)).toBe(false)
@@ -150,13 +150,13 @@ describe("channelNeverUsed", () => {
 })
 
 /**
- * A legitimate invite cannot be deleted by another one that arrives later.
+ * A legitimate invite cannot be buried by another one that arrives later.
  *
  * `pendingWelcomes` returned only the welcome with `MAX(seq)` per channel and
- * recipient. A second welcome to the same person, from a member trying to deny
- * entry, or from a client with a bug, buried the first, and the victim never
- * got an invite without anyone noticing: the invite was sent, the server accepted
- * it, and it never appeared again.
+ * recipient. A second welcome to the same person (from a member trying to deny
+ * them entry, or from a buggy client) buried the first, and the victim was left
+ * without an invite forever, with nobody noticing anything odd: the invite was
+ * sent, the server accepted it, and it never appeared again.
  */
 describe("welcomes pendentes", () => {
   const CANAL = "!sala:teste"
@@ -188,7 +188,7 @@ describe("welcomes pendentes", () => {
  * Up to four rows per account, and beyond that the oldest is removed. It was one
  * row per account until 22 September 2026, kept by a DELETE on each login: the
  * server enforced one device at a time, which is what multi-device removes. The
- * cap is set by the owner, and rotation is what makes the fifth fresh reinstall
+ * cap is the owner's choice, and rotation is what makes the fifth fresh reinstall
  * keep logging in as it always has.
  *
  * The numbers here are literals on purpose: `4` and `5`, not the constant. The
@@ -359,7 +359,7 @@ describe("manifestos de aparelhos", () => {
     }
     expect(store.putDeviceManifest(forjado)).toEqual({ ok: false, reason: "bad-shape" })
     expect(store.deviceManifestOf(ANA.address)).toBeNull()
-    // And the max enters, so the cap is never lower than stated.
+    // And the maximum gets in, so the cap is not lower than stated.
     expect(store.putDeviceManifest(manifesto(ANA, VERSAO_MAXIMA)).ok).toBe(true)
   })
 
@@ -375,10 +375,10 @@ describe("manifestos de aparelhos", () => {
 })
 
 /**
- * Key packages per device, and the claim in bundle.
+ * Key packages per device, and the bundled claim.
  *
- * What is asserted here is what the inviting client depends on: a claim without
- * bundle uses exactly one; the bundle uses one per device in the manifest (or in
+ * What is asserted here is what the inviting client relies on: a claim without
+ * a bundle uses exactly one; the bundle uses one per device in the manifest (or in
  * the requests), and none for anyone not requested; `replace` removes those for
  * the same device and those without a device, and keeps those for others; and the
  * manifest decides, not the `devices` table.
@@ -491,7 +491,7 @@ describe("key packages por aparelho", () => {
       store.putDeviceManifest(manifesto(2, [A]), [toBase64(B)])
       const bundle = store.claimBundle(ANA.address)
       expect(bundle.packages.map((p) => p.deviceKey)).toEqual([toBase64(A)])
-      // The singular serves the most recent of the account: without those from B, there is nothing else.
+      // The single claim serves the account's most recent one: without B's, there is nothing else.
       expect(store.claimKeyPackage(ANA.address)).toBeUndefined()
     })
 
@@ -500,7 +500,7 @@ describe("key packages por aparelho", () => {
       store.putDeviceManifest(manifesto(2, [A]), [toBase64(B)])
       expect(store.putDeviceManifest(manifesto(3, [A, B]))).toEqual({ ok: false, reason: "revoked-device" })
       expect(store.deviceManifestOf(ANA.address)?.version).toBe(2)
-      // Without the revoked one, the next version enters.
+      // Without the revoked one, the next version gets in.
       expect(store.putDeviceManifest(manifesto(3, [A, C])).ok).toBe(true)
     })
 
@@ -529,9 +529,9 @@ describe("key packages por aparelho", () => {
       // Without the list: it's what a 0.5.7 client sends.
       expect(store.putDeviceManifest(manifesto(2, [A]))).toEqual({ ok: true, version: 2, revogados: [] })
       expect(store.isDeviceRevoked(ANA.address, B)).toBe(false)
-      // Its packages remain (the bundle now only serves those in the manifest).
+      // Its key packages remain (the bundle now only serves those in the manifest).
       expect(porReclamar()).toEqual([2])
-      // And it can return to the manifest: the auto-add from a 0.5.7 is this.
+      // And it can return to the manifest: this is what a 0.5.7's auto-add does.
       expect(store.putDeviceManifest(manifesto(3, [A, B])).ok).toBe(true)
     })
 
@@ -593,7 +593,7 @@ describe("key packages por aparelho", () => {
       const bundle = store.claimBundle(ANA.address)
       expect(bundle.packages).toEqual([])
       expect(bytes(bundle.fallback)).toEqual(pacote(3))
-      // C's remains: spending it would mean spending a package for a device the
+      // C's remains: spending it would mean spending a key package for a device the
       // client will discard because it's not in the manifest.
       expect(porReclamar()).toEqual([1, 2])
       // The next one takes the other one without a device; and with none, nothing.
@@ -630,7 +630,7 @@ describe("key packages por aparelho", () => {
       store.putDeviceManifest(manifesto(1, [A, B]))
       store.publishKeyPackages(ANA.address, [pacote(1)], false, A)
       store.publishKeyPackages(ANA.address, [pacote(2)], false, B)
-      // The second `UPDATE ... claimed = 1` (B's) fails by a trigger: it's the way to
+      // The second `UPDATE ... claimed = 1` (B's) fails through a trigger: it's the way to
       // break the second mark without touching the code.
       const idDoB = (db.prepare("SELECT id FROM key_packages WHERE device = ?").get(B) as { id: number }).id
       db.exec(`CREATE TRIGGER falha_a_meio BEFORE UPDATE ON key_packages WHEN NEW.id = ${idDoB} BEGIN SELECT RAISE(ABORT, 'falha a meio'); END`)
@@ -644,10 +644,10 @@ describe("key packages por aparelho", () => {
     })
 
     /**
-     * The core guarantee of `claimBundle`: the fallback without a device only
-     * leaves when NO requested device has a package. With one package per device
-     * in hand, the NULL row stays where it is. It was pinned by chance in
-     * federation; it stays here, next to the code that guarantees it.
+     * The core guarantee of `claimBundle`: the device-less fallback only goes out
+     * when NO requested device has a key package. With one package per device
+     * in hand, the NULL row stays where it is. It was pinned by chance in the
+     * federation tests; it now lives here, next to the code that guarantees it.
      */
     it("com pacotes por aparelho na mão, a linha sem aparelho NÃO é servida", () => {
       store.putDeviceManifest(manifesto(1, [A, B]))

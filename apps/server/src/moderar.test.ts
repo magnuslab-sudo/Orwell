@@ -11,12 +11,12 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The "moderate" capability (phase 3 of 0.9), with real accounts and server.
+ * The "moderar" power (phase 3 of 0.9), with real accounts and server.
  *
- * Ana founds the channel and creates a "Moderation" role with only `moderate`,
+ * Ana founds the channel and creates a "Moderation" role with only `moderar`,
  * giving it to Bruno. Carla has no role. We measure what each VAULT reads, never
- * what passed on the wire: a tombstone that leaves and nobody honors is
- * indistinguishable, from the sender's side, from one that was picked up.
+ * what passed on the wire: a tombstone that is sent and that nobody honors looks
+ * the same, from the sender's side, as one that took effect.
  *
  * The server doesn't change: all this travels encrypted inside the MLS group, like
  * any message.
@@ -104,10 +104,10 @@ describe("moderar, de ponta a ponta", () => {
       await ate(() => conta.session.nicknamesOf(canal)[carla.address] === "Carla M.", `o apelido do Bruno vale em ${conta.nome}`)
     }
 
-    // The guard of the sender.
+    // The sender-side guard.
     await expect(carla.session.setNickname(canal, ana.address, "Chefe")).rejects.toThrow("you may not moderate in this channel")
 
-    // And that of the receiver: a modified client sends it anyway, and nobody records it.
+    // And the receiver-side one: a modified client sends it anyway, and nobody stores it.
     await carla.session.send(
       canal,
       mensagem("m-forjada", "Mudou o apelido de Ana.", { apelido: { subject: ana.address, nick: "Chefe", at: Date.now() } }),
@@ -124,7 +124,7 @@ describe("moderar, de ponta a ponta", () => {
     const ticket = await carla.session.openTicket(canal, sala, "A porta não fecha")
     await ate(() => bruno.session.ticketsOf(canal, sala).some((t) => t.id === ticket), "o ticket chega ao Bruno")
 
-    // Once open, it doesn't delete.
+    // An open ticket cannot be deleted.
     await expect(bruno.session.deleteTicket(canal, sala, ticket)).rejects.toThrow("only a closed ticket can be deleted")
 
     await carla.session.setTicketState(canal, sala, ticket, "closed")

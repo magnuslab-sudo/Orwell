@@ -55,7 +55,7 @@ async function convite(servidor: ServidorDeTeste, dono: Cliente, comChave: boole
   const canal = moradaDeSala(servidor.casa)
   dono.enviar({ t: "channel.claim", channel: canal })
   await dono.proximoDe("channel.claim.result")
-  // Subscribed, so `invite.request` reaches it (and to see when it does not).
+  // Subscribed, so `invite.request` reaches it (and so we can see when it does not).
   dono.enviar({ t: "channel.subscribe", channels: [canal] })
   await dono.ateAoPong()
   const codigo = toBase64(crypto.getRandomValues(new Uint8Array(24)))
@@ -126,7 +126,7 @@ describe("o resgate na 1.0", () => {
     const { cliente: dono } = await crua(servidor)
     const { codigo } = await convite(servidor, dono, true)
 
-    // The vault as it was carried: read-only, and only what is in it.
+    // The database, as the thief has it: read-only, and only what is in it.
     const copia = new DatabaseSync(servidor.baseDeDados, { readOnly: true })
     const linhas = copia.prepare("SELECT * FROM invites").all() as Record<string, unknown>[]
     copia.close()
@@ -151,9 +151,9 @@ describe("o resgate na 1.0", () => {
   })
 
   it("um convite sem code_key (como a 0.9.x os fazia) não se resgata pelo hash, nem com o código", async () => {
-    // Until slice 6a this path stayed open behind the cut door when disabled.
-    // Now it always closes: the hash is in the vault, and whoever has a copy
-    // cannot enter through it.
+    // Until slice 6a this path stayed open while the cutover gate was off.
+    // Now it is always closed: the hash is in the database, and anyone with a
+    // copy of it cannot get in with it.
     const { cliente: dono } = await crua(servidor)
     const { codigo } = await convite(servidor, dono, false)
     const { cliente: visita, address } = await crua(servidor)

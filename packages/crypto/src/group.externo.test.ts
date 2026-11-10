@@ -24,12 +24,12 @@ function membros(session: GroupSession): string[] {
 }
 
 /**
- * The gate that opens by itself, proved end to end.
+ * The door that opens by itself, proved end to end.
  *
- * What these tests pin down is not the library-it is the contract the product now
- * depends on: whoever reaches a public room enters with no one on the other
- * side, and whoever is already there accepts that entry without doing anything.
- * Tests that assembled the format by hand would prove nothing of this; what proves
+ * What these tests pin down is not the library: it is the contract the product now
+ * depends on. A newcomer to a public room joins with no one on the other
+ * side, and the members already there accept that join without doing anything.
+ * Tests that assembled the format by hand would prove none of this; what proves
  * it is the full round trip, with both ends running the real code.
  */
 describe("entrada por commit externo", () => {
@@ -47,7 +47,7 @@ describe("entrada por commit externo", () => {
     const entrada = await joinChannelExternally(CANAL, cartao, pacote.publicPackage, pacote.privatePackage)
     expect(membros(entrada.session)).toEqual([fundador.address, recemChegado.address].sort())
 
-    // And the owner, who was asleep, applies the commit when they wake up.
+    // And the founder, who was asleep, applies the commit on waking up.
     const aplicado = await receive(salaDoFundador, entrada.commit)
     expect(aplicado.kind).toBe("epoch")
     salaDoFundador = aplicado.session
@@ -87,17 +87,17 @@ describe("entrada por commit externo", () => {
 
   it("um cartão gasto produz um commit que a sala recusa, e é por isso que é de uso único", async () => {
     /*
-     * The finding that straightened the design, shown only by the full round trip.
+     * The finding that set the design straight, and that only the full round trip shows.
      *
-     * Joining with a card from an epoch already past does NOT fail for the joiner:
-     * the library builds the commit and returns a state that looks good. Whoever
-     * ends up this way thinks they are inside, writes, and is not heard by anyone-the
-     * silent fork again, now through a new gate.
+     * Joining with a card from a past epoch does NOT fail for the joiner:
+     * the library builds the commit and returns a state that looks fine. A joiner
+     * in this state thinks they are inside, writes, and is heard by no one: the
+     * silent fork again, now through a new door.
      *
      * That is why the card is handed out ONCE and disappears from the server: two
-     * arriving at the same instant cannot get the same one, and whoever does not
-     * catch it asks again. Whoever enters publishes the next one, and any member
-     * who connects replenishes one if it is missing.
+     * newcomers arriving at the same instant cannot get the same one, and the one who
+     * misses it asks again. Whoever joins publishes the next one, and any member
+     * who connects puts one back if it is missing.
      */
     const fundador = generateIdentity(HOME)
     const segundo = generateIdentity(HOME)
@@ -129,7 +129,7 @@ describe("entrada por commit externo", () => {
     expect(recusado.kind).toBe("ignored")
     expect(membros(recusado.session)).toEqual([fundador.address, segundo.address].sort())
 
-    // With the card that the second published, joins the same room as the others.
+    // With the card the second one published, it joins the same room as the others.
     const entradaBoa = await joinChannelExternally(
       CANAL,
       await publishableGroupInfo(entradaDoSegundo.session),
@@ -141,7 +141,7 @@ describe("entrada por commit externo", () => {
 
   it("um cartão de outro canal é recusado antes de se lhe tocar", async () => {
     // Protection against a server that answers a room request with the
-    // card of another: whoever arrives entered, in good faith, where they never asked to go.
+    // card of another: the newcomer would join, in good faith, a room they never asked for.
     const dono = generateIdentity(HOME)
     const forasteiro = generateIdentity(HOME)
 

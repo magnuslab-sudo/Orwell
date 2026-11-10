@@ -15,8 +15,8 @@ import {
  * Opaque addresses in the session (1.0 "Arca", slice 3), with real accounts, devices and
  * server.
  *
- * Each block is a point in the slice: the direct (DH of account keys), the wall
- * (owner secret), the room (random, with the name inside the encrypted state) and
+ * Each block covers one point of the slice: the DM (DH of the account keys), the wall
+ * (owner's secret), the room (random, with the name inside the encrypted state) and
  * the account channel (derived from the key). We measure what each vault knows
  * and what the server stores.
  */
@@ -74,14 +74,14 @@ describe("a conversa directa opaca", () => {
     const [ana, bruno] = await contas("Ana", "Bruno")
     const ia = ana!.session.identity
     const ib = bruno!.session.identity
-    // Each side only with its own private key and the other's public key.
+    // Each side has only its own private key and the other's public key.
     const doLadoDaAna = moradaDirecta(chaveDeConta(ia), ib.signingPublicKey, ia.address, ib.address)
     const doLadoDoBruno = moradaDirecta(chaveDeConta(ib), ia.signingPublicKey, ib.address, ia.address)
     expect(doLadoDaAna).toBe(doLadoDoBruno)
     expect(eMoradaOpaca(doLadoDaAna)).toBe(true)
     for (const conta of [ana!, bruno!]) expect(doLadoDaAna).not.toContain(conta.session.identity.accountId)
 
-    // And the session opens the direct at that address; Bruno recognizes it on its own as the direct with Ana.
+    // And the session opens the DM at that address; Bruno recognizes it by himself as his DM with Ana.
     const dm = await ana!.session.openDirect(bruno!.address)
     expect(dm).toBe(doLadoDaAna)
     await ate(() => bruno!.session.channels.includes(dm), "o Bruno entra na directa")
@@ -93,7 +93,7 @@ describe("a conversa directa opaca", () => {
 
   it("um aparelho emparelhado recebe a morada e a ficha pelo cofre, e abre a directa", async () => {
     const [ana, bruno, carla] = await contas("Ana", "Bruno", "Carla")
-    // A direct that already exists when the phone pairs: it comes in the snapshot.
+    // A DM that already exists when the phone pairs: it comes in the snapshot.
     const comBruno = await ana!.session.openDirect(bruno!.address)
     await ate(() => bruno!.session.channels.includes(comBruno), "o Bruno entra na directa")
     const telemovel = await telemovelDe(ana!)
@@ -102,7 +102,7 @@ describe("a conversa directa opaca", () => {
     await ate(() => telemovel.session.channels.includes(comBruno), "o telemóvel entra na directa com o Bruno", 30_000)
     expect(await telemovel.session.openDirect(bruno!.address)).toBe(comBruno)
 
-    // A direct opened later, on the computer: the record arrives through the account channel.
+    // A DM opened later, on the computer: the record arrives through the account channel.
     const comCarla = await ana!.session.openDirect(carla!.address)
     await ate(() => telemovel.session.fichaDoCanal(comCarla).tipo === "directa", "a ficha da directa com a Carla chega ao telemóvel", 30_000)
     expect(telemovel.session.fichaDoCanal(comCarla)).toEqual({ tipo: "directa", par: carla!.address })
@@ -152,7 +152,7 @@ function textoDaBase(alvo: ServidorDeTeste = servidor): string {
 describe("o mural opaco (D1)", () => {
   it("o amigo recebe o segredo no perfil e entra no mural; um estranho na sala comum não o sabe", async () => {
     // A server just for this test: the common room is born with Ana, who stays connected
-    // to admit Carla (the ones from other tests have nobody listening anymore).
+    // to admit Carla (the one from the other tests has nobody listening anymore).
     const proprio = await levantarServidor()
     const [ana, bruno, carla] = await contasDeTeste(proprio, ["Ana", "Bruno", "Carla"])
     abertas.push(ana!, bruno!, carla!)
@@ -164,7 +164,7 @@ describe("o mural opaco (D1)", () => {
     await ate(() => bruno!.session.channels.includes(mural), "o Bruno entra no mural da Ana", 30_000)
     expect(bruno!.session.muralDe(ana!.address)).toBe(mural)
     expect(bruno!.session.fichaDoCanal(mural)).toEqual({ tipo: "mural", dono: ana!.address })
-    // Her wall is also opaque, and Ana enters.
+    // His wall is also opaque, and Ana joins.
     await ate(() => ana!.session.channels.includes(bruno!.session.feedChannel), "a Ana entra no mural do Bruno", 30_000)
 
     // Carla is with Ana in the common room, and nothing else: she doesn't know the address.
@@ -207,20 +207,20 @@ describe("a sala opaca", () => {
     expect(ana!.session.fichaDoCanal(sala)).toEqual({ tipo: "sala" })
     expect(ana!.session.spaceMeta(sala)?.name).toBe(NOME)
 
-    // By Welcome: Bruno is seated.
+    // Via Welcome: Bruno is seated.
     await ana!.session.seat(sala, bruno!.address)
     await ate(() => bruno!.session.channels.includes(sala), "o Bruno entra")
     await ate(() => bruno!.session.spaceMeta(sala)?.name === NOME, "o nome chega ao Bruno", 30_000)
     expect(bruno!.session.tipoDoCanal(sala)).toBe("sala")
 
-    // By invite: Carla enters through a link.
+    // Via invite: Carla joins through a link.
     const ligacao = await ana!.session.createInvite(sala, { maxUses: 1 })
     await carla!.session.redeemInvite(ligacao)
     await ate(() => carla!.session.channels.includes(sala), "a Carla entra pelo convite", 30_000)
     await ate(() => carla!.session.spaceMeta(sala)?.name === NOME, "o nome chega à Carla", 30_000)
     expect(carla!.session.tipoDoCanal(sala)).toBe("sala")
 
-    // The server doesn't have the name anywhere, nor the name form.
+    // The server has the name nowhere, nor the name-based address form.
     const texto = textoDaBase()
     expect(texto).toContain(sala)
     for (const pedaco of ["Lagar", "lagar", "Monte Velho", "monte-velho"]) expect(texto).not.toContain(pedaco)
@@ -238,7 +238,7 @@ describe("o canal da conta opaco", () => {
     expect(telemovel.vault.contents.moradaDaConta).toBe(proprio)
     expect(telemovel.session.canalDaConta).toBe(proprio)
     await ate(() => telemovel.vault.contents.groups[proprio] !== undefined, "o telemóvel entra no canal da conta", 30_000)
-    // Account state passes through it: a phone preference arrives at the computer.
+    // Account state passes through it: a phone preference reaches the computer.
     await telemovel.session.definirPreferencia("tema", "escuro")
     await ate(() => ana!.session.preferencias()["tema"] === "escuro", "a preferência chega ao computador", 30_000)
     // And the server has no `!self-` anywhere.
@@ -249,10 +249,10 @@ describe("o canal da conta opaco", () => {
 
 describe("a ficha já vale quando o canal aparece", () => {
   /*
-    Found by the script `e2e-amizade-cruzada`: the `channels` event leaves before
-    the group is recorded, and the record (direct or wall) only entered the vault with
-    it. At that moment the interface saw a room, and the bell said "You were
-    added to #<address>" by a wall.
+    Found by the `e2e-amizade-cruzada` script: the `channels` event fires before
+    the group is saved, and the record (DM or wall) only entered the vault with
+    it. In that window the interface saw a room, and the bell said "You were
+    added to #<address>" for a wall.
   */
   it("dois pedidos cruzados: cada directa e cada mural aparecem logo com o tipo certo", async () => {
     const [ana, bruno] = await contas("Ana", "Bruno")

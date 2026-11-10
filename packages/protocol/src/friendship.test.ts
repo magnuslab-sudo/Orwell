@@ -160,7 +160,7 @@ describe("recusar não dá acesso nenhum, em nenhum sentido", () => {
 
 describe("uma aceitação sem pedido não vale um lugar", () => {
   it("um friend.accept que ninguém pediu é ignorado", () => {
-    // Without this guard, a message in the feed would count as a seat in our feed:
+    // Without this guard, a line in the thread would earn a seat in our feed:
     // reconciliation reads from here to know who deserves a seat.
     const ties = foldFriendTies([evento(DM, ELA, "friend.accept")], EU, parDoCanal)
     expect(ties.get(ELA)?.link).toBe("nenhum")
@@ -294,8 +294,8 @@ describe("várias pessoas ao mesmo tempo", () => {
  * Cancel a request (phase 1 of the friendship plan, 20/10/2026).
  *
  * Cancellation is a `friend.decline` with `withdrawn`, and the only difference
- * from rejection is WHICH request closes: the one whoever sends it made. Neither
- * of the two seats anyone.
+ * from rejection is WHICH request closes: the sender's own. Neither of the two
+ * seats anyone.
  */
 describe("cancelar um pedido", () => {
   it("quem pediu cancela, e o pedido fecha dos dois lados", () => {
@@ -361,7 +361,7 @@ describe("cancelar um pedido", () => {
   })
 
   it("um aceite que chega depois do cancelamento não faz amizade", () => {
-    // The request no longer exists: accepting has nothing to count against.
+    // The request no longer exists: there is nothing for an accept to apply to.
     const meus = foldFriendTies(
       [
         evento(DM, EU, "friend.request", { sentAt: 10 }),
@@ -393,9 +393,9 @@ describe("cancelar um pedido", () => {
   })
 
   /**
-   * The 0.5.x client does not know `withdrawn`: their Zod throws it out and what
-   * the fold reads is a plain `friend.decline`. We measure what that costs here,
-   * to write down what breaks (see `docs/PENDENTES.md`).
+   * The 0.5.x client does not know `withdrawn`: its Zod drops it and what the
+   * fold reads is a plain `friend.decline`. This measures what that does, so the
+   * cost is on record (see `docs/PENDENTES.md`).
    */
   it("um cliente antigo lê o cancelamento como recusa de um pedido que não fez: no-op", () => {
     const comoOAntigoLe = [evento(DM, EU, "friend.request", { sentAt: 10 }), evento(DM, EU, "friend.decline")]

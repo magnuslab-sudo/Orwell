@@ -166,7 +166,7 @@ describe("um cliente ANTIGO não fica surdo com uma votação", () => {
   })
 
   it("lê o voto como uma reacção qualquer, e não como um evento ignorado", () => {
-    // This is the one that counts for deafness: in a poll with ten people come
+    // This is the one that counts for deafness: a poll with ten people brings
     // dozens of votes in a row, and five rejected payloads were enough to declare
     // the channel deaf.
     const resultado = comoUmClienteAntigo(encodePayload(voto))
@@ -175,9 +175,9 @@ describe("um cliente ANTIGO não fica surdo com uma votação", () => {
   })
 
   it("e o emoji vazio faz o voto não ser contado como polegar por quem não o entende", () => {
-    // The old client reads the reaction, but his `engagementOf` discards a
+    // The old client reads the reaction, but its `engagementOf` discards a
     // reaction whose emoji is not a thumbs up. Without this, a vote for option 2
-    // would show up on his wall as a like.
+    // would show up on its wall as a like.
     const lido = comoUmClienteAntigo(encodePayload(voto)) as { valor: Record<string, unknown> }
     expect(lido.valor["emoji"]).toBe("")
   })
@@ -188,8 +188,8 @@ describe("um cliente ANTIGO não fica surdo com uma votação", () => {
  *
  * It is the `.catch(undefined)` being measured. Without it, an optional field with
  * a narrow schema inside would still kill the entire payload: a future version with
- * twelve options would erase the sentence whoever wrote it saw, on the screen of
- * everyone who had not updated yet, and counted an ignored event for each one.
+ * twelve options would erase the author's sentence on the screen of everyone
+ * who had not updated yet, and count an ignored event for each one.
  */
 describe("uma votação ilegível não leva a mensagem com ela", () => {
   const comVotacaoEstragada = (poll: unknown): Record<string, unknown> =>
@@ -246,10 +246,10 @@ describe("um voto absurdo não leva a reacção com ele", () => {
   /**
    * A large index passes here on purpose.
    *
-   * The schema does not know the poll this vote answers, it travels in another
-   * message, so it has no way to know how many options exist. The one who discounts
-   * is the reader, who has the options in front. Faking a limit here would mean
-   * making up a number that is never the right one in any poll.
+   * The schema does not know the poll this vote answers (it travels in another
+   * message), so it has no way to know how many options exist. The reader filters
+   * it out, with the options at hand. Faking a cap here would mean making up a
+   * number that is not the right one for any poll.
    */
   it("um índice fora das opções passa no esquema, e é descontado por quem lê", () => {
     expect(comVoto(99)["vote"]).toBe(99)

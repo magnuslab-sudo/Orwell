@@ -123,14 +123,14 @@ describe("MLS channel", () => {
   /**
    * The same, but with Bob doing what Bob actually does: he gets the commit.
    *
-   * The test above never delivers the removal commit to whoever was removed, and
-   * that is why it does not prove what it seems to-Bob fails to decrypt because he is
-   * one epoch behind, not because he was removed. But the commit goes to the channel
+   * The test above never delivers the removal commit to the removed member, and
+   * that is why it does not prove what it seems to: Bob fails to decrypt because he is
+   * one epoch behind, not because he was removed. But the commit is broadcast to the channel
    * and Bob stays subscribed: he always gets it.
    *
-   * And then, with a single removal, RFC 9420 §12.4 requires an UpdatePath, which
-   * stops whoever left from deriving the next epoch. Without it the new secret comes
-   * from the old one, which whoever left has-and whoever was removed keeps reading
+   * And there, with a single removal, RFC 9420 §12.4 requires an UpdatePath, which
+   * is what stops the removed member from deriving the next epoch. Without it the new secret comes
+   * from the old one, which the removed member has, and so they keep reading
    * everything, forever, with the tree saying they are no longer a member. Measured
    * with two real accounts before being written here.
    */
@@ -150,14 +150,14 @@ describe("MLS channel", () => {
   })
 
   /**
-   * The hole that was missing: an honest witness encrypting between commits.
+   * The hole we had missed: an honest witness encrypting between commits.
    *
    * The two tests above deliver the whole removal and then measure. Neither exercises
-   * what a hostile server does for free-deliver part and hold the rest. While removal
-   * needed two commits, whoever applied only the first stayed in an epoch derived from
-   * the previous one, which is what the expelled person has: anything that person wrote
-   * there was readable by whoever was banned, and they had no symptom-decrypted
-   * perfectly, so the deafness detector never woke up.
+   * what a hostile server can do for free: deliver part and hold back the rest. While removal
+   * needed two commits, a member who applied only the first stayed in an epoch derived from
+   * the previous one, which the kicked member has: anything that member wrote
+   * there was readable by the banned one, and they had no symptom (they decrypted
+   * perfectly, so the deafness detector never woke up).
    *
    * The invariant is therefore stronger than "at the end they do not read": NO
    * prefix of the commits can leave an epoch readable to both sides. The test
@@ -165,7 +165,7 @@ describe("MLS channel", () => {
    * one commit again.
    */
   it("não abre nenhuma epoch ao expulso, nem quando o servidor retém parte da remoção", async () => {
-    // A new thing per prefix: applying commits consumes ratchets, and reusing
+    // A fresh scene per prefix: applying commits consumes ratchets, and reusing
     // sessions between passes would measure stale state instead of what we want to measure.
     async function cena() {
       const alice = generateIdentity(HOME)
@@ -210,7 +210,7 @@ describe("MLS channel", () => {
   })
 
   it("quem fica no canal continua a ler através da remoção", async () => {
-    // The removal rekeys the group, and that cannot cost the channel to whoever is there.
+    // The removal rekeys the group, and that must not cost the remaining members the channel.
     const alice = generateIdentity(HOME)
     const carol = generateIdentity(OTHER)
     const dave = generateIdentity(OTHER)
@@ -240,12 +240,12 @@ describe("MLS channel", () => {
   })
 
   /**
-   * The risk of the fix, not the hole it closes.
+   * The risk the fix brings, not the hole it closes.
    *
    * A removal commit now carries an UpdatePath, and an UpdatePath is the only
    * part of MLS that speaks differently to each branch of the tree: it encrypts a
    * secret for each node in the copath resolution, and the removed leaf sits blank
-   * in the middle. With two or three members the tree is too shallow for that to show-
+   * in the middle. With two or three members the tree is too shallow for that to show:
    * whoever stayed had just one node to open. Five members give subtrees
    * on both sides and a blank in the middle, which is where a badly calculated
    * resolution would leave someone out.
@@ -277,7 +277,7 @@ describe("MLS channel", () => {
     }
 
     // Out: Carlos, leaf 2: in the middle of the tree, not at an edge, so the blank
-    // falls inside the resolution of whoever stays and not at its margin.
+    // falls inside the resolution of the remaining members and not at its edge.
     const removal = await removeMembers(sala, [2])
     sala = removal.session
     for (const [nome, sessao] of sessoes) {
@@ -292,7 +292,7 @@ describe("MLS channel", () => {
     }
 
     const ficaram = ["bea", "dora", "eva"] as const
-    // Each one who stayed writes, and all the others have to read it. Writing is
+    // Each remaining member writes, and all the others have to read it. Writing is
     // what proves the path was integrated, not just tolerated.
     for (const autor of ficaram) {
       const sessaoAutor = sessoes.get(autor)
@@ -319,8 +319,8 @@ describe("MLS channel", () => {
     }
 
     // And the tree with one blank still accepts a second removal by the same
-    // path-it is the state any next expulsion will find the channel in, and where
-    // a badly done resolution would show only on the second one.
+    // path: it is the state any later kick will find the channel in, and where
+    // a wrong resolution would only show up on the second one.
     const segunda = await removeMembers(sala, [4])
     sala = segunda.session
     for (const nome of ["bea", "dora"] as const) {
@@ -377,11 +377,12 @@ describe("MLS channel", () => {
 
   it("diz de que epoch vinha o frame que recusou, e cala-se quando não sabe", async () => {
     /*
-      A refusal alone does not distinguish between two things that are not the same: what was
+      A refusal alone does not tell apart two things that are not the same: what was
       said before we joined (it will never open, and it is the normal past of any
       channel) and what was said after the channel moved on without us (that is deafness).
-      Whoever counts ignored messages to declare a channel dead needs to separate them,       see `anteriorAoNossoLugar` on the client.
-      */
+      Code that counts ignored messages to declare a channel dead needs to separate them:
+      see `anteriorAoNossoLugar` in the client.
+    */
     const alice = generateIdentity(HOME)
     const bob = generateIdentity(OTHER)
     let aliceSession = await createChannel(alice, "!antes:enclave.test")
@@ -404,7 +405,7 @@ describe("MLS channel", () => {
     expect(recusado.kind).toBe("ignored")
     if (recusado.kind !== "ignored") throw new Error("devia ter sido ignorado")
     expect(recusado.epochDoFrame).toBe(0n)
-    // And ours is this: that comparison decides it, not the error text.
+    // And ours is this one: that comparison decides, not the error text.
     expect(bobSession.state.groupContext.epoch).toBe(1n)
 
     // Garbage has no header to read, and we do not invent one.
@@ -491,8 +492,9 @@ describe("MLS channel", () => {
   /**
    * The leaf belongs to the device; the person is the address.
    *
-   * Everything that decides authority, founding, roles, friendships, admin lists,    * hangs on the address, and the address must remain the digest of the ACCOUNT
-   * key after the leaf is signed by another key. If this ever fails, an account ends up with two names.
+   * Everything that decides authority (founders, roles, friendships, admin lists)
+   * hangs on the address, and the address must stay the digest of the ACCOUNT
+   * key now that the leaf is signed by another key. If this ever fails, an account ends up with two names.
    */
   it("a árvore diz o endereço da conta, e a chave da folha é a do aparelho", async () => {
     const { alice, bob, aliceSession, bobSession } = await twoMemberChannel()
@@ -517,9 +519,9 @@ describe("MLS channel", () => {
    * The safety number must be the SAME on both sides.
    *
    * It is read aloud and compared; a number that disagrees by construction is
-   * worse than nothing, because it teaches you to ignore it. For account keys both
-   * sides compute the same pair. For device keys, each side would see the other's
-   * account and their own device, and the numbers would never match unless someone was in the middle.
+   * worse than none, because it teaches you to ignore it. With account keys both
+   * sides compute over the same pair. With leaf keys, each side would see the other's
+   * account and their own device, and the numbers would never match even with no one in the middle.
    */
   it("o safety number calcula-se sobre as mesmas duas chaves nas duas pontas", async () => {
     const { alice, bob, aliceSession, bobSession } = await twoMemberChannel()
@@ -532,7 +534,7 @@ describe("MLS channel", () => {
     expect(safetyNumber(alice.signingPublicKey, naAlice as Uint8Array)).toBe(
       safetyNumber(bob.signingPublicKey, noBob as Uint8Array),
     )
-    // And what you would compare with device keys would be a different number, it is the
+    // And comparing with the leaf keys would give a different number: that is the
     // exact regression that this test exists to catch.
     expect(safetyNumber(alice.signingPublicKey, bob.deviceSigningPublicKey)).not.toBe(
       safetyNumber(alice.signingPublicKey, bob.signingPublicKey),

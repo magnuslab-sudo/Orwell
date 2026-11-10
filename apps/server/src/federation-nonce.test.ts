@@ -23,12 +23,12 @@ import { Federation } from "./federation.js"
  * FED-01 (external audit of 1.1.0, addendum of 3/11/2026): invalid federated
  * signatures burned persistent nonces.
  *
- * `verifySignedHeader` asked for the nonce before verifying the signature, and
- * the ask was `recordNonce`, which writes to SQLite. An envelope with a bad
- * signature wrote a row to `federation_nonces` and burned the nonce: the true
+ * `verifySignedHeader` checked the nonce BEFORE verifying the signature, and
+ * the check was `recordNonce`, which writes to SQLite. An envelope with a bad
+ * signature wrote a row to `federation_nonces` and burned the nonce: the genuine
  * envelope with that nonce was then refused as a replay. The nonce had no size
- * limit. Federation comes disabled by default (and is off in production): this
- * only works with an allowlist.
+ * limit. Federation is off by default (and off in production): this only
+ * matters with an allowlist.
  */
 
 const NOS = parseServerName("casa.example")
@@ -64,7 +64,7 @@ async function montar(): Promise<ReturnType<typeof loadOrCreateServerKey>> {
   const remotoDir = mkdtempSync(join(tmpdir(), "enclave-par-"))
   porLimpar.push(remotoDir)
   const chave = loadOrCreateServerKey(remotoDir)
-  // The peer key in cache, as `#ensurePeerKey` would leave it: a test does not go to the directory over HTTPS.
+  // The peer key cached, as `#ensurePeerKey` would leave it: a test does not go to the directory over HTTPS.
   enclave.store.cachePeerKey(PAR, chave.keyId, chave.publicKey, currentSecond() + 3600)
   return chave
 }
@@ -117,7 +117,7 @@ describe("FED-01: a assinatura antes do nonce", () => {
     const bom = envelope(chave)
     expect(await entregar(comAssinaturaMa(bom))).toEqual({ estado: 403, erro: "bad-signature" })
     expect(nonces()).toEqual(antes)
-    // The nonce did not get burned: the true envelope passes.
+    // The nonce was not burned: the genuine envelope gets through.
     expect((await entregar(bom)).estado).toBe(200)
     expect(nonces()).toHaveLength(antes.length + 1)
   })

@@ -31,23 +31,23 @@ export interface ServerConfig {
    *
    * **Zero, which is the default, means "no SFU".** The process starts anyway,
    * the gateway responds anyway, and the only difference is that `hello.ok` does
-   * not announce the `sfu` capability and every client keeps doing mesh, which
-   * is exactly today's behavior. It is what makes this phase deployable on its
+   * not announce the `sfu` capability and every client keeps using the mesh,
+   * which is exactly today's behaviour. It is what makes this phase deployable on its
    * own.
    *
    * One port, not a range: the mediasoup `WebRtcServer` multiplexes all
    * transports on a single number, and in UFW it is two rules (`44300/udp` and
-   * `44300/tcp`) instead of ten thousand. TCP exists as a workaround for
+   * `44300/tcp`) instead of ten thousand. TCP exists as a fallback for
    * networks that block UDP, and it is why coturn is no longer needed to cross
    * NAT.
    *
-   * Where this comment sits, for an entire version sat the phrase "Where the SFU
-   * lives. Media never touches this process.", hanging over no member, because
-   * the member was never written. The decision of August 15, 2026
+   * For a whole version, this spot held the line "Where the SFU lives. Media
+   * never touches this process.", hanging over no member, because the member
+   * was never written. The decision of 15 August 2026
    * (`docs/PENDENTES.md`, "SFU always") flipped it: media now crosses THIS
    * process. What stays true, and is the part that matters, is that it crosses
-   * **encrypted with a key this process does not have**, SFrame is opened by
-   * clients and no one else. See `media.ts`.
+   * **encrypted with a key this process does not have**: only the clients open
+   * the SFrame. See `media.ts`.
    */
   sfuPort: number
   /**
@@ -55,12 +55,12 @@ export interface ServerConfig {
    *
    * Inside Docker it is REQUIRED and it is not tuning: the worker sees the
    * bridge's internal IP (`172.x`), and a candidate with that address tells the
-   * client to connect to a machine that, on its side, does not exist. The
+   * client to connect to a machine that, from its side, does not exist. The
    * symptom would be a call that negotiates completely and never connects, the
    * worst kind of break, because everything you read in the logs says it worked.
    *
    * Empty leaves mediasoup announcing the IP it listens on, which works in
-   * development and in tests, where everything lives in `127.0.0.1`.
+   * development and in tests, where everything lives on `127.0.0.1`.
    */
   sfuAnnouncedIp: string
   /**
@@ -90,14 +90,14 @@ export interface ServerConfig {
    *
    * Off by default, and it must stay that way: on any server whose users do
    * not already know each other, handing out the account list is a betrayal
-   * of the people on it. It exists for the private, familial deployment —
-   * a handful of people who all know they are here — where "who else is on
+   * of the people on it. It exists for the private, family deployment
+   * (a handful of people who all know they are here), where "who else is on
    * this server" is not a secret and the friend-request dance is pure
    * friction. Documented in docs/THREAT-MODEL.md and stated in the interface,
    * because a posture change the users cannot see is a lie by omission.
    */
   communityMode: boolean
-  /** Room that everyone on this server enters. Empty disables the idea. */
+  /** The room every user on this server joins. Empty turns the feature off. */
   commonRoom: string
   /**
    * Caps for ephemeral signals (`channel.sinal`). Optional: defaults come from
@@ -107,7 +107,7 @@ export interface ServerConfig {
   /**
    * The lowest app version this server accepts (`1.0.0`).
    *
-   * Empty, the default, rejects no one: it is the server as always, and it lets
+   * Empty, the default, rejects no one: the server behaves as it always has, and it lets
    * this version ship to production before the 1.0 cut. Set, a `hello` from an
    * app below it (or that does not report a version, like all pre-1.0 apps)
    * gets the `error` `versao-antiga` and the connection closes. Optional in the
@@ -134,7 +134,8 @@ export interface ServerConfig {
    */
   orcamentoDeSaida?: { videoMbps: number; reservaDaVozMbps: number }
   /**
-   * Video throttle near the monthly traffic quota. Empty file disables it:
+   * Video cut-off near the monthly traffic quota. An empty `ficheiro` turns the
+   * watch off:
    * `ENCLAVE_QUOTA_FICHEIRO`, `ENCLAVE_QUOTA_MENSAL_TB` (8), and
    * `ENCLAVE_ORCAMENTO_VIDEO_REDUZIDO_MBPS` (50). See `quota-mensal.ts`.
    */
@@ -154,12 +155,12 @@ export interface ServerConfig {
   /**
    * The delay, in hours, before a report copy reaches the founder
    * (`ENCLAVE_DENUNCIA_ATRASO_HORAS`, `1-6`): minimum and maximum, chosen at
-   * random between them. Delivery at the second mark would let the hour cross
-   * with who was online. Optional for the same reason as `sinal`.
+   * random between them. Delivery to the second would let anyone match the time
+   * against who was online. Optional for the same reason as `sinal`.
    */
   denunciaAtrasoHoras?: [number, number]
   /*
-    There is no opaque address mode (`ENCLAVE_SO_MORADAS_OPACAS`, slice 4): in
+    There is no opaque-addresses switch (`ENCLAVE_SO_MORADAS_OPACAS`, slice 4): in
     1.0 "Arca" is the only mode (slice 6a). An old `.env` that still has it
     changes nothing, because no one reads it anymore.
   */
@@ -167,8 +168,8 @@ export interface ServerConfig {
 
 /** A version `x.y.z` parsed into three numbers, or `null` if it is not one. */
 function lerVersao(versao: string): [number, number, number] | null {
-  // The pre-release suffix (`1.0.0-rc.1`) counts as the three numbers: a 1.0
-  // release candidate must enter the 1.0 server, where it is tested.
+  // A pre-release (`1.0.0-rc.1`) is judged by its three numbers: a 1.0
+  // release candidate must get into the 1.0 server, which is where it is tested.
   const partes = /^(\d{1,6})\.(\d{1,6})\.(\d{1,6})(?:[-+][0-9A-Za-z.-]*)?$/.exec(versao)
   if (!partes) return null
   return [Number(partes[1]), Number(partes[2]), Number(partes[3])]
@@ -193,8 +194,8 @@ export function eVersaoAntiga(config: Pick<ServerConfig, "versaoMinimaDoCliente"
 }
 
 /**
- * The minimum version read from the environment. Garbage is a startup error,
- * fatal: a `1.0` accepted silently and read as "no minimum" would let beta
+ * The minimum version read from the environment. Garbage is a loud startup
+ * error: a `1.0` accepted silently and read as "no minimum" would let beta
  * clients into a server that no longer understands them, and read as
  * "impossible version" would reject everyone.
  */
@@ -208,24 +209,24 @@ function readVersaoMinima(raw: string | undefined): string {
 }
 
 /**
- * The caps for `channel.sinal`, the ephemeral sync fabric across accounts.
+ * The caps for `channel.sinal`, the ephemeral sync frame between accounts.
  *
- * The server does not arbitrate who replies to whom: that is the clients, by
- * plan election (`docs/planos/2026-10-20-sincronia-absoluta.md`, §4.4). The
- * server only limits, so a broken or hostile client does not drain everyone's
- * output. The numbers come from the plan's accounting for an honest device and
- * leave headroom of at least two times.
+ * The server does not decide who replies to whom: the clients do, through the
+ * plan's election (`docs/planos/2026-10-20-sincronia-absoluta.md`, §4.4). The
+ * server only limits, so a broken or hostile client cannot use up everyone's
+ * egress. The numbers start from the plan's estimates for an honest device and
+ * leave at least 2x headroom.
  */
 export interface TectosDoSinal {
   /**
    * Signals per CONNECTION and per minute, summed across all channels.
    *
-   * The plan gives a device, per minute: 1 level-0 summary per channel, and 30
+   * The plan gives a device, per minute: 1 level-0 digest per channel, and 30
    * requests total. A device with 20 channels that connects sends up to 20
-   * summaries, plus 30 requests, plus level-1 and level-2 replies to other
-   * devices' summaries. That is about 60. 120 gives two times headroom. Per
-   * connection not per account, because each device has its own sheet and its
-   * own summaries.
+   * digests, plus 30 requests, plus level-1 and level-2 replies to other
+   * devices' digests. That is about 60. 120 gives 2x headroom. Per
+   * connection, not per account, because each device has its own leaf and its
+   * own digests.
    */
   porMinutoPorLigacao: number
   /**
@@ -234,17 +235,17 @@ export interface TectosDoSinal {
    * The heaviest signal in the plan is a level-2 list or a request: 6-byte
    * keys. A thousand keys are 6 KB, 8 KiB in base64, plus the signature. 16 KiB
    * is twice that. Above the protocol cap (`SINAL_MAX_CARACTERES`, 64 KiB) it
-   * cannot go: the mold rejects it first.
+   * cannot go: the schema rejects it first.
    */
   maxBytes: number
   /**
-   * Bytes leaving the server per CHANNEL and per minute, summing copies.
+   * Bytes leaving the server per CHANNEL and per minute, counting every copy.
    *
-   * A signal of S bytes in a channel with N other members online costs S × N to
-   * the server's output. This is what gets limited, not the signal count: N
-   * members sending small summaries cost little, and a large signal in a large
+   * A signal of S bytes in a channel with N other members online costs S × N in
+   * server egress. This is what gets limited, not the signal count: N
+   * members sending small digests cost little, and a large signal in a large
    * channel costs a lot. 4 MiB per minute per channel: a channel with 50 members
-   * online holds close to 340 summaries of 240 bytes per minute, and the 28
+   * online holds close to 340 digests of 240 bytes per minute, and the 28
    * production channels (20/10) all at cap at once give about 15 Mbit/s, well
    * below the VPS link. A signal that alone costs more than this gets rejected
    * with `sinal-too-large`, because waiting will not fix it.
@@ -255,8 +256,8 @@ export interface TectosDoSinal {
    *
    * The first rejection never closes: an honest client hears the code, waits
    * `retryAfterMs`, and backs off. Thirty rejections in a minute mean the
-   * client is not listening, and then close with `error` `sinal-abuse`, like
-   * the `pair.join` cap closes who insists.
+   * client is not listening, and the connection closes with `error`
+   * `sinal-abuse`, as the `pair.join` cap closes a client that keeps trying.
    */
   recusasAteFechar: number
 }
@@ -307,15 +308,15 @@ function readTectosDoSinal(env: NodeJS.ProcessEnv): TectosDoSinal {
  * plan).
  *
  * The vault stores STATE (rooms, categories, roles, profiles), one entry per
- * fact, and never converses. The numbers come from the largest plausible channel
+ * fact, and never conversations. The numbers come from the largest plausible channel
  * and leave headroom; what gets limited is the disk of each scope and the rate
  * of each account, so a broken or hostile client does not fill the server.
  */
 export interface TectosDoCofre {
   /**
-   * Bytes of an entry, already padded. 64 KiB is enough for a `ItemRelatado`
-   * encrypted with generous headroom; profile icons and pictures go in `anexo:`
-   * entries limited to writes (decision D5). Must be a multiple of
+   * Bytes of one entry, after padding. 64 KiB fits an encrypted `ItemRelatado`
+   * with plenty of headroom; icons and profile pictures go in `anexo:` entries,
+   * downscaled on write (decision D5). Must be a multiple of
    * `COFRE_BALDE_BYTES` and not exceed `COFRE_ENTRADA_MAX_BYTES`, the protocol
    * cap.
    */
@@ -384,7 +385,7 @@ function readTectosDoCofre(env: NodeJS.ProcessEnv): TectosDoCofre {
 }
 
 /**
- * The days of the vault sweep for subscribers. Empty or missing is 0 (off);
+ * The days for the sweep of vaults with no subscribers. Empty or missing is 0 (off);
  * garbage or negative is a startup error, from the lesson of `readRetentionDays`:
  * here a `Number("")` read as 0 is harmless, but a `0,5` read as NaN would
  * silence the sweep the operator asked for without saying so.
@@ -418,7 +419,7 @@ function readMbps(nome: string, raw: string | undefined, omissao: number, unidad
  * Retention in days, refusing anything that is not a number.
  *
  * `Number(env.X ?? 30)` looks safe and is not: `??` only catches undefined, so
- * an empty or blank value becomes 0 — and `expireEvents(0)` runs
+ * an empty or blank value becomes 0, and `expireEvents(0)` runs
  * `DELETE FROM events` with no clause, every sixty seconds. A stray
  * `ENCLAVE_RETENTION_DAYS=` in a unit file or a `docker run -e` would quietly
  * erase the entire server a minute after boot. `Number("thirty")` is NaN, which
@@ -442,14 +443,14 @@ function readRetentionDays(raw: string | undefined): number {
 /**
  * The SFU port, rejecting what is not a port.
  *
- * Same shape as `readRetentionDays`, and for the same lesson already paid: `Number("")`
+ * Same shape as `readRetentionDays`, for the same lesson learned the hard way: `Number("")`
  * is 0 and `Number("quarenta")` is NaN, and neither looks like an error when
  * it reaches mediasoup. Here the difference between the two cases matters and
- * is handled backwards on purpose:
+ * is handled in opposite ways, on purpose:
  *
  *  - **empty or missing is 0, and 0 is "no SFU"**, the only safe choice, because
  *    it lets the server behave as it always has;
- *  - **garbage is a startup error, fatal**, because `ENCLAVE_SFU_PORT=443OO` (with
+ *  - **garbage is a loud startup error**, because `ENCLAVE_SFU_PORT=443OO` (with
  *    the letter O instead of zero) would give a server without SFU and a team
  *    hunting the bug in the client, nginx, and UFW before looking here.
  */
@@ -473,7 +474,7 @@ function readDenunciasDias(raw: string | undefined): number {
 }
 
 /**
- * The delay to copy to the founder, `minimum-maximum` in whole hours. Empty is
+ * The delay of the copy to the founder, `minimum-maximum` in whole hours. Empty is
  * `1-6`; another format, or the minimum above the maximum, is a startup error.
  */
 function readDenunciaAtrasoHoras(raw: string | undefined): [number, number] {
@@ -546,7 +547,7 @@ export interface ServerKeypair {
  *
  * Generated on first boot and kept on disk. It signs envelopes to peers; it is
  * not, and must never become, a key that can read user content. If this key
- * leaks, an attacker can impersonate the server to peers — bad — but still
+ * leaks, an attacker can impersonate the server to peers (bad), but still
  * cannot decrypt a single message.
  */
 export function loadOrCreateServerKey(dataDir: string): ServerKeypair {

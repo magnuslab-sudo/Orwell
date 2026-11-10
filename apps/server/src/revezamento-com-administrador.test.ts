@@ -15,16 +15,16 @@ import {
  *
  * Owner log (1.1.0), one entry in `!984` at 20:58: 83 `role.assign`, 40
  * `channel.meta` and 12 `channel.category` in 14 s, with 10 rooms and 3
- * categories. The rooms arrived four times, from four senders. The admin says
- * first the foundation, the roles and each assignment (one per person with role,
- * 80 in `!984`, each with the group's turn and a vault recording), and only
- * then the categories and the rooms. Members without role rotate it
- * (`#revezarSalas`) if they do not hear rooms in 2 to 6 s, and in that window
- * they only heard assignments: they all spoke, with the vault they had,
- * sometimes delayed.
+ * categories. The rooms arrived four times, from four senders. The admin first
+ * sends the founding, the roles and each assignment (one per member with a role,
+ * 80 in `!984`, each taking the group's turn and a vault write), and only
+ * then the categories and the rooms. Members without a role step in
+ * (`#revezarSalas`) if they hear no rooms within 2 to 6 s, and in that window
+ * they only heard assignments: they all spoke, with whatever vault they had,
+ * sometimes stale.
  *
- * Here the admin is slow to reach the rooms (like with 80 assignments ahead),
- * and the member without role cannot speak over him.
+ * Here the admin is slow to reach the rooms (as with 80 assignments ahead),
+ * and the member without a role must not speak over him.
  */
 
 const abertas: ContaDeTeste[] = []
@@ -37,7 +37,7 @@ beforeAll(() => {
   Session.REVEZAMENTO_DAS_SALAS_MS = { de: 300, ate: 600 }
 })
 
-/** One server per case: the common room is born in each one, without inheriting the founder from the previous. */
+/** One server per case: the common room is born in each one, without inheriting the previous one's founder. */
 beforeEach(async () => {
   servidor = await levantarServidor()
   servidores.push(servidor)
@@ -60,7 +60,7 @@ function contarSalasQueSaem(conta: ContaDeTeste, canal: string): () => number {
     if (destino === canal && (payload.t === "channel.meta" || payload.t === "channel.category")) quantas++
     return enviar(destino, payload as Parameters<typeof enviar>[1])
   }) as typeof conta.session.send
-  // Rooms and categories go out in batch (`sendBatch`, slow-after-enter): they are also counted there.
+  // Rooms and categories go out in a batch (`sendBatch`, slow-after-join): they are counted there too.
   const emLote = conta.session.sendBatch.bind(conta.session)
   conta.session.sendBatch = (async (destino: string, payloads: { t?: string }[]) => {
     if (destino === canal) quantas += payloads.filter((p) => p.t === "channel.meta" || p.t === "channel.category").length
@@ -69,7 +69,7 @@ function contarSalasQueSaem(conta: ContaDeTeste, canal: string): () => number {
   return () => quantas
 }
 
-/** The admin takes `ms` to reach the categories and rooms, like behind dozens of assignments. */
+/** The admin takes `ms` to reach the categories and rooms, as if behind dozens of assignments. */
 function salasAtrasadas(conta: ContaDeTeste, canal: string, ms: number | "nunca"): void {
   const enviar = conta.session.send.bind(conta.session)
   conta.session.send = (async (destino: string, payload: { t?: string }) => {
@@ -89,7 +89,7 @@ function salasAtrasadas(conta: ContaDeTeste, canal: string, ms: number | "nunca"
   }) as typeof conta.session.sendBatch
 }
 
-/** Ana founds and arranges the common room (one category, one room); Bruno enters, with no role. */
+/** Ana founds and arranges the common room (one category, one room); Bruno joins, with no role. */
 async function salaComumComAnaEBruno(): Promise<{ ana: ContaDeTeste; bruno: ContaDeTeste; comum: string }> {
   const [ana, bruno] = (await contasDeTeste(servidor, ["Ana", "Bruno"])) as [ContaDeTeste, ContaDeTeste]
   abertas.push(ana, bruno)
@@ -110,9 +110,9 @@ async function salaComumComAnaEBruno(): Promise<{ ana: ContaDeTeste; bruno: Cont
 
 describe("o revezamento das salas com o administrador ligado", () => {
   /*
-    In the common room, like in `!984`: whoever enters by the card does not get
+    In the common room, as in `!984`: whoever joins through the card does not get
     a portrait, and the cascade of whoever arranges it runs in full. The case
-    with no admin connected (the member without role HAS to say the rooms) is in
+    with no admin connected (the member without a role HAS to send the rooms) is in
     `salas-sem-administrador.test.ts`, and stays green.
   */
   it("um membro sem cargo não repete as salas enquanto quem arruma o canal as está a dizer", async () => {
@@ -125,7 +125,7 @@ describe("o revezamento das salas com o administrador ligado", () => {
     await carla!.session.ensureCommonRoom()
     await ate(() => carla!.session.channels.includes(comum), "a Carla entra pelo cartão", 30_000)
     await ate(() => carla!.session.roomsOf(comum).some((sala) => sala.name === "prensa"), "a sala chega à Carla, pela Ana", 30_000)
-    // The rotation already had its turn (300 to 600 ms) long before this.
+    // The fallback already had its turn (300 to 600 ms) long before this.
     await new Promise((resolve) => setTimeout(resolve, 2_000))
     expect(doBruno()).toBe(0)
   }, 120_000)

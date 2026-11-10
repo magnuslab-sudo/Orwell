@@ -7,15 +7,15 @@ import { decodePayload, encodePayload, POWERS, IRREVERSIBLE_POWERS, type Payload
  * The obvious path was a third value in `channel.meta.kind`. The comment above
  * that field advises against it in writing, and says why: a `kind` the receiver
  * does not know rejects the entire `channel.meta`, and with it goes the
- * `removed` tombstone, a rejected tombstone brings the room back, because
- * silence does not spread. Swapping the `z.enum` for an open format today would
+ * `removed` tombstone (a rejected tombstone brings the room back, because
+ * silence does not propagate). Swapping the `z.enum` for an open format today would
  * save no one: the clients out there have the `z.enum` they already downloaded,
  * and it is THEIR validation that decides.
  *
  * The same comment says what to do instead, and it happens to say it about
  * this exact case: *"A forum or an announcement are text rooms with a different
  * layout (…): they need a presentation field, not a third `kind`."* A ticket
- * room carries application messages like any text room, what changes is how
+ * room carries application messages like any text room; what changes is how
  * they are read. So: `kind` stays `text`, and the layout travels in a new
  * optional field.
  *
@@ -62,8 +62,8 @@ describe("a disposição de uma sala viaja em campo próprio", () => {
   })
 
   it("um cliente ANTIGO não fica surdo com uma sala publicada por um novo", () => {
-    // The sense that matters to the cascade, and what no one checks because they
-    // already wrote the new schema. `fabricated` stands in for a field the old
+    // The direction that matters to the cascade, and the one no one checks because they
+    // already wrote the new schema. `inventado` stands in for a field the old
     // version does not know, which is exactly what `layout` is to it.
     const novo = JSON.stringify({
       t: "channel.meta",
@@ -107,8 +107,8 @@ describe("a disposição de uma sala viaja em campo próprio", () => {
    * The path that was not taken, pinned down so no one takes it by accident.
    *
    * If one day someone opens `kind` to a third value, this test turns red and
-   * forces reading the comment above the field, where the account of what it
-   * costs is written. It is not a product test: it is an alarm bell.
+   * forces a read of the comment above the field, where the cost has been
+   * worked out. It is not a product test: it is an alarm bell.
    */
   it("um `kind` que não seja texto nem voz continua a reprovar a sala inteira", () => {
     const proibido = JSON.stringify({
@@ -162,9 +162,9 @@ describe("a disposição de uma sala viaja em campo próprio", () => {
 describe("a razão de tudo isto: um `t` desconhecido rebenta a união inteira", () => {
   it("um payload com um `t` que esta versão não conhece é recusado", () => {
     // And "rejected" means, on the receiving end: discarded silently, counted as
-    // an ignored event, and consecutive ones mark the channel deaf, which asks
-    // for a new place in the group and takes history along for future
-    // confidentiality. It is the cascade that already erased history once.
+    // an ignored event, and consecutive ones mark the channel deaf, which forces
+    // a new seat in the group and takes the history with it, for forward
+    // secrecy. It is the cascade that already erased history once.
     const inventado = JSON.stringify({ t: "ticket.open", id: "t1", subject: "Impressora", at: 1 })
     expect(() => decodePayload(new TextEncoder().encode(inventado))).toThrow()
   })
@@ -198,7 +198,7 @@ describe("a razão de tudo isto: um `t` desconhecido rebenta a união inteira", 
    *
    * They do not pin down that the union is `discriminatedUnion` and not
    * `z.union`. Measured: swapping one for the other keeps us green, and keeps
-   * us green because both reject an unknown `t`, the `discriminatedUnion` by
+   * us green because both reject an unknown `t`: the `discriminatedUnion` by
    * not finding the branch, `z.union` by all branches failing. They are
    * equivalent for this invariant, and the difference between them is error
    * message and speed.
@@ -206,7 +206,7 @@ describe("a razão de tudo isto: um `t` desconhecido rebenta a união inteira", 
    * What they pin down is the behavior that matters, and the mutation that
    * confirms it is different: a lenient `decodePayload` that returns the raw
    * payload when it does not validate turns the first test red. That is the
-   * regression the rule fears, someone "solving" the old client problem by
+   * regression the rule fears: someone "solving" the old client problem by
    * letting through what they do not understand, and erasing with that the
    * reason fields are optional.
    */
@@ -218,14 +218,14 @@ describe("a razão de tudo isto: um `t` desconhecido rebenta a união inteira", 
  * It follows the `ChannelInvite` path, and the reason is written there at
  * length: a `t` the receiver does not know fails validation, is discarded
  * whole, counts as an ignored event, and a string of them marks the channel
- * deaf, which triggers a reset and takes history along. An optional field
+ * deaf, which triggers a reseat and takes the history with it. An optional field
  * inside `message` does not run that risk: the old client strips the field it
  * does not know and shows the message.
  *
  * And that is what decides how the body is written. The body of a ticket
  * message must read BY ITSELF, because for half the world it is all that is
- * left: whoever does not know the field reads "Closed the ticket." and knows
- * what happened, no button to press.
+ * left: whoever does not know the field reads "Fechou o ticket." and knows
+ * what happened, with no button to press.
  */
 describe("um ticket viaja dentro de uma mensagem", () => {
   it("a abertura leva assunto e estado", () => {
@@ -302,7 +302,8 @@ describe("um ticket viaja dentro de uma mensagem", () => {
 
   it("um estado do futuro atravessa a validação, para ser descontado na leitura", () => {
     // Same rule as `powers` and `colour`: the reader judges the value, not the
-    // schema. A state made up by a later version cannot reject the message, // rejecting here would cost the text the person wrote, just to not paint a
+    // schema. A state made up by a later version cannot get the message rejected:
+    // rejecting here would cost the text the person wrote, just to avoid painting a
     // label.
     const futuro = JSON.stringify({
       t: "message",
@@ -339,7 +340,7 @@ describe("um ticket viaja dentro de uma mensagem", () => {
 })
 
 /**
- * Handling is a power, and it goes into the list with the others.
+ * Handling tickets is a responsibility, and it goes in the list with the others.
  *
  * `role.define.powers` is already an open format (`NarrowName`) and not a
  * `z.enum(POWERS)`, precisely for this: a power that a version does not know
@@ -348,16 +349,16 @@ describe("um ticket viaja dentro de uma mensagem", () => {
 describe("atender tickets é uma responsabilidade como as outras", () => {
   it("está na lista, depois das que já lá estavam", () => {
     // The order of `POWERS` is the order in which powers appear on screen, and
-    // `powersOf` filters by it. When adding, always add at the end: `moderar`
+    // `powersOf` filters by it. New entries always go at the end: `moderar`
     // (phase 3) came later, and `atender` stayed behind `fixar`.
     expect(POWERS).toContain("atender")
     expect(POWERS.indexOf("atender")).toBeGreaterThan(POWERS.indexOf("fixar"))
   })
 
   it("tem volta, e por isso não é irreversível", () => {
-    // The choice that `IRREVERSIBLE_POWERS` forces, and that silence would resolve
-    // the wrong way. A closed ticket reopens; nothing that handling does stays done
-    // forever. It is the opposite of expulsion and deletion.
+    // The choice that `IRREVERSIBLE_POWERS` forces, and that silence would settle
+    // the wrong way. A closed ticket can be reopened; nothing handling does is done
+    // for good. It is the opposite of expulsion and deletion.
     expect(IRREVERSIBLE_POWERS).not.toContain("atender")
   })
 

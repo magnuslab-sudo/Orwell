@@ -5,10 +5,10 @@ import { BUZZ_INTERVAL_MS, BUZZ_MAX_AGE_MS, decodePayload, encodePayload, Payloa
 /**
  * These tests exist because of a bug that shipped: `publishProfile` wrote the
  * avatar data URL into `avatar.url`, which is capped at 2048 characters, while the
- * field built for inline bytes — `avatar.inline` — allows four megabytes. The
+ * field built for inline bytes (`avatar.inline`) allows four megabytes. The
  * sender did not validate, so every profile carrying a real avatar was rejected
  * whole by every recipient: name, status and bio along with the picture. Enough
- * rejections in a row mark a channel deaf — see `DEAF_FAILURES` in the core —
+ * rejections in a row mark a channel deaf (see `DEAF_FAILURES` in the core),
  * which triggers a rejoin, which reseats members, which destroys history by
  * forward secrecy.
  *
@@ -82,7 +82,8 @@ describe("profile payloads survive the wire", () => {
  * Likes, replies and link thumbnails travel inside the encrypted message.
  *
  * These assertions exist for the same reason as the ones above: a field the
- * sender writes and the receiver refuses gives no error where someone sees it,  * it disappears silently on the other end, and several refusals in a row mark a
+ * sender writes and the receiver refuses gives no error where someone sees it:
+ * it disappears silently on the other end, and several refusals in a row mark a
  * channel as deaf (see `DEAF_FAILURES`). If one of these fields stops fitting,
  * it has to crash here.
  */
@@ -283,7 +284,7 @@ describe("sinal de escrita", () => {
   it("leva a sala, e sem sala é a sala por omissão", () => {
     const naSala: Payload = { t: "typing", room: "geral", until: 29765707 }
     expect(decodePayload(encodePayload(naSala))).toMatchObject({ room: "geral" })
-    // Absent and non-empty: that is how clients from before rooms existed are read,
+    // Absent, not empty: that is how clients from before rooms existed are read,
     // and changing it would shift conversations that already exist.
     expect(decodePayload(encodePayload({ t: "typing", until: 1 }))).not.toHaveProperty("room")
   })
@@ -334,7 +335,7 @@ describe("cotovelada", () => {
  * Roles: named, with separate responsibilities.
  *
  * What the schema must allow to be stated, and what it must refuse, is the owner's request
- * translated into types. A role can grant no power at all, it only serves to
+ * translated into types. A role can grant no power at all; it can serve only to
  * mark who has access to the channel.
  *
  * The responsibilities are a closed list AT READ TIME, and the schema is not where it closes.
@@ -373,13 +374,13 @@ describe("papéis de um canal", () => {
   /**
    * The case that `POWERS` was written to have and the schema would not allow.
    *
-   * The list grows by design, its comment says "Add to the END, always",
-   * and `remove` already entered last. A `z.enum` would make the day a newer client
-   * assigns a new power the day older clients lose the role ENTIRELY: the name,
-   * the powers they already knew, `expel` included -, and its very existence,
-   * left without the power to edit or delete.
+   * The list grows by design (its comment says "Add to the END, always"),
+   * and `eliminar` already went in last. With a `z.enum`, the day a newer client
+   * assigned a new power would be the day older clients lost the role ENTIRELY: the
+   * name, the powers they already knew (`expulsar` included), and the role itself,
+   * which they could then neither edit nor delete.
    *
-   * And it exchanged nothing for nothing: who grants is `rolesOf`, which filters
+   * And it bought nothing in exchange: what grants is `rolesOf`, which filters
    * by the local list. The unknown power arrives, stays stored raw so as not to be lost
    * to whoever understands it, and grants nothing here.
    */
@@ -397,15 +398,15 @@ describe("papéis de um canal", () => {
 
     const lido = decodePayload(encodePayload(futuro)) as { powers: string[]; name: string }
     expect(lido).toMatchObject({ t: "role.define", role: "moderador", name: "Moderador" })
-    // The known power survives, and the unknown travels intact: removing it
-    // here would make re-editing the role in an older client erase it for everyone.
+    // The known power survives, and the unknown one travels intact: filtering it
+    // out here would make re-editing the role in an older client erase it for everyone.
     expect(lido.powers).toEqual(["expulsar", "arquivar"])
   })
 
   it("o tecto de poderes não é o tamanho da lista desta versão", () => {
     // `.max(POWERS.length)` was the same defect in another form: six powers
     // from a future version would not fit in a version that knows five, and the
-    // role fell because of the count instead of because of the name.
+    // role was rejected for the count instead of for a name.
     const muitos = {
       t: "role.define",
       role: "moderador",
@@ -422,10 +423,10 @@ describe("papéis de um canal", () => {
   })
 
   it("um poder que não é um nome de poder é recusado no remetente", () => {
-    // What the field must block is garbage, a `style`, a `url(...)`, half a
-    // megabyte of nothing -, not a name this version has not learned yet. And
+    // What the field must block is garbage (a `style`, a `url(...)`, half a
+    // megabyte of nothing), not a name this version has not learned yet. And
     // it blocks it here, at the sender, where someone can act: on the other side the
-    // payload would fall silent and feed the cascade of ignored events.
+    // payload would be dropped silently and feed the cascade of ignored events.
     for (const lixo of ["apagar-tudo", "url(javascript:0)", "EXPULSAR", "a".repeat(25), "a", ""]) {
       const wrong = {
         t: "role.define",
@@ -449,10 +450,11 @@ describe("papéis de um canal", () => {
   })
 
   /*
-   * The color of a role, going and coming back.
+   * The color of a role, there and back.
    *
-   * New field in a payload that already circulates, so what these tests store
-   * is not the color: it is that it cannot bring the role down with it. The old form,  * without `colour`, is what exists in every channel that already has roles, and it
+   * New field in a payload that already circulates, so what these tests guard
+   * is not the color: it is that it cannot bring the role down with it. The old form,
+   * without `colour`, is what exists in every channel that already has roles, and it
    * must continue to pass exactly as it did.
    */
   it("um papel pode levar cor, e ela chega do outro lado", () => {
@@ -481,9 +483,9 @@ describe("papéis de um canal", () => {
   it("uma cor que esta versão não conhece não reprova o papel: o papel chega inteiro", () => {
     // The opposite of what we do to an invented power, and on purpose. A power
     // nobody evaluates is a power granted; a color nobody knows is
-    // a color that does not paint. Rejecting the payload because of it would erase the
+    // a color that is not painted. Rejecting the payload because of it would erase the
     // name, the responsibilities, and the very existence of the role in a client
-    // that is just out of date. Whoever reads is the one who discounts it.
+    // that is just out of date. The reader is the one who ignores it.
     const futuro = {
       t: "role.define",
       role: "moderador",
@@ -499,7 +501,8 @@ describe("papéis de um canal", () => {
 
   it("uma cor que não é um nome de cor é recusada no remetente", () => {
     // The field is how garbage gets in if not tightened: an entire `style`, a
-    // `url(...)`, or an endless string. And garbage here does not spoil the color, // it makes the entire payload fall silent at the receiver, which is the cascade
+    // `url(...)`, or an endless string. And garbage here does not spoil the color:
+    // it makes the receiver drop the entire payload silently, which is the cascade
     // of several ignored events.
     for (const lixo of ["#ff0000", "url(javascript:0)", "red; background:url(x)", "ab", "a".repeat(17), ""]) {
       const wrong = {
@@ -544,11 +547,12 @@ describe("papéis de um canal", () => {
 })
 
 /**
- * The visibility of a category, going and coming back.
+ * The visibility of a category, there and back.
  *
  * The field is new, and a new field in a payload that already circulates is the cheapest way
  * to break a channel: a payload the receiver refuses is discarded entirely and in silence,
- * counts as an ignored event, and several ignored events in a row declare the channel deaf,  * the cascade that has already wiped history once. That is why what we
+ * counts as an ignored event, and several ignored events in a row declare the channel deaf,
+ * the cascade that has already wiped history once. That is why what we
  * test here is not just the round trip: it is COMPATIBILITY in both directions,
  * which is where the cascade begins.
  */
@@ -582,7 +586,7 @@ describe("visibilidade de uma categoria", () => {
 
   it("uma categoria publicada por um cliente ANTIGO continua a ler-se", () => {
     // What is stored in today's vaults does not have `roles`, and the `default([])`
-    // from the schema is what keeps it readable. Without it, opening the new app made
+    // from the schema is what keeps it readable. Without it, opening the new app would make
     // each old category count as an ignored event.
     const antigo = { t: "channel.category", category: "Arquivo", position: 300, removed: false, updatedAt: 3 }
     const bytes = new TextEncoder().encode(JSON.stringify(antigo))
@@ -593,7 +597,7 @@ describe("visibilidade de uma categoria", () => {
     // The other direction, and what nobody checks because they already wrote the
     // new schema: a client that never heard of `roles` receives the field and must
     // ignore it without rejecting the message. Zod drops what it does not know instead
-    // of refusing, and that is what we pin down here, changing that policy to
+    // of refusing, and that is what we pin down here: changing that policy to
     // `strict` would declare every channel with a restricted category deaf.
     const novo = JSON.stringify({
       t: "channel.category",
@@ -622,7 +626,7 @@ describe("visibilidade de uma categoria", () => {
    * caught before a single byte leaves. At the receiver it is a payload discarded entirely
    * and in silence, which counts as an ignored event; several ignored events in a row
    * declare the channel deaf, the client re-enters the group, the members are
-   * re-presented, and the history dies for future secrecy. A test that claimed the receiver
+   * reseated, and the history dies by forward secrecy. A test that claimed the receiver
    * was tolerant hid exactly the path through which the cascade enters.
    */
   it("mais papéis do que o tecto é recusado por quem envia E por quem recebe", () => {
@@ -636,7 +640,7 @@ describe("visibilidade de uma categoria", () => {
     // At the sender: cheap, visible, and before it goes out.
     expect(() => encodePayload(demasiados)).toThrow()
     // At the receiver: expensive and silent. Written by hand because `encodePayload` already
-    // rejected it, that is how it would arrive from an altered client or a future version.
+    // rejected it: that is how it would arrive from an altered client or a future version.
     const cru = new TextEncoder().encode(JSON.stringify(demasiados))
     expect(() => decodePayload(cru)).toThrow()
   })
@@ -680,7 +684,7 @@ describe("visibilidade de uma categoria", () => {
  * The lists of names that will still grow, and the only one that will not.
  *
  * Every `z.enum` in this file was a future version dropping an entire payload
- * because of one name, the whole profile for a presence state, the whole message
+ * because of one name: the whole profile for a presence state, the whole message
  * for a card type, the whole post for an attachment format. The criterion that separates
  * the ones that opened from the ones that stayed closed is written in `NarrowName`:
  * it opens when the list names things in the world, it closes when it names
@@ -790,7 +794,7 @@ describe("nomes de uma lista que cresce", () => {
    * it asks for a presentation field, not a third `kind`.
    *
    * The test exists for the day someone disagrees: whoever adds a third value
-   * sees this fail and will read the comment, where the price is, a rejected `channel.meta`
+   * sees this fail and will read the comment, where the price is: a rejected `channel.meta`
    * takes a `removed` tombstone with it, and a lost tombstone resurrects the room.
    */
   it("o tipo de uma sala continua fechado, de propósito", () => {
@@ -920,8 +924,8 @@ describe("a saída de um canal sobrevive ao fio", () => {
  * client receiving a `t` its schema does not recognize discards the entire
  * payload silently, counts it as an ignored event, and consecutive ignored
  * events mark the channel deaf: the client rejoins the group, members are
- * re-sent, and history dies for future confidentiality. It happened, and
- * people in production are there now.
+ * reseated, and history dies by forward secrecy. It has happened, and there
+ * are people in production right now.
  *
  * An optional field in a known frame has none of that: the schema is not
  * `strict()`, so whoever does not know the field drops it on read and keeps
@@ -969,8 +973,8 @@ describe("o microfone calado viaja sem `t` novo", () => {
 
   it("a forma ANTIGA dos três frames continua a decodificar, e sem o campo", () => {
     // What a client that never heard of this puts on the wire today. If this
-    // stopped being read, all voice signaling in progress would count ignored
-    // events, the cascade, started by the fix that should have prevented it.
+    // stopped being read, all voice signaling in progress would count as ignored
+    // events: the cascade, started by the fix meant to prevent it.
     const antigos = [
       { t: "voice.join", at: 1, video: false, sframe: true, alone: false },
       { t: "voice.offer", to: "@ana:s", sdp: "v=0\r\n", sframe: true },
@@ -987,8 +991,8 @@ describe("o microfone calado viaja sem `t` novo", () => {
   })
 
   it("um cliente ANTIGO não fica surdo com a sinalização de um cliente NOVO", () => {
-    // The sense that no one checks because they already wrote the new schema,
-    // and the only one that matters to the cascade. `fabricated` stands in for a
+    // The direction no one checks because they already wrote the new schema,
+    // and the only one that matters to the cascade. `inventado` stands in for a
     // field the old version does not know, which is what `muted` is to it.
     const novo = JSON.stringify({
       t: "voice.join",
@@ -1014,11 +1018,11 @@ describe("o microfone calado viaja sem `t` novo", () => {
 })
 
 /**
- * Which LIFE STAGE of a person is each voice frame in.
+ * Which LIFE (call join) of a person each voice frame belongs to.
  *
  * Same rule as the microphone, and for the same reason: optional field in
- * frames that already exist, never a new `t`. Here compatibility has another
- * duty, a client that cannot tell which life stage it is must still be served
+ * frames that already exist, never a new `t`. Here compatibility has a second
+ * duty: a client that cannot say which life it is from must still be served
  * exactly as it is today. A missing field can cost an improvement; it cannot
  * cost a call that was already working.
  */
@@ -1103,13 +1107,13 @@ describe("o identificador de entrada na chamada", () => {
  * what looks tidier. A new `t`, `voice.screen`, breaks the entire union in
  * an old client: the payload is discarded silently, counts as an ignored event,
  * and consecutive ignored events mark the channel deaf and trigger the repair
- * that ERASES HISTORY. People in production are there now.
+ * that ERASES HISTORY. There are people in production right now.
  *
- * The two fields are not the same thing twice. `screen` is the decision
- * ("I am sharing"), and it is what tells the screen to draw; `screenStream` is
- * the id of the `MediaStream`, in case the `msid` survives the wire, today it
- * does not, because a dedicated transceiver with `replaceTrack` does not put it
- * there. See the note in the schema itself.
+ * The two fields are not the same thing said twice. `screen` is the decision
+ * ("I am sharing"), and it is what triggers drawing; `screenStream` is the id
+ * of the `MediaStream`, for when the `msid` survives the wire (today it does
+ * not, because a reserved transceiver with `replaceTrack` does not put it
+ * there). See the note in the schema itself.
  */
 describe("a partilha de ecrã viaja sem `t` novo", () => {
   it("o anúncio leva a decisão e o identificador do fluxo", () => {
@@ -1155,8 +1159,8 @@ describe("a partilha de ecrã viaja sem `t` novo", () => {
 
   it("a forma ANTIGA dos três frames continua a decodificar, e sem os campos", () => {
     // The client open right now in production. If this stopped being read, all
-    // voice signaling in progress would count ignored events, the cascade,
-    // started by a feature that does not touch it.
+    // voice signaling in progress would count as ignored events: the cascade,
+    // started by a feature that has nothing to do with it.
     const antigos = [
       { t: "voice.join", at: 1, video: false, sframe: true, alone: false },
       { t: "voice.offer", to: "@ana:s", sdp: "v=0\r\n", sframe: true },
@@ -1171,7 +1175,7 @@ describe("a partilha de ecrã viaja sem `t` novo", () => {
   })
 
   it("um cliente ANTIGO não fica surdo com um anúncio de partilha", () => {
-    // The sense that no one checks because they already wrote the new schema, and
+    // The direction no one checks because they already wrote the new schema, and
     // the only one that matters to the cascade. An old client reads the frame,
     // drops the two fields it does not know, and stays in the call without
     // noticing anything.
@@ -1236,7 +1240,7 @@ describe("voice.move — mover alguém entre salas de voz", () => {
   })
 
   it("um cliente sem o campo lê-o como mover para a sala reservada, que ele já recusa", () => {
-    // The schema before this field: the same object without `hangup`. Zod drops
+    // The schema before this field: the same object without `desligar`. Zod drops
     // the key it does not know, and what is left is a move to the sentinel, which
     // the old `Call.handleSignal` refuses without touching anything.
     const ramo = Payload.options.find(
@@ -1258,7 +1262,7 @@ describe("voice.move — mover alguém entre salas de voz", () => {
  * The reason is written in `ChannelInvite`, and it is the same as the muted
  * microphone: a `t` the receiver does not know is discarded whole and counts
  * toward the channel going deaf. Here there is also a second reason, from the
- * product side, only `message` payloads show in the conversation list and in
+ * product side: only `message` payloads show in the conversation list and in
  * the conversation itself. An invite that was something else would reach the
  * vault and never reach anyone's eyes.
  */
@@ -1298,8 +1302,8 @@ describe("o convite para um canal viaja dentro de uma mensagem privada", () => {
 
   it("a forma ANTIGA de uma mensagem continua a decodificar, e sem os campos", () => {
     // What a client that never heard of this puts on the wire today. If this
-    // stopped being read, all conversation in progress would count ignored
-    // events, the cascade this design exists to prevent.
+    // stopped being read, every conversation in progress would count ignored
+    // events: the cascade this design exists to prevent.
     const antiga = { t: "message", id: "antiga-000001", sentAt: 1, body: "olá" }
     const lida = decodePayload(new TextEncoder().encode(JSON.stringify(antiga))) as Record<string, unknown>
     expect(lida).toMatchObject({ t: "message", body: "olá" })
@@ -1308,9 +1312,9 @@ describe("o convite para um canal viaja dentro de uma mensagem privada", () => {
   })
 
   it("um cliente ANTIGO lê a mensagem de um cliente NOVO, e lê o corpo", () => {
-    // The sense that matters to the cascade: the old schema version is the one
+    // The direction that matters to the cascade: the old schema version is the one
     // that does not know `invite`, and what it does with a field it does not know
-    // is strip it, never reject the entire message. `fabricated` stands in for a
+    // is strip it, never reject the entire message. `inventado` stands in for a
     // future field, which is what `invite` is to it.
     const nova = JSON.stringify({ ...convite(), inventado: "o que vier depois disto" })
     const lida = decodePayload(new TextEncoder().encode(nova)) as Record<string, unknown>
@@ -1320,26 +1324,25 @@ describe("o convite para um canal viaja dentro de uma mensagem privada", () => {
 
   it("um convite torto é recusado, e não silenciosamente acreditado", () => {
     // An optional field is not a field without rules. An invite with no channel is
-    // not an invite, and accepting one like that would put a button on screen with
-    // nowhere to ask for a place.
+    // not an invite, and accepting one like that would put a button on screen that
+    // would not know where to ask for a place.
     const torto = { ...convite(), invite: { name: "sem canal", at: 1 } }
     expect(() => decodePayload(new TextEncoder().encode(JSON.stringify(torto)))).toThrow()
   })
 })
 
 /**
- * `device.revoke`, an account saying one of its devices stopped being its
+ * `device.revoke`: an account saying one of its devices is no longer its
  * device.
  *
  * **No one emits it yet, and that is why it exists already.** A `t` the
  * receiver does not know is not an ignored field: it is the entire payload
  * rejected, discarded silently, counted as an ignored event, and consecutive
- * ones mark the channel deaf, which asks for a new place in the group and
- * takes history along for future confidentiality. Within the window of a full
- * restart there is no client out there to whom it could make deaf. Outside it,
- * it would cost exactly that.
+ * ones mark the channel deaf, which forces a new seat in the group and
+ * takes the history with it. Within the window of the full reset there is no
+ * client out there it could deafen. Outside it, it would cost exactly that.
  *
- * These tests are round-trip and twisted forms, because it is the schema that
+ * These tests cover the round trip and malformed forms, because it is the schema that
  * decides what survives the wire, and a schema that rejects what the sender
  * writes is the cascade again, now with good intentions.
  */
@@ -1403,8 +1406,8 @@ describe("revogação de aparelho no fio", () => {
   })
 
   it("um campo futuro é despido, e não derruba a revogação", () => {
-    // The house rule: whoever does not know a field lets it drop. If instead it
-    // rejected, a future version would deafen all earlier ones.
+    // The house rule: whoever does not know a field drops it. If it rejected the
+    // payload instead, a future version would deafen all earlier ones.
     const nova = JSON.stringify({ ...revogacao(), motivo: "portátil roubado no comboio" })
     const lida = decodePayload(new TextEncoder().encode(nova)) as Record<string, unknown>
 

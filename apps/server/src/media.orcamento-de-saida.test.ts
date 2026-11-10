@@ -8,9 +8,9 @@ import { CUSTO_DA_VOZ_NO_FIO } from "./orcamento-de-saida.js"
  * The server's outgoing budget, against a real mediasoup worker.
  *
  * A small video budget (three screens, 7.5 Mbit/s) to hit the cap with few
- * consumers. What is tested: whoever goes over the cap is refused with
- * `servidor-cheio` and whoever was already watching continues; pause frees up
- * space; and all close paths return the counter to zero. Voice is never
+ * consumers. What is measured: whoever arrives over the cap is refused with
+ * `servidor-cheio` and whoever was already watching continues; pausing frees
+ * capacity; and all close paths return the counter to zero. Voice is never
  * refused.
  */
 
@@ -34,7 +34,7 @@ afterAll(async () => {
 })
 
 beforeEach(() => {
-  // Each test starts from a server with no outgoing traffic: it proves the previous one left no leaks.
+  // Each test starts from a server with no outgoing traffic: that proves the previous one left no leaks.
   expect(motor.saida().video.uso).toBe(0)
   expect(motor.saida().voz.uso).toBe(0)
 })
@@ -115,7 +115,7 @@ describe("o orçamento de saída do servidor", () => {
     expect(motor.saida().video).toMatchObject({ uso: 3 * TECTO_DO_ECRA, fluxos: 3 })
     await motor.retomar(quemVe[0]!.dono, quemVe[0]!.recepcao, consumos[0]!.id)
 
-    // "Stop watching" frees up space; the fourth one enters; and the "Watch" from whoever stopped is a new spectator.
+    // "Stop watching" frees capacity; the fourth one gets in; and "Watch" from whoever stopped counts as a new viewer.
     await motor.pausar(quemVe[0]!.dono, quemVe[0]!.recepcao, consumos[0]!.id)
     expect(motor.saida().video.uso).toBe(2 * TECTO_DO_ECRA)
     const doQuarto = await motor.consumir(quarto.dono, quarto.recepcao, ecra, quarto.rtpCapabilities)
@@ -123,7 +123,7 @@ describe("o orçamento de saída do servidor", () => {
     expect(await recusa(motor.retomar(quemVe[0]!.dono, quemVe[0]!.recepcao, consumos[0]!.id))).toBe("servidor-cheio")
     expect(motor.saida().video.uso).toBe(3 * TECTO_DO_ECRA)
 
-    // Closing the screen closes its bitrate consumption for everyone, and the counter resets to zero.
+    // Closing the screen closes its consumers for everyone, and the counter goes back to zero.
     await motor.fecharProdutor(emissor, ecra)
     expect(motor.saida().video).toMatchObject({ uso: 0, fluxos: 0 })
 
@@ -141,7 +141,7 @@ describe("o orçamento de saída do servidor", () => {
       "servidor-cheio",
     )
 
-    // Voice enters anyway, and is counted separately.
+    // Voice gets in anyway, and is counted separately.
     const { id: voz } = await motor.produzir(outra.emissor, outra.envio, "audio", vozDe(7202), "microfone")
     const quem = outra.quemVe[0]!
     const consumo = await motor.consumir(quem.dono, quem.recepcao, voz, quem.rtpCapabilities)
@@ -166,7 +166,7 @@ describe("o orçamento de saída do servidor", () => {
     expect(motor.saida().voz).toMatchObject({ uso: 3 * CUSTO_DA_VOZ_NO_FIO, fluxos: 3 })
     expect(linhas.filter((linha) => linha.includes("a voz passou da reserva"))).toHaveLength(1)
 
-    // The sender leaves: closing their transport closes the producer, and the consumption with it.
+    // The sender leaves: its transport closes the producer, and the consumers with it.
     await motor.sairDoAmbito(emissor, chave)
     expect(motor.saida().voz.uso).toBe(0)
     for (const quem of quemVe) await motor.sairDoAmbito(quem.dono, chave)
@@ -177,7 +177,7 @@ describe("o orçamento de saída do servidor", () => {
     const { id: camara } = await motor.produzir(emissor, envio, "video", videoDe(7400, TECTO_DA_CAMARA), "camara")
     for (const quem of quemVe) await motor.consumir(quem.dono, quem.recepcao, camara, quem.rtpCapabilities)
     expect(motor.saida().video.uso).toBe(2 * TECTO_DA_CAMARA)
-    // `leave` is what the gateway calls when the connection drops.
+    // `sair` is what the gateway calls when the connection drops.
     await motor.sair(quemVe[0]!.dono)
     expect(motor.saida().video.uso).toBe(TECTO_DA_CAMARA)
     await motor.sair(emissor)

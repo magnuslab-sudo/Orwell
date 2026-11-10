@@ -17,14 +17,14 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { lerCabecalhoMls } from "./cabecalho-mls.js"
 
 /**
- * The MLS header read by the server, proven against frames for real.
+ * The MLS header read by the server, tested against REAL frames.
  *
- * No byte here is written by hand. The lesson this pays for was expensive:
+ * No byte here is written by hand. This lesson was learned the hard way:
  * the server suite passed with critical defenses disabled, because it tested
  * formats built by the test itself, and a hand-built format always agrees
- * with the parser that built it. Here frames come from `@enclave/crypto` (and,
- * for the two forms the product doesn't emit today, from the `ts-mls` it uses),
- * and what we compare is what the parser reads with what the group says about
+ * with the parser of whoever built it. Here frames come from `@enclave/crypto`
+ * (and, for the two forms the product does not emit today, from the `ts-mls` it
+ * uses), and we compare what the parser reads against what the group says about
  * itself.
  */
 
@@ -89,7 +89,7 @@ beforeAll(async () => {
   const propostaPublica = await createProposal(sala.state, true, remover, sala.suite, DADOS_AUTENTICADOS)
 
   // A plaintext member commit: the product encrypts its own, but the RFC allows it, and
-  // it's the only way to prove the sender's `member` read a commit.
+  // it is the only way to test reading a `member` sender in a commit.
   const commitPublico = await createCommit(
     { state: sala.state, cipherSuite: sala.suite, pskIndex: makePskIndex(sala.state, {}) },
     { wireAsPublicMessage: true, authenticatedData: DADOS_AUTENTICADOS },
@@ -241,7 +241,7 @@ describe("bytes que não se deixam ler", () => {
 
   it("um corte ou devolve nada, ou devolve exactamente o que o frame inteiro diz", () => {
     // A parser that reads a field from the wrong place gives different answers
-    // depending on what length arrives. This catches it without knowing where.
+    // depending on the length of its input. This catches it without knowing where.
     for (const [nome, frame] of todos()) {
       const inteiro = lerCabecalhoMls(frame)
       for (let corte = 0; corte < frame.length; corte++) {
@@ -262,7 +262,7 @@ describe("bytes que não se deixam ler", () => {
 
   it("em claro, o cabeçalho acaba no tipo de conteúdo: um byte antes disso é ilegível", () => {
     // version u16, wire_format u16, group_id<V>, epoch u64, sender (u8 + u32
-    // for `member`), authenticated_data<V>, content_type u8, RFC 9420 §6.
+    // for `member`), authenticated_data<V>, content_type u8 (RFC 9420 §6).
     const grupo = bytesDe(CANAL).length
     const membro = 2 + 2 + 1 + grupo + 8 + 5 + 2 + DADOS_AUTENTICADOS.length + 1
     const externo = 2 + 2 + 1 + grupo + 8 + 1 + 1 + 1
@@ -301,10 +301,10 @@ describe("bytes que não se deixam ler", () => {
   })
 
   /**
-   * The same commit, with the group size rewritten in four bytes.
+   * The same commit, with the group id length rewritten in four bytes.
    *
-   * Byte 4 is the size of a single position (the identifier is less than
-   * 64 bytes); it becomes `prefixo 00 00 comprimento`, and the rest of the
+   * Byte 4 is a one-byte length (the identifier is under 64 bytes); it is
+   * replaced by `prefixo 00 00 comprimento`, and the rest of the
    * frame stays as the group sent it.
    */
   function comComprimentoEmQuatro(frame: Uint8Array, prefixo: number): Uint8Array {
@@ -315,7 +315,7 @@ describe("bytes que não se deixam ler", () => {
 
   it("um comprimento em mais bytes do que o preciso lê-se, como o ts-mls o lê", () => {
     // If the server were stricter than the client, this commit, which the client
-    // applies, would be unreadable, and an unreadable frame doesn't count toward
+    // applies, would count as unreadable, and an unreadable frame does not count toward
     // the one-commit-per-epoch rule.
     const esticado = comComprimentoEmQuatro(frames.commitPrivadoEpoch0, 0b1000_0000)
     expect(decodeMlsMessage(esticado, 0)?.[0]).toMatchObject({ wireformat: "mls_private_message" })
@@ -324,7 +324,7 @@ describe("bytes que não se deixam ler", () => {
 
   it("o prefixo de comprimento 0b11 não existe em MLS", () => {
     const proibido = comComprimentoEmQuatro(frames.commitPrivadoEpoch0, 0b1100_0000)
-    // ts-mls throws it; the server rejects it without throwing.
+    // ts-mls rejects it by throwing; the server rejects it without throwing.
     expect(() => decodeMlsMessage(proibido, 0)).toThrow(/8-byte length/)
     expect(lerCabecalhoMls(proibido)).toBeUndefined()
   })

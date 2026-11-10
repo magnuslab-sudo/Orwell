@@ -12,14 +12,14 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The cost to those in the common room when someone enters (slow-after-entry, 4/11/2026).
+ * What a join costs those already in the common room (slow-after-join, 4/11/2026).
  *
- * Not a test: it's the measurement the report cites, and only runs with `MEDIR_ESCALA=1`.
+ * Not a test: it is the measurement the report cites, and it only runs with `MEDIR_ESCALA=1`.
  * Real sessions and server. Ana sets up the common room like `!984` (3 categories,
- * 10 rooms, one role assigned to `ATRIBUICOES` accounts), and Duarte, sitting down, is
- * who observes: how many frames received, how many vault recordings made, how much time
- * spent inside them and how long the event loop stayed blocked, from the incoming person's
- * commit until the room settles. Duarte's vault carries `LASTRO_MB` of weight (directory
+ * 10 rooms, one role assigned to `ATRIBUICOES` accounts), and Duarte, already seated, is
+ * the one observed: how many frames he receives, how many vault saves he makes, how much
+ * time is spent inside them and how long the event loop stays blocked, from the joiner's
+ * commit until the room settles. Duarte's vault carries `LASTRO_MB` of ballast (directory
  * avatars), because a real vault, with history and 150 profiles, is not empty.
  *
  *   MEDIR_ESCALA=1 LASTRO_MB=8 npx vitest run --root apps/server src/medida-entrada-na-sala-comum.test.ts
@@ -62,7 +62,7 @@ describe.runIf(process.env.MEDIR_ESCALA)("medida: uma entrada na sala comum, vis
       await conta.session.ensureCommonRoom()
       await ate(() => conta.session.channels.includes(comum), `${conta.nome} entra`, 60_000)
     }
-    // The assignments from `!984`: one per person with a role, announced again at each entry.
+    // The assignments from `!984`: one per person with a role, announced again at each join.
     const comCargo = [duarte, ...membros].map((c) => c.address as string)
     while (comCargo.length < ATRIBUICOES) comCargo.push(generateIdentity(servidor.casa).address)
     for (const quem of comCargo) await ana.session.assignRoles(comum, quem, ["membro"])
@@ -78,7 +78,7 @@ describe.runIf(process.env.MEDIR_ESCALA)("medida: uma entrada na sala comum, vis
         }
       })
     }
-    // The vault of whoever sets up the room, who announces the cascade at each entry.
+    // The vault of whoever tidies the room, which is who sends the cascade at each join.
     if (LASTRO_ADMIN_MB > 0) {
       await ana.vault.update((c) => {
         for (let i = 0; i < 150; i++) {
@@ -89,10 +89,10 @@ describe.runIf(process.env.MEDIR_ESCALA)("medida: uma entrada na sala comum, vis
         }
       })
     }
-    // Let what setup raised settle.
+    // Let whatever the setup stirred up settle.
     await new Promise((r) => setTimeout(r, 8_000))
 
-    // Duarte's instrumentation: recordings and the time inside them.
+    // Duarte's instrumentation: vault saves and the time spent inside them.
     let gravacoes = 0
     let msNoCofre = 0
     const update = duarte.vault.update.bind(duarte.vault)
@@ -127,7 +127,7 @@ describe.runIf(process.env.MEDIR_ESCALA)("medida: uma entrada na sala comum, vis
       const t0 = performance.now()
       await novo!.session.ensureCommonRoom()
       await ate(() => novo!.session.channels.includes(comum), "quem chega entra", 60_000)
-      // Until the room settles: 4 seconds straight with no vault recordings from Duarte (max 60 s).
+      // Until the room settles: 4 seconds straight with no vault saves by Duarte (max 60 s).
       let ultima = duarte.backend.escritas
       let quieto = performance.now()
       while (performance.now() - t0 < 60_000) {

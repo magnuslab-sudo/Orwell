@@ -15,12 +15,12 @@ import {
 /**
  * Phase S4 of absolute sync: anti-entropy between accounts, with real sessions
  * against a real server (`docs/planos/2026-10-20-sincronia-absoluta.md`,
- * §8.1). Each scenario ends with matching summaries in the types that are
- * reported (in the window of the most recent place) and writes a line
+ * §8.1). Each scenario ends with matching digests in the types that are
+ * reported (within the window of the most recent seat) and writes a line
  * `MEDIDA-S4` with the time taken: that is what `scripts/medir-sincronia.mjs`
  * collects.
  *
- * The targets from §2.3: 30 s with accounts connected, 2 min after return.
+ * The targets from §2.3: 30 s with the accounts connected, 2 min after returning.
  */
 
 const META_LIGADAS_MS = 30_000
@@ -66,7 +66,7 @@ const corpos = (conta: ContaDeTeste, canal: string, prefixo: string): string[] =
     .map((entrada) => String(entrada.payload["body"] ?? entrada.payload["caption"] ?? ""))
     .filter((corpo) => corpo.startsWith(prefixo))
 
-/** The common window: the most recent place across accounts. */
+/** The common window: the most recent seat across the accounts. */
 function janela(quem: readonly ContaDeTeste[], canal: string): number {
   return Math.max(...quem.map((conta) => conta.vault.contents.seatSince?.[canal] ?? -1))
 }
@@ -126,7 +126,7 @@ describe("S4: anti-entropia entre contas", () => {
     expect(corpos(carla!, canal, "perdida ").sort()).toEqual(corpos(bruno!, canal, "perdida ").sort())
     // What comes back, comes back with its original seq, and only once.
     expect(seqsDe(carla!, canal, "perdida ")).toEqual(seqsDe(bruno!, canal, "perdida "))
-    // And marked as reported: the seq was told by whoever reported it, and it defers to the server (S4 review, finding 6).
+    // And marked as reported: the seq was stated by the reporter, and it yields to the server's (S4 review, finding 6).
     const relatadas = carla!.session.history(canal).filter((e) => String(e.payload["body"] ?? "").startsWith("perdida ") && e.relatada)
     expect(relatadas).toHaveLength(5)
     expect(carla!.avisos).not.toContain("channel-deaf")
@@ -224,7 +224,7 @@ describe("S4: anti-entropia entre contas", () => {
     await ate(() => corpos(bruno!, canal, "verdadeira").length === 1 && corpos(carla!, canal, "verdadeira").length === 1, "a publicação chega")
     const original = bruno!.session.history(canal).find((e) => e.payload["caption"] === "verdadeira")!
     expect(original.payload["autoria"]).toBeDefined()
-    // Bruno reports a post that Ana never made, claiming the real author.
+    // Bruno reports a post that Ana never made, with the authorship of a real one.
     const falsa = { ...original.payload, id: crypto.randomUUID(), caption: "falsa" }
     await bruno!.session.send(canal, { t: "typing", until: 0, relatos: { v: 1, itens: [{ s: -1, a: ana!.address, p: falsa }] } } as never)
     await ate(() => (carla!.session.estatisticasDaSincronia.relatosRecusados.autoria ?? 0) >= 1, "a Carla recusa")
@@ -239,7 +239,7 @@ describe("S4: anti-entropia entre contas", () => {
     await ana!.session.send(canal, publicacao(crypto.randomUUID(), "do aparelho revogado"))
     await ate(() => seqsDe(bruno!, canal, "do aparelho revogado").length === 1, "o Bruno tem-na")
     apagarDoServidor(canal, seqsDe(bruno!, canal, "do aparelho revogado"))
-    // Carla learned (from the revocation of Ana's account) that device was removed.
+    // Carla learned (from the revocation by Ana's account) that the device was removed.
     const aparelhoDaAna = Buffer.from(ana!.session.identity.deviceSigningPublicKey).toString("base64url")
     ;(carla!.vault.contents as { revokedDevices?: Record<string, string[]> }).revokedDevices = { [ana!.address]: [aparelhoDaAna] }
     await carla!.session.connect()

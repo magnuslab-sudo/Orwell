@@ -20,14 +20,14 @@ import {
  * **Account and device are two keys, and the distinction is the whole point.**
  * `signingPublicKey` is the ACCOUNT key: the address is the hash of it and
  * nothing else, today and tomorrow. `deviceSigningPublicKey` is the DEVICE key,
- * and it is that one that signs the MLS leaf. The account signs the device key
+ * and that is the one that signs the MLS leaf. The account signs the device key
  * once (`credential`), and that chain is what travels in the leaf's credential.
  *
  * Today there is one device per account and the two keys are born together, so
- * none of this shows. It exists so that it becomes possible to see without
- * changing addresses: adding a second device is signing it another certificate,
- * and the address, which is capability not a label, see `accountIdFromSigningKey`
- *, does not change.
+ * none of this shows. It exists so that it can start to show without
+ * changing addresses: adding a second device means signing it another certificate,
+ * and the address (a capability, not a label: see `accountIdFromSigningKey`)
+ * does not change.
  */
 export interface Identity {
   /** ACCOUNT key. The address is the hash of this, and the hash never rotates. */
@@ -38,10 +38,10 @@ export interface Identity {
    * Optional since pairing: a paired device receives the address, the account
    * public key and its device key's certificate, and **never this**. With
    * what it receives it logs into the server (the chain-based login only sends
-   * the public key), publishes key packages, signs leaves, reads and writes.
+   * the public key), publishes KeyPackages, signs leaves, reads and writes.
    * What it cannot do is sign manifests, certificates and revocations: that
    * is exactly what we want, because it is what makes revocation possible (a
-   * device without the private key cannot put itself back in the manifest). See
+   * device without the private key cannot put itself back into the manifest). See
    * `identityFromDeviceCert` and `temChaveDeConta`.
    */
   readonly signingPrivateKey?: Uint8Array
@@ -59,14 +59,14 @@ export interface PublicIdentity {
   readonly address: UserAddress
 }
 
-/** An identity that HAS the account private key: the one that created the account, or imported it. */
+/** An identity that HAS the account private key: the one that created the account, or the one that imported it. */
 export type AccountIdentity = Identity & { readonly signingPrivateKey: Uint8Array }
 
 /**
  * Does this device have the account key?
  *
- * It is the gate to everything the account signs: manifests, certificates,
- * revocations. A paired device answers no, and whoever calls this decides
+ * It gates everything the account signs: manifests, certificates,
+ * revocations. A paired device answers no, and the caller decides
  * what to do with the no (do not publish, show the phrase, hide the button),
  * instead of discovering the absence in an exception mid-commit.
  */
@@ -82,12 +82,12 @@ export function generateIdentity(server: ServerName): AccountIdentity {
 /**
  * Build the identity from the private keys.
  *
- * The device key is a parameter and not a derivation from the account on
- * purpose: deriving it would bring convenience and take away its meaning, two
- * devices with the same account would have the same leaf key, and revoking one
- * would revoke both. Whoever calls passes the one they have stored; whoever
- * has none receives a new one, which is the case on first startup of an
- * account.
+ * The device key is a parameter, not derived from the account, on
+ * purpose: deriving it would add convenience and take away its meaning (two
+ * devices of the same account would have the same leaf key, and revoking one
+ * would revoke both). The caller passes the one it has stored; a caller
+ * with none gets a new one, which is the case on an account's first
+ * startup.
  */
 export function identityFromPrivateKey(
   signingPrivateKey: Uint8Array,
@@ -117,9 +117,9 @@ export function identityFromPrivateKey(
 /**
  * A new device key, for a device that does not yet have an account.
  *
- * This is what the phone generates before joining the pairing vault: the
- * public one goes in the SAS and is what the account certifies; the private
- * one stays in its vault and nowhere else. Here, not in the core, because this
+ * This is what the phone generates before joining the pairing box: the
+ * public key goes into the SAS and is what the account certifies; the private
+ * key stays in the phone's vault and nowhere else. Here, not in the core, because this
  * is where the curve lives.
  */
 export function generateDeviceKey(): { privateKey: Uint8Array; publicKey: Uint8Array } {
@@ -134,15 +134,15 @@ export function devicePublicKeyOf(deviceSigningPrivateKey: Uint8Array): Uint8Arr
 
 /**
  * The identity of a PAIRED device: the device key is from this vault, the
- * certificate came from the device that has the account, and the account
- * private key is not here nor is anything minted.
+ * certificate came from the device that holds the account, the account
+ * private key is not here, and nothing is minted.
  *
  * **Never mints the certificate** (it cannot: it has nothing to sign it with)
  * and **rejects a chain that does not close**, with `verifyDeviceChain`,
  * before accepting anything. A vault with a certificate from another account,
  * or signed over another device key, does not open as any identity: it is
- * better to throw here, once, on opening, than to present to the server with
- * a chain it refuses on every connection.
+ * better to throw here, once, on opening, than to show the server
+ * a chain it rejects on every connection.
  *
  * The server comes from the address, which is part of what the account signed.
  * It is not a parameter because it cannot be: changing it would change what
@@ -181,8 +181,8 @@ export function toPublicIdentity(identity: Identity): PublicIdentity {
  * address.
  *
  * Throws without it. There is no "almost" account signature: a paired device
- * that reaches here is a defect of whoever called without asking
- * `temChaveDeConta`.
+ * that gets here is a bug in the caller, which did not check
+ * `temChaveDeConta` first.
  */
 export function sign(identity: Identity, message: Uint8Array): Uint8Array {
   if (!temChaveDeConta(identity)) throw new Error("este aparelho não tem a chave da conta")
@@ -193,7 +193,7 @@ export function sign(identity: Identity, message: Uint8Array): Uint8Array {
  * Sign with the DEVICE key.
  *
  * This is the one that answers the server's challenge when the chain travels
- * in `auth.begin`: proving device possession is what login needs, and forcing
+ * in `auth.begin`: proving possession of the device is what login needs, and forcing
  * the account key to be present on every connection would force it to live on
  * all devices, exactly what the separation exists to prevent.
  */
@@ -232,34 +232,34 @@ export function safetyNumber(a: Uint8Array, b: Uint8Array): string {
 
 // ------------------------------------------------------- account and device
 
-/** Ed25519: public keys 32 bytes, signatures 64 bytes. Fixed, and so verifiable. */
+/** Ed25519: 32-byte public keys, 64-byte signatures. Fixed, and so checkable. */
 const KEY_BYTES = 32
 const SIGNATURE_BYTES = 64
 
 /**
  * How many devices an account can have at the same time.
  *
- * Four, by owner decision (docs/planos/MULTIDISPOSITIVO.md, August 11, 2026).
- * Signal gives five; here each device is a complete MLS leaf in each person's
- * channel, and a leaf's cost is paid in all commits and all Welcomes in that
- * channel, for everyone there. A computer, a laptop, a phone and a backup is
+ * Four, by the owner's decision (docs/planos/MULTIDISPOSITIVO.md, 11 August 2026).
+ * Signal allows five; here each device is a full MLS leaf in each of the person's
+ * channels, and a leaf's cost is paid in every Commit and every Welcome in that
+ * channel, by everyone there. A desktop, a laptop, a phone and a spare is
  * what a person uses; the fifth is almost always a reinstall that nobody
  * remembers.
  *
  * One number here, because it is read in two places that must agree: the
  * server, which does not store more lines than this per account (`registerDevice`),
  * and the device manifest, which does not list more keys than this. Two
- * numbers would be two caps, and the day they diverged was a manifest the
+ * numbers would be two caps, and the day they diverged would bring a manifest the
  * server cannot honor.
  */
 export const APARELHOS_POR_CONTA = 4
 
 /**
- * The chain proving this device speaks for this account.
+ * The chain proving that this device speaks for this account.
  *
- * Three facts and a signature: the address, the account key it derives from,
- * the device key, and the account saying that device is theirs. Validators
- * recompute the hash and check the signature, no certificate authority
+ * Three facts and a signature: the address, the account key it is the hash of,
+ * the device key, and the account saying that device is its own. Validators
+ * recompute the hash and check the signature: there is no certificate authority
  * underneath, just as there was none before.
  */
 export interface DeviceCredential {
@@ -270,16 +270,16 @@ export interface DeviceCredential {
   readonly signature: Uint8Array
 }
 
-/** `orwc`, so a credential for something else does not slip through by accident. */
+/** `orwc`, so a credential for anything else does not slip through by accident. */
 const CREDENTIAL_MAGIC = Uint8Array.of(0x6f, 0x72, 0x77, 0x63)
 
 /**
- * Version of the credential format.
+ * The credential format version.
  *
  * v1 was the address in UTF-8 and nothing else. v2 does not read it or try to:
- * the split between account and device falls in the full-restart window, where
- * there is no old sheet to read, and a reader accepting both would be a reader
- * with two meanings for "who is this", that is how you split an identity in
+ * the account/device split lands in the full-reset window, where
+ * there is no old leaf to read, and a reader accepting both forms would be a reader
+ * with two meanings for "who is this", which is how you split an identity in
  * two instead of migrating it.
  */
 export const CREDENTIAL_VERSION = 2
@@ -290,8 +290,8 @@ const CREDENTIAL_HEADER_BYTES = CREDENTIAL_MAGIC.length + 1 + KEY_BYTES + KEY_BY
 /**
  * What the account signs to certify a device.
  *
- * The context at the head separates domains: without it, a signature collected
- * elsewhere in the protocol, a login challenge, for example, could be
+ * The leading context separates domains: without it, a signature collected
+ * elsewhere in the protocol (a login challenge, for example) could be
  * replayed here as a certificate. The address goes inside to bind the
  * certificate to the account AND the server: the same device on another server
  * needs another certificate, and that is what we want.
@@ -317,10 +317,10 @@ export function signDeviceCert(
 /**
  * The full chain, validated: **returns, never throws**.
  *
- * The caller is deciding whether to admit a leaf in the tree, and the
- * contracted refusal is silence, the leaf does not enter and the session
- * continues. An exception coming out of here would be a failure outside the
- * contract, rising by a path that does not always catch it.
+ * The caller is deciding whether to admit a leaf into the tree, and the
+ * agreed refusal is silence: the leaf does not enter and the session
+ * continues. An exception thrown from here would be a failure outside the
+ * contract, rising along a path that does not always catch it.
  */
 export function verifyDeviceChain(credential: {
   address: string
@@ -328,11 +328,11 @@ export function verifyDeviceChain(credential: {
   deviceKey: Uint8Array
   signature: Uint8Array
 }): boolean {
-  // From `decodeDeviceCredential` these checks are always sound, but this is
+  // Coming from `decodeDeviceCredential` these sizes are always right, but this is
   // also called with loose bytes from the wire (see `auth.begin` on the gateway),
   // and there a key of the wrong size is what you expect from a broken client.
-  // Without them the refusal came from the `verify` `try`, which is far from
-  // where the reason becomes clear.
+  // Without these checks the refusal would come from the `try` around `verify`, too far from
+  // where the reason is clear.
   if (credential.accountKey.length !== KEY_BYTES) return false
   if (credential.deviceKey.length !== KEY_BYTES) return false
   if (credential.signature.length !== SIGNATURE_BYTES) return false
@@ -343,7 +343,7 @@ export function verifyDeviceChain(credential: {
   } catch {
     return false
   }
-  // A space (`!`) never signs anything: secrecy is part of the identity, not
+  // A space (`!`) never signs anything: the sigil is part of the identity, not
   // decoration of the text.
   if (parsed.sigil !== "@") return false
   if (parsed.localPart !== accountIdFromSigningKey(credential.accountKey)) return false
@@ -387,14 +387,15 @@ export function encodeDeviceCredential(credential: DeviceCredential): Uint8Array
  * The reverse, and the same rule: **returns `undefined`, never throws**.
  *
  * The length is checked to the byte. One byte too many at the end is not a
- * field we do not yet know how to read, it is a credential we did not write,  * and accepting it would open the door to two encodings of the same leaf.
+ * field we do not know how to read yet, it is a credential we did not write,
+ * and accepting it would open the door to two encodings of the same leaf.
  */
 export function decodeDeviceCredential(bytes: Uint8Array): DeviceCredential | undefined {
   // Defense in depth, not the guard that refuses: a short buffer already dies at
   // the magic, because `bytes[i]` past the end gives `undefined` and no byte is
   // `undefined`. It stays because that is what makes the reads below obviously
   // safe instead of safe by accident, and whoever removes it will see no test
-  // fall, which is reason to leave it be, not reason to delete it.
+  // fail, which is a reason to leave it alone, not a reason to delete it.
   if (bytes.length < CREDENTIAL_HEADER_BYTES) return undefined
   for (let i = 0; i < CREDENTIAL_MAGIC.length; i++) {
     if (bytes[i] !== CREDENTIAL_MAGIC[i]) return undefined
@@ -413,8 +414,8 @@ export function decodeDeviceCredential(bytes: Uint8Array): DeviceCredential | un
   const addressLength = ((bytes[at] as number) << 8) | (bytes[at + 1] as number)
   at += 2
   // Equality, not "good enough for the address": with `>=`, the same credential
-  // would have infinite encodings, the right one, and the right one with garbage
-  // stuck at the back. This is compared byte by byte, and two writes of the same
+  // would have infinite encodings: the right one, and the right one with garbage
+  // appended. This is compared byte by byte, and two writes of the same
   // fact would look like two facts.
   if (bytes.length !== at + addressLength) return undefined
 
@@ -429,7 +430,7 @@ export function decodeDeviceCredential(bytes: Uint8Array): DeviceCredential | un
 }
 
 /**
- * What the account signs to revoke one of its devices, see `device.revoke`.
+ * What the account signs to revoke one of its devices. See `device.revoke`.
  *
  * Its own context, because a certificate and a revocation cannot be the same
  * signature read backwards.

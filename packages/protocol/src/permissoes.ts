@@ -5,54 +5,54 @@ import { IRREVERSIBLE_POWERS, POWERS, type Power, type Sobreposicao } from "./pa
  *
  * Everything here is a pure function of an `EstadoDePermissoes`. The session builds
  * the state from the vault and asks. It lives in the protocol so there is ONE rule:
- * whoever sends (`may`, the buttons) and whoever receives (`#recordPayload`, the
- * portrait) ask the same function, and the tests of this rule need no network.
+ * the sender (`may`, the buttons) and the receiver (`#recordPayload`, the
+ * snapshot) ask the same function, and the tests of this rule need no network.
  *
- * **What this guarantees, stated plainly.** Nothing here is cryptographic. Each
- * honest client decides on receipt and on send; an altered client sends what it
- * wants, and what stops it from having effect is honest clients refusing. The only
- * permission with the weight of encryption is still `expulsar` (removes the MLS
- * leaf), and even that only in effect. The per-room overlays are organization of who
- * can do what, and do not take away any key: the room is a label inside the group.
+ * **What this guarantees, without sugarcoating.** Nothing here is cryptographic. Each
+ * honest client decides on receive and on send; a modified client sends what it
+ * wants, and what leaves it without effect is honest clients refusing. The only
+ * permission backed by encryption is still `expulsar` (it removes the MLS
+ * leaf), and even that only through its effect. The per-room overrides organize who
+ * can do what, and take away no key: the room is a label inside the group.
  */
 
 /**
  * "orwell-permissoes-v1", in the private use range, alongside `EXTENSAO_RETRATO`.
  *
- * Never travels as an extension: it is only DECLARED in the capabilities of the
- * leaf (the key package of whoever enters). It means "this client reads the `rank`,
- * the `perms` and the new powers, and verifies the signature of a role or room that
- * carries them". A 1.1.0 declares the portrait and does not declare this: strips the
- * new fields before verifying, and a portrait item with them does not verify there.
- * Whoever invites does not skip the cascade if some new leaf does not declare this,
- * and the 1.1.0 receives live (authenticated by MLS) what the portrait does not
+ * Never travels as an extension: it is only DECLARED in the leaf's
+ * capabilities (the joiner's KeyPackage). It means "this client reads `rank`,
+ * `perms` and the new powers, and verifies the signature of a role or room that
+ * carries them". A 1.1.0 client declares the snapshot but not this: it strips the
+ * new fields before verifying, so a snapshot item with them does not verify there.
+ * The inviter does not skip the cascade if any new leaf lacks this declaration,
+ * and the 1.1.0 client receives live (authenticated by MLS) what the snapshot cannot
  * prove to it.
  */
 export const EXTENSAO_PERMISSOES = 0xf0f1
 
-/** The built-in admin role. Gives everything, and never erases. */
+/** The built-in admin role. Grants everything, and cannot be deleted. */
 export const CARGO_ADMIN = "admin"
 
 /**
- * The built-in role "everyone": the base permissions for everyone on the channel.
+ * The built-in role "todos" (everyone): the base permissions of everyone in the channel.
  *
  * **`@todos` and not `todos`**, and this is a deviation from the plan. The identifiers
  * of roles created by the interface come from the name (`criarPapel` in `App.tsx`:
- * lowercase, letters, digits and hyphens), and a role called "Everyone" would get
- * the id `todos`. In a channel that already has it, the built-in role with that name
- * would give everyone the powers of a role that someone assigned to three people.
- * With `@` at the front no interface id collides.
+ * lowercase, letters, digits and hyphens), and a role called "Todos" would get
+ * the id `todos`. In a channel that already has one, the built-in role with that id
+ * would give everyone the powers of a role that someone gave to three people.
+ * With `@` in front, no interface id collides.
  *
- * A normal `role.define`. Not assigned to anyone (applies to all), not deleted (republish
- * without powers is "nobody can do anything basic"). A client 1.0.x or 1.1.0
- * lists it as one more role called "everyone" and lets it be assigned: harmless,
+ * A normal `role.define`. It is not assigned to anyone (it applies to all) and not deleted
+ * (republishing it without powers means "nobody can do anything by default"). A 1.0.x or 1.1.0 client
+ * lists it as one more role called "todos" and lets it be assigned: harmless,
  * because whoever gets it already had it.
  */
 export const CARGO_TODOS = "@todos"
 
 /**
- * What everyone can do when the channel did not set `@todos`: what is free
- * today. Absent or deleted, this applies.
+ * What everyone can do when the channel has not defined `@todos`: what is open
+ * today. If it is absent or deleted, this applies.
  */
 export const PODERES_DE_TODOS_POR_OMISSAO: readonly Power[] = [
   "escrever",
@@ -69,14 +69,14 @@ export const PODERES_DE_TODOS_POR_OMISSAO: readonly Power[] = [
 export const PODERES_ANTIGOS: readonly Power[] = POWERS.slice(0, 8)
 
 /**
- * Whoever has the top power has the bottom one. The migration of roles that
- * already existed (§4.4): `gerirsalas` came out of `renomear`, `apelidos` out
+ * Whoever has the upper power has the lower one. This is the migration of existing
+ * roles (§4.4): `gerirsalas` was split out of `renomear`, `apelidos` out
  * of `moderar`, and `desligar` out of `mover`. A role saved with the old power
  * keeps doing everything it did, with no rewrite.
  *
- * Always, not just in old roles: "manage the channel" includes rooms, and
- * moving someone includes removing them from the call, as in Discord. To grant
- * only the bottom power, grant only the bottom power.
+ * Always, not just for old roles: "manage the channel" includes rooms, and
+ * moving someone includes disconnecting them from the call, as in Discord. To grant
+ * only the lower power, grant only the lower power.
  */
 export const IMPLICACOES: Readonly<Partial<Record<Power, readonly Power[]>>> = {
   renomear: ["gerirsalas"],
@@ -86,7 +86,7 @@ export const IMPLICACOES: Readonly<Partial<Record<Power, readonly Power[]>>> = {
 
 /**
  * The permissions that a room or category override can change. The others
- * belong to the entire channel (kick, invite, manage roles, manage the channel,
+ * belong to the whole channel (kick, invite, manage roles, manage the channel,
  * delete the channel) and a room cannot change them.
  */
 export const PODERES_POR_SALA: readonly Power[] = [
@@ -113,7 +113,7 @@ export const PODERES_POR_SALA: readonly Power[] = [
 
 /**
  * The permissions that THIS version enforces: the ones the interface offers.
- * The others in `POWERS` are recorded vocabulary for future releases (write,
+ * The others in `POWERS` are vocabulary reserved for later slices (write,
  * react, ban...), and offering a toggle that does nothing would promise what
  * the app does not deliver.
  */
@@ -129,16 +129,16 @@ export const PODERES_CUMPRIDOS: readonly Power[] = [
 export const PODERES_POR_SALA_CUMPRIDOS: readonly Power[] = ["mover", "desligar", "gerirsalas", "mencionartodos"]
 
 /**
- * The mention of everyone (`@all`, `@todos`, `@everyone`) in the thread: this text
+ * The mention of everyone (`@all`, `@todos`, `@everyone`) on the wire: this text
  * inside `mentions`, in place of an address.
  *
  * An address always starts with `@` (`@a-b-c-d:servidor`), and this text does not: it never
- * collides with an account. A client 1.1.0 reads it as one more address that is not
- * theirs, and the message arrives with no mention. Nothing rejects it.
+ * collides with an account. A 1.1.0 client reads it as one more address that is not
+ * its own, and the message arrives with no mention. Nothing rejects it.
  *
- * **App rule, not cipher rule.** The sender without `mencionartodos` does not add it;
+ * **An app rule, not a crypto rule.** A sender without `mencionartodos` does not add it;
  * the receiver checks the author's permission in that room (`mencoesConferidas`) and
- * discards it if they do not have it. A modified app can send it anyway; honest
+ * drops it if the author lacks it. A modified app can send it anyway; honest
  * apps do not give it effect.
  */
 export const MENCAO_TODOS = "todos"
@@ -147,8 +147,8 @@ export const MENCAO_TODOS = "todos"
  * The mentions that count, after checking the sender's permission.
  *
  * `podeMencionarTodos` is the answer from `permissoesEm(estado, autor, { sala })`
- * for `mencionartodos`. Without it, `MENCAO_TODOS` is removed, and the addresses
- * remain. Returns the SAME list when nothing changes, for identity comparison.
+ * for `mencionartodos`. Without it, `MENCAO_TODOS` is removed and the addresses
+ * remain. Returns the SAME list when nothing changes, for callers that compare by identity.
  */
 export function mencoesConferidas(mentions: readonly string[], podeMencionarTodos: boolean): readonly string[] {
   if (podeMencionarTodos || !mentions.includes(MENCAO_TODOS)) return mentions
@@ -172,7 +172,7 @@ export function comImplicacoes(poderes: Iterable<Power>): Set<Power> {
   return todos
 }
 
-/** A role as defined, the way the model reads it. */
+/** A defined role, as the model reads it. */
 export interface CargoDefinido {
   powers: readonly Power[]
   rank: number
@@ -183,23 +183,23 @@ export interface CargoDefinido {
  * from the vault; tests build it by hand.
  */
 export interface EstadoDePermissoes {
-  /** Whoever founded it, or null if not known. */
+  /** The founder, or null if unknown. */
   fundador: string | null
   /** The identifiers of this person's roles (including `admin` if they have it). */
   cargosDe(address: string): readonly string[]
-  /** A role defined and active, without `admin` or `@todos`. */
+  /** A defined, live role, other than `admin` or `@todos`. */
   cargo(role: string): CargoDefinido | undefined
   /** The permissions of `@todos`: the ones defined, or `PODERES_DE_TODOS_POR_OMISSAO`. */
   todos: readonly Power[]
-  /** The category name of a room ("" if not in a category). */
+  /** A room's category name ("" when outside any category). */
   categoriaDaSala?(room: string): string
-  /** The saved overrides of a room. */
+  /** A room's saved overrides. */
   sobreposicoesDaSala?(room: string): readonly Sobreposicao[] | undefined
-  /** The saved overrides of a category. */
+  /** A category's saved overrides. */
   sobreposicoesDaCategoria?(category: string): readonly Sobreposicao[] | undefined
 }
 
-/** Where we ask: the entire channel, a room, or a category. */
+/** Where we ask: the whole channel, a room, or a category. */
 export interface Lugar {
   sala?: string | undefined
   categoria?: string | undefined
@@ -212,8 +212,8 @@ function aplicar(tem: Set<Power>, sobreposicoes: readonly Sobreposicao[] | undef
     poderesConhecidos(poderes).filter((poder) => PODERES_POR_SALA.includes(poder))
   const deTodos = sobreposicoes.filter((entrada) => entrada.role === CARGO_TODOS)
   const dosCargos = sobreposicoes.filter((entrada) => entrada.role !== CARGO_TODOS && meus.has(entrada.role))
-  // Discord's order: everyone's first, then roles in order; within each one,
-  // remove before grant. A "grant" from a role beats a "remove" from everyone.
+  // Discord's order: everyone's first, then the roles on top; within each one,
+  // deny before allow. An "allow" from a role beats a "deny" from everyone.
   for (const entrada of deTodos) for (const poder of daSala(entrada.deny)) tem.delete(poder)
   for (const entrada of deTodos) for (const poder of comImplicacoes(daSala(entrada.allow))) tem.add(poder)
   for (const entrada of dosCargos) for (const poder of daSala(entrada.deny)) tem.delete(poder)
@@ -223,8 +223,8 @@ function aplicar(tem: Set<Power>, sobreposicoes: readonly Sobreposicao[] | undef
 /**
  * What this person can do in this place. The single source of truth (§4.3).
  *
- * 1. Founder can do everything and cannot be removed.
- * 2. No known founder: only what is unconditional (the rule from `powersOf`, before).
+ * 1. The founder can do everything and cannot be demoted.
+ * 2. No known founder: only what can be undone (the old `powersOf` rule).
  * 3. `admin` can do everything; overrides do not touch it.
  * 4. The base: `@todos` plus this person's roles, with implications.
  * 5. The room's category, then the room (`aplicar`).
@@ -248,7 +248,7 @@ export function permissoesEm(estado: EstadoDePermissoes, address: string, lugar:
 /**
  * A person's height in the hierarchy: founder above all, `admin` right after,
  * then the highest `rank` of their roles. No roles: -1, below any role, so
- * whoever manages a role with `rank` 0 can grant it to them.
+ * whoever manages the `rank` 0 role can grant it to them.
  */
 export function alturaDe(estado: EstadoDePermissoes, address: string): number {
   if (estado.fundador !== null && estado.fundador === address) return Number.POSITIVE_INFINITY
@@ -263,16 +263,16 @@ export function alturaDe(estado: EstadoDePermissoes, address: string): number {
 }
 
 /**
- * The channel's order: the order in which roles appear everywhere.
+ * The channel's order: the order in which roles are shown everywhere.
  *
- * Highest `rank` first, because the list IS the hierarchy: the top role commands
- * those below. Then `position` ascending and name, which are the pre-1.2 order
- * and break ties among roles that still have `rank` zero (all of them).
+ * Highest `rank` first, because the list IS the hierarchy: the top role is in charge
+ * of those below. Then `position` ascending and the name, which are the pre-1.2 order
+ * and break ties among roles that have no `rank` yet (all at zero).
  *
- * A 1.1.x client only reads `position`. So `reorderRoles` always writes both to
- * match (the first with the highest `rank` and position zero), and a new role is
+ * A 1.1.x client only reads `position`. So `reorderRoles` always writes both so they
+ * agree (the first with the highest `rank` and `position` zero), and a new role is
  * born at the bottom of both. Someone who never reordered sees the same order
- * always; someone who did sees the same order across all versions.
+ * as always; someone who did sees the same order in every version.
  *
  * `admin` and `@todos` do not enter here: they have a fixed place (`alturaDoCargo`),
  * the first above all and the second at the bottom.
@@ -292,9 +292,9 @@ export function alturaDoCargo(estado: EstadoDePermissoes, role: string): number 
 }
 
 /**
- * Whether this person commands the channel's roles without limit (founder or
- * `admin`). It is the rule from before (`#mandaEm`), and it still is the one a
- * 1.0.x knows.
+ * Whether this person controls the channel's roles without limit (founder or
+ * `admin`). It is the old rule (`#mandaEm`), and still the one a
+ * 1.0.x client knows.
  */
 export function mandaNosCargos(estado: EstadoDePermissoes, address: string): boolean {
   if (estado.fundador === null) return false
@@ -311,13 +311,13 @@ function contido(a: Iterable<Power>, b: ReadonlySet<Power>): boolean {
 /**
  * Whether `actor` can create, change, or delete the role `role`, from `antes`
  * to `depois` (§4.3, `#podeGerirCargo`). `antes` is the role as it stands (absent
- * if it does not exist); `depois` is how it becomes (absent to only ask).
+ * if it does not exist); `depois` is what it becomes (absent to just ask).
  *
  * Founder: yes. `admin`: yes, also over `admin` itself (the name and color, as
- * of 2/11/2026: its powers do not change). Others: delegation. `gerircargos`, and
- * the role below the one who manages it, BEFORE and AFTER, and the role's powers
- * contained in those of the one who assigns it, BEFORE and AFTER. A role never
- * grants more power than the one assigning it has: this is what stops escalation.
+ * since 2/11/2026: its powers do not change). Others, by delegation: `gerircargos`,
+ * the role below its manager, BEFORE and AFTER, and the role's powers
+ * contained in its manager's, BEFORE and AFTER. A role never
+ * grants more power than the assigner has: this is what blocks escalation.
  */
 export function podeGerirCargo(
   estado: EstadoDePermissoes,
@@ -347,8 +347,8 @@ export function podeGerirCargo(
  * Whether `actor` can change `subject`'s roles from `antes` to `depois`.
  *
  * Founder and `admin`: yes, as always. Others: never over the founder, only
- * over those below them, and each role that enters or leaves must pass through
- * `podeGerirCargo`. `@todos` does not count: it applies to everyone the same.
+ * over those below them, and each role added or removed must pass
+ * `podeGerirCargo`. `@todos` does not count: it applies to everyone equally.
  */
 export function podeAtribuir(
   estado: EstadoDePermissoes,
@@ -374,9 +374,9 @@ function chaveDaEntrada(entrada: Sobreposicao): string {
  * Whether `actor` can change the overrides of a place from `antes` to `depois`.
  *
  * Founder and `admin`: yes. No known founder: nobody (a rule with no known owner
- * is not saved). Others: `gerirsalas` in that place, and each entry that changes
- * is from `@todos` or from a role below the one making the change, and only talks
- * about permissions the changer has there. Do not grant or remove what you do not have.
+ * is not saved). Others: `gerirsalas` in THAT place, and each changed entry
+ * belongs to `@todos` or to a role below the changer, and only covers
+ * permissions the changer has there. You can't grant or deny what you don't have.
  */
 export function podeSobrepor(
   estado: EstadoDePermissoes,
@@ -412,12 +412,12 @@ export function podeSobrepor(
  * The `role.define` to save when what arrives was written by an old client
  * (without `rank`) on top of one written by a new one (with `rank`).
  *
- * A 1.0.x or 1.1.0 only knows the eight old powers and does not know `rank`:
+ * A 1.0.x or 1.1.0 client only knows the eight old powers and not `rank`:
  * it republishes the role (when renaming it, or each time someone joins, with
  * the original date) without them. Without this merge, every old administrator
- * who connected would erase the hierarchy and new powers from the entire channel,
- * and nobody would notice. With it, what the old writer said applies to what they
- * know how to say (the name, color, position, the eight old ones, the tombstone),
+ * online would erase the hierarchy and the new powers from the whole channel,
+ * and nobody would notice. With it, what the old writer said applies to what it
+ * knows how to say (the name, color, position, the eight old ones, the tombstone),
  * and the rest stays as it was.
  */
 export function fundirCargoAntigo(
@@ -439,8 +439,8 @@ export function fundirCargoAntigo(
 
 /**
  * The overrides to save for a place, with the `pinned` rule: absent keeps what
- * was known; present from someone who can changes it; present from someone who
- * cannot falls without taking the room with it.
+ * was known; present from someone allowed replaces it; present from someone not
+ * allowed is dropped without taking the room with it.
  */
 export function sobreposicoesAGuardar(
   anteriores: readonly Sobreposicao[] | undefined,

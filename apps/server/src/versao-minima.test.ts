@@ -9,7 +9,7 @@ import { levantarServidor, type ServidorDeTeste } from "../testes/cliente-de-tes
  *
  * On the 1.0 cutover the server restarts with opaque addresses and an empty database. A
  * 0.9 client in cache (the web app) or installed (the desktop app) does not
- * speak that language: it must hear a message that tells it what to do, and not
+ * speak that language: it must get a message that tells it what to do, and not
  * keep reconnecting to a server that does not understand it. The minimum comes from the environment
  * and is empty by default, so this server can go to production BEFORE the
  * cutover without rejecting anyone.

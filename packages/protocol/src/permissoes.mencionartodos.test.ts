@@ -16,14 +16,14 @@ import {
 } from "./permissoes.js"
 
 /**
- * `@all` (item #10 of the parity plan): the `mentionall` permission, the rule
- * that grants the mention to everyone, and what a 1.1.0 reads.
+ * `@all` (item #10 of the parity plan): the `mencionartodos` permission, the rule
+ * that checks a mention of everyone, and what a 1.1.0 reads.
  */
 
-const ANA = "@ana:t" // fundadora
+const ANA = "@ana:t" // founder
 const BRUNO = "@bruno:t" // admin
 const CARLA = "@carla:t" // no role
-const DARIO = "@dario:t" // announcements (with mentionall)
+const DARIO = "@dario:t" // `anuncios` (with `mencionartodos`)
 
 function estado(opcoes: { todos?: Power[]; salas?: Record<string, Sobreposicao[]>; cargos?: Record<string, CargoDefinido> } = {}): EstadoDePermissoes {
   const de: Record<string, string[]> = { [BRUNO]: [CARGO_ADMIN], [DARIO]: ["anuncios"] }

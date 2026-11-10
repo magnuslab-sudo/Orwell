@@ -16,16 +16,16 @@ import {
 /**
  * The media engine, tested against a real mediasoup worker.
  *
- * **There are no mocks here, and it is by design.** A mock of mediasoup would prove only that
+ * **There are no mocks here, on purpose.** A mock of mediasoup would prove only that
  * our code calls the methods we invented for it, the kind of test that passes on a false premise
- * and has already cost three deleted tests in this repository in one night. What matters is whether the `produce`
- * of mediasoup accepts what we give it, whether `canConsume` says no to a
+ * and has already cost three deleted tests in this repository in one night. What matters is whether mediasoup's
+ * `produce` accepts what we give it, whether `canConsume` says no to a
  * producer from another router, and whether the `announcedAddress` actually reaches the
  * ICE candidates. None of that can be faked.
  *
  * The cost is one subprocess per suite, closed in `afterAll`. If it does not close,
- * workers stay hung until the machine says no, that is what the
- * `close` of `app.ts` had to learn as well.
+ * workers stay hung until the machine refuses: the
+ * `close` in `app.ts` had to learn the same lesson.
  *
  * `porto: 0` lets the system choose. A fixed number here would be the trap
  * that `bindPort: 0` of `gateway.test.ts` already documents: a server left
@@ -47,8 +47,8 @@ afterAll(async () => {
  * RTP parameters of a voice stream, as a client would send them.
  *
  * Written by hand because there is no browser in this suite. mediasoup validates them
- * against the router's capabilities, that validation is what gets exercised when
- * a `produce` succeeds, and `payloadType` does not have to match the router's:
+ * against the router's capabilities (that validation is what a passing
+ * `produce` exercises), and `payloadType` does not have to match the router's:
  * the mapping is its job.
  */
 function vozDe(ssrc: number, maxaveragebitrate?: number): types.RtpParameters {
@@ -77,9 +77,9 @@ function vozDe(ssrc: number, maxaveragebitrate?: number): types.RtpParameters {
 /**
  * RTP parameters of a video stream, as `mediasoup-client` would send them.
  *
- * Bitrate is declared elsewhere, not in audio, and that is why this helper exists
+ * Video declares bitrate in a different place than audio, and that is why this helper exists
  * instead of a parameter in `vozDe`: Opus says it inside the codec parameters
- * (`maxaveragebitrate`) and VP8 has nowhere to say it, the encoder says it,
+ * (`maxaveragebitrate`) and VP8 has nowhere to say it: the ENCODING says it,
  * `encodings[].maxBitrate`. Reading only one of the two left video without any
  * bitrate check, which is exactly the stream that weighs thirty times more.
  */
@@ -97,8 +97,8 @@ function ecraDe(ssrc: number, maxBitrate?: number): types.RtpParameters {
  *
  * Owners too, not just scopes: with a shared `eu()`, the fifth test using it hits
  * `AMBITOS_POR_LIGACAO` and fails for a reason that has nothing to do with what it
- * measures. It happened while writing this suite, eleven tests failing with "this
- * connection is already in 4 calls", and the lesson is the usual one: a test that
+ * measures. It happened while writing this suite (eleven tests failing with "this
+ * connection is already in 4 calls"), and the lesson is the usual one: a test that
  * shares state measures the neighbor.
  */
 let contador = 0
@@ -108,13 +108,13 @@ const ambito = (): string => `ambito-${contador++}`
  * Two owners, unique per test, without each test having to invent them.
  *
  * The name of the current test is what separates them. It is free and does not get
- * forgotten, a manual counter gets forgotten, and the symptom is the next test
+ * forgotten: a manual counter gets forgotten, and the symptom is the next test
  * failing for a reason that is not its own.
  */
 const eu = (): string => `eu|${expect.getState().currentTestName ?? "solto"}`
 const outro = (): string => `outro|${expect.getState().currentTestName ?? "solto"}`
 
-/** A free port, requested from the system and returned. See the unique port test. */
+/** A free port, requested from the system and returned. See the single-port test. */
 async function portoLivre(): Promise<number> {
   const { createSocket } = await import("node:dgram")
   const socket = createSocket("udp4")
@@ -138,9 +138,10 @@ describe("o motor levanta-se", () => {
    * the announced address replaces the listen address in ICE candidates, which is
    * the entire line Docker depends on.
    *
-   * **What this still does NOT prove**, and is stated so no one reads it wrong: that
+   * **What this still does NOT prove**, stated so no one reads too much into it: that
    * a client from outside crosses Docker's NAT and connects. That requires a
-   * container with a bridge and a client on the outside, and remains unmeasured,    * see `PENDENTES.md`. What stopped being a guess is that the field works and
+   * container with a bridge and a client on the outside, and remains unmeasured
+   * (see `PENDENTES.md`). What stopped being a guess is that the field works and
    * where it comes out.
    */
   it("anuncia o endereço configurado nos candidatos ICE, e não o de escuta", async () => {
@@ -165,17 +166,17 @@ describe("o motor levanta-se", () => {
    * worse because it hits all engines.** With `escutarEm: "0.0.0.0"` and without
    * `anunciarIp`, mediasoup puts `0.0.0.0` in the ICE candidates, an address
    * where no client knows how to send. And it fails in the worst way there is: the
-   * server starts, the `hello.ok` announces the capacity `sfu`, all clients
-   * pick the SFU, the transports create, the ICE goes to `failed`, and what the
-   * user sees is a call set up with everyone silent. Nothing at startup tells them.
+   * server starts, the `hello.ok` announces the `sfu` capability, all clients
+   * pick the SFU, the transports are created, the ICE goes to `failed`, and what the
+   * user sees is a call set up with everyone silent. Nothing at startup says so.
    *
-   * This is exactly the Docker configuration, `bindHost` different from
-   * `127.0.0.1`, with `ENCLAVE_SFU_ANNOUNCED_IP` forgotten. The plan says that
+   * This is exactly the Docker configuration (`bindHost` different from
+   * `127.0.0.1`) with `ENCLAVE_SFU_ANNOUNCED_IP` forgotten. The plan says that
    * this address is required; until now nothing enforced it.
    *
-   * Refusing to start is the right answer and not caution: whoever catches this exception in the
+   * Refusing to start is the right answer, not overzealousness: whoever catches this exception in the
    * `app.ts` already writes the reason and leaves the calls in mesh, without announcing the
-   * capacity. A mesh call is a call; a call through an SFU that
+   * capability. A mesh call is a call; a call through an SFU that
    * no one can reach is nothing.
    */
   it("recusa arrancar a escutar em 0.0.0.0 sem endereço a anunciar", async () => {
@@ -187,7 +188,8 @@ describe("o motor levanta-se", () => {
   /**
    * And it starts when told what to announce, which is the other half of the guard.
    *
-   * Without this, the guard above would pass with an unconditional `throw` on `0.0.0.0`,    * and Docker, which is exactly who listens on `0.0.0.0`, would have no SFU
+   * Without this, the guard above would pass with an unconditional `throw` on `0.0.0.0`,
+   * and Docker, which is exactly who listens on `0.0.0.0`, would have no SFU
    * at all.
    */
   it("arranca em 0.0.0.0 quando o endereço a anunciar está posto", async () => {
@@ -214,7 +216,7 @@ describe("o motor levanta-se", () => {
    * **The port must be explicit, and this test showed it.** With
    * `porto: 0` mediasoup picks a free number for EACH `listenInfo`, and
    * the two come out different: UDP on one, TCP on another. The property "one port only"
-   * is not of the `WebRtcServer`, it is of the configuration. In production the
+   * belongs to the configuration, not to the `WebRtcServer`. In production the
    * `ENCLAVE_SFU_PORT` is explicit and the property holds; an operator who left it
    * at zero would open two ports without knowing, and UFW would know only one.
    */
@@ -235,7 +237,7 @@ describe("o motor levanta-se", () => {
   })
 
   /**
-   * The two measures of containment, read from the router and not from what was written.
+   * The two bandwidth-saving measures, read from the router and not from what was written.
    *
    * Without `usedtx=1` Opus sends encoded silence all the time, close to seventy
    * percent more traffic in a conversation, and on a machine shared with magnuslab.pt
@@ -268,16 +270,18 @@ describe("o motor levanta-se", () => {
   })
 
   /**
-   * Video entered in Phase 3, and entered with one codec only.
+   * Video arrived in Phase 3, and arrived with one codec only.
    *
    * This used to be "do not negotiate any video" while refusing video WAS the cap
-   * working. What changed was not the machine: it was the numbers, which became written
-   * and applied at producer admission. What this test now guards is the other half,    * that the router announces VP8 and nothing else.
+   * working. What changed was not the machine: it was the numbers, which are now written down
+   * and enforced at producer admission. What this test now guards is the other half:
+   * that the router announces VP8 and nothing else.
    *
    * **The reason written here became obsolete twice, and the one that remains is harder
    * than both.** It used to say "an H.264 here would serve a Safari that has no
-   * insertable streams and therefore would have no media cipher". Safari got media cipher
-   * on August 18, the `RTCRtpScriptTransform` in a worker, measured on all three engines,    * so that reason fell. What replaces it is not about cleanup or negotiation: it is about
+   * insertable streams and therefore would have no media encryption". Safari got media encryption
+   * on August 18 (the `RTCRtpScriptTransform` in a worker, measured on all three engines),
+   * so that reason fell. What replaces it is not about cleanup or negotiation: it is about
    * FORMAT PHYSICS, and it applies to all engines.
    *
    * **Full-frame encryption does not survive H.264's packetizer.** Measured on August 18
@@ -294,11 +298,11 @@ describe("o motor levanta-se", () => {
    * H.264 (RFC 6184) splits a frame into packets by SCANNING the bitstream for NALU
    * start codes. Encrypted, there are none: the packetizer cannot split the frame and
    * out comes one packet. VP8 (RFC 7741) puts its own descriptor in front, written from
-   * what the encoder said, and treats the payload as opaque, splits it by size and
+   * what the encoder said, and treats the payload as opaque: it splits it by size and
    * nothing else. That is why the same cipher passes on one and collapses on the other.
    *
-   * **So this is not preference: it is what keeps encrypted video existing.** Adding
-   * H.264 to this list, for hardware, for battery, to better serve Safari, erases video
+   * **So this is not preference: it is what keeps encrypted video alive.** Adding
+   * H.264 to this list (for hardware, for battery, to serve Safari better) erases video
    * for everyone, on all engines, and erases it silently: frames keep being encrypted
    * and counted, and what does not come out is off the wire. Anyone who really wants it
    * must first leave the codec header in the clear (another wire format, and content bytes
@@ -322,15 +326,15 @@ describe("o motor levanta-se", () => {
    * The test above fixes the exact list, and that is what we want today. This one says
    * WHY, in a way that survives someone adding VP9 or AV1, which are legitimate because
    * they also treat the payload as opaque, and still catches H.264 and H.265, which are
-   * not. Without it, the day the list changes for a good reason takes the test above with it
-   * and the guard disappears with it.
+   * not. Without it, the day the list changes for a good reason sweeps away the test above
+   * and the guard goes with it.
    */
   it("não anuncia codec nenhum cujo empacotador precise de LER o bitstream", async () => {
     const chave = ambito()
     const { rtpCapabilities } = await motor.entrar(chave, eu())
     /*
      * The ones that scan the bitstream to packetize, and so cannot carry a frame
-     * encrypted in full. Measured, not guessed, see the table above and
+     * encrypted in full. Measured, not assumed: see the table above and
      * `scripts/sfu-script-transform-por-motor.mjs`.
      */
     const QUE_LEEM_O_BITSTREAM = ["video/h264", "video/h265"]
@@ -343,7 +347,7 @@ describe("o âmbito", () => {
   /**
    * The rule that sets this design apart from the obvious, and the bug it prevents.
    *
-   * "Destroy the router when the last transport leaves" is the natural statement and
+   * "Destroy the router when the last transport leaves" is the natural rule and
    * it is wrong: between `entrar` and the first `criarTransporte` there is a scope with
    * one member and ZERO transports. With the last-transport rule, the router
    * would close under the first person to arrive, and only the first, which gives
@@ -387,7 +391,7 @@ describe("o âmbito", () => {
    * And it refuses WITHOUT leaving a trace.
    *
    * The count of open scopes is half the test, and it is the half that matters: the
-   * earlier version of this function asked the scope from the map that CREATES it, and
+   * earlier version of this function fetched the scope from the map that CREATES it, and
    * only then did it find out that the requester had not entered. The router ended up
    * with zero members, and a zero-member scope is never closed, because the one who
    * would close it is the last member leaving. One router per refused frame, at socket
@@ -431,7 +435,7 @@ describe("os tectos", () => {
   it("deixa reentrar quem já lá está, mesmo com a sala cheia", async () => {
     const chave = ambito()
     for (let i = 0; i < PARTICIPANTES_POR_AMBITO; i++) await motor.entrar(chave, `pessoa-${i}`)
-    // A repeated `enter` is what happens to someone who reloads the page. Refusing it
+    // A repeated `entrar` is what happens to someone who reloads the page. Refusing it
     // would lock the person out of their own call until someone leaves.
     await expect(motor.entrar(chave, "pessoa-0")).resolves.toBeDefined()
   })
@@ -489,7 +493,7 @@ describe("os tectos", () => {
     await motor.entrar(chave, eu())
     const transporte = await motor.criarTransporte(chave, eu(), "recepcao")
 
-    // What comes out here is decided by us, putting a cap on INCOMING would limit a path
+    // What comes out here is decided by us: putting a cap on INCOMING would limit a path
     // where nothing comes in, and give the appearance of protection that is not where it
     // is needed.
     const stats = await motor.estatisticasDoTransporte(transporte.id)
@@ -501,8 +505,8 @@ describe("os tectos", () => {
     await motor.entrar(chave, eu())
     const transporte = await motor.criarTransporte(chave, eu(), "envio")
 
-    // A producer with no `maxaveragebitrate` at all passes the budget check on purpose, refusing
-    // its absence would break honest clients without catching anyone. What secures it is
+    // A producer with no `maxaveragebitrate` at all passes the budget check on purpose: refusing
+    // its absence would break honest clients without catching anyone. What holds it back is
     // the transport cap, which was already there before it produced.
     await motor.produzir(eu(), transporte.id, "audio", vozDe(9001))
     const stats = await motor.estatisticasDoTransporte(transporte.id)
@@ -545,7 +549,7 @@ describe("produzir", () => {
     await motor.produzir(eu(), transporte.id, "video", ecraDe(4445), "camara")
     const terceiro = await motor.produzir(eu(), transporte.id, "video", ecraDe(4446), "ecra")
     const quarto = await motor.produzir(eu(), transporte.id, "audio", vozDe(4449, TECTO_DO_SOM_DO_ECRA), "ecra")
-    // Music is the fifth (phase 9): it enters without video, and does not take anyone's slot.
+    // Music is the fifth (phase 9): it enters without video, and takes no slot.
     const quinto = await motor.produzir(eu(), transporte.id, "audio", vozDe(4450, TECTO_DO_SOM_DO_ECRA), "musica")
     expect(terceiro.id).toBeTruthy()
     expect(quarto.fonte).toBe("ecra")
@@ -556,7 +560,7 @@ describe("produzir", () => {
   it("recusa a segunda câmara da mesma pessoa", async () => {
     // It is not the three-person cap biting, it is the repeated source. A second camera
     // doubles that person's output for everyone and adds nothing you see, and two
-    // microphones are the same voice twice with half a second apart.
+    // microphones are the same voice twice, half a second apart.
     const chave = ambito()
     await motor.entrar(chave, eu())
     const transporte = await motor.criarTransporte(chave, eu(), "envio")
@@ -581,8 +585,8 @@ describe("produzir", () => {
    *
    * A client that declares nothing receives the `maxaveragebitrate=32000` that the
    * router announces, which is the value we wanted. Refusing the absence would break
-   * honest clients without catching a single dishonest one, anyone who wants to exceed
-   * the cap omits the field, does not declare it.
+   * honest clients without catching a single dishonest one: anyone who wants to exceed
+   * the cap omits the field rather than declaring it.
    */
   it("aceita um fluxo que não declare banda nenhuma", async () => {
     const chave = ambito()
@@ -595,15 +599,15 @@ describe("produzir", () => {
 /**
  * The video caps, the ones that say how much LEAVES this server.
  *
- * Voice fits any realistic scenario on this platform, 16 streams of 32 kbps served
- * to 15 people are 7.7 Mbps at worst theoretical case. Video does not: one screen at
- * 2.5 Mbps served to ten people are 25 Mbps alone, half the slice that section 7 of
+ * Voice fits any realistic scenario on this platform: 16 streams of 32 kbps served
+ * to 15 people is 7.7 Mbps in the theoretical worst case. Video does not: one screen at
+ * 2.5 Mbps served to ten people is 25 Mbps on its own, half the slice that section 7 of
  * the plan gives Orwell on this machine. That is why these caps exist and the
  * microphone has none here.
  */
 describe("os tectos do vídeo", () => {
   it("deduz a fonte pelo `kind` quando o cliente não a declara", async () => {
-    // It is what a Phase 2 client would send, it only produced audio, and never knew this
+    // It is what a Phase 2 client sends: it only produced audio, and never knew this
     // word. Reading the absence as "camera" on top of a voice track would put the camera
     // cap on a microphone.
     const chave = ambito()
@@ -653,7 +657,7 @@ describe("os tectos do vídeo", () => {
   })
 
   it("aceita quatro câmaras na chamada e recusa a quinta", async () => {
-    // It was two until 3/11/2026. The number is written by the reason in the 50-person test.
+    // It was two until 3/11/2026. The number is hardcoded for the same reason as in the 50-person test.
     const chave = ambito()
     for (let numero = 0; numero < 5; numero++) {
       const pessoa = `${eu()}-${numero}`
@@ -687,7 +691,8 @@ describe("os tectos do vídeo", () => {
   it(`recusa partilhar o ecrã numa chamada com mais de ${PESSOAS_COM_ECRA} pessoas`, async () => {
     /*
      * The cap that replaces the `LIMITE_DE_PARTILHA = 6` of the mesh, and replaces it
-     * with a different physics entirely. There the number was the UPSTREAM of whoever shared,      * one copy per person, 12,5 Mbps to six. Here whoever shares sends ONE stream
+     * with a different physics entirely. There the number was the UPSTREAM of whoever shared:
+     * one copy per person, 12.5 Mbps at six. Here whoever shares sends ONE stream
      * and the bottleneck moved to the server output: `2,5 Mbps × espectadores`.
      */
     const chave = ambito()
@@ -754,15 +759,15 @@ describe("fechar um produtor", () => {
 
     expect(await motor.fecharProdutor(eu(), ecra.id)).toEqual({ ambito: chave, fechados: [ecra.id] })
 
-    // Proof that the stream actually left the call, not just removed from our map:
-    // anyone joining now cannot receive news of it. Without this, the new client
+    // Proof that the stream actually left the call, not just from a map of ours:
+    // anyone joining now must not be told about it. Without this, the new client
     // would wait for media that never arrives.
     const { produtores } = await motor.entrar(chave, outro())
     expect(produtores.map((cada) => cada.id)).not.toContain(ecra.id)
     expect(produtores).toHaveLength(1)
 
     // And the transport keeps serving: the microphone did not die with the screen, and
-    // can resume sharing without bringing up the call again.
+    // can share again without setting up the call again.
     await expect(motor.produzir(eu(), transporte.id, "video", ecraDe(8003), "ecra")).resolves.toBeDefined()
   })
 
@@ -835,8 +840,8 @@ describe("consumir, e a separação entre chamadas", () => {
    * left a consumer behind, at 2.5 Mbps outbound, charged to an authenticated member.
    * See `sfu.pause`, in the protocol.
    *
-   * Pause and do not close: the object stays, with the cipher already installed on the
-   * client side, and the next "View" is a `resume` instead of a new `consume`.
+   * Pause and do not close: the object stays, with decryption already installed on the
+   * client side, and the next "View" is a `retomar` instead of a new `consumir`.
    */
   it("e pausa-se outra vez, sem perder o consumidor", async () => {
     const chave = ambito()
@@ -857,7 +862,7 @@ describe("consumir, e a separação entre chamadas", () => {
   })
 
   it("e não pausa um consumidor que não é deste transporte", async () => {
-    // The same lock as `resume`, for the same reason: a producer ID picked up
+    // The same lock as `retomar`, for the same reason: a producer ID picked up
     // elsewhere cannot silence anyone else's screen.
     const chave = ambito()
     await motor.entrar(chave, eu())
@@ -875,7 +880,7 @@ describe("consumir, e a separação entre chamadas", () => {
    * a call you did not join. The gateway validates the CHANNEL; this line in
    * the engine validates the room inside it, and without it, two rooms in the same channel
    * would share the worker and the error would be silent: media flowing between
-   * calls that thought they were separate, with no warning flag.
+   * calls that thought they were separate, without a single warning line.
    */
   it("recusa consumir um produtor de outro âmbito", async () => {
     const primeiro = ambito()
@@ -970,7 +975,7 @@ describe("o worker morre", () => {
  * Screen audio: an audio producer with source `ecra`.
  *
  * The October 26, 2026 defect ("screen shares are not transmitting audio")
- * had a piece here: `#fonteDe` refused any
+ * was half caused here: `#fonteDe` refused any
  * `ecra` that was not video, with `fonte-incoerente`. These tests fail with the
  * previous server.
  */
@@ -1057,7 +1062,7 @@ describe("o som do ecrã", () => {
     // Truly closed in mediasoup: anyone arriving no longer sees them, and the voice stays.
     const { produtores } = await motor.entrar(chave, outro())
     expect(produtores.map((cada) => cada.id)).toEqual([voz.id])
-    // And the audio no longer closes again: it ceased to exist.
+    // And the audio cannot be closed again: it no longer exists.
     const recusa = await motor.fecharProdutor(eu(), som.id).catch((erro: unknown) => erro)
     expect((recusa as RecusaDeMedia).codigo).toBe("produtor-desconhecido")
   })

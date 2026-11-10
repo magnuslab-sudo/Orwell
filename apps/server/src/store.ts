@@ -16,39 +16,39 @@ import type { DatabaseSync } from "node:sqlite"
 import { epochDeCartao, epochDeCommit } from "./cabecalho-mls.js"
 import { currentMinute, currentSecond, type StoredEvent } from "./db.js"
 
-/** What happened to an event that was stored. See `appendEvent`. */
+/** What happened to an event we tried to store. See `appendEvent`. */
 export type EventoGuardado =
   /**
-   * `duplicate`: the same commit, byte for byte, was already stored in this
-   * channel, the resend from someone who lost the echo. `event` is the original;
+   * `repetido`: the same commit, byte for byte, was already stored in this
+   * channel (a resend from a client that missed the echo). `event` is the original;
    * nothing was written, and the caller will not broadcast it again.
    */
   | { ok: true; event: StoredEvent; repetido: boolean }
-  /** A commit for an epoch that the channel already left. `epoch` is the channel's. */
+  /** A commit for an epoch the channel has already left. `epoch` is the channel's. */
   | { ok: false; reason: "stale-epoch"; epoch: number }
   /** A recipient in an event that is not Welcome. See `appendEvent`. */
   | { ok: false; reason: "recipient-not-welcome" }
 
-/** What happened to a frame that was stored. See `putGroupInfo`. */
+/** What happened to an entry card we tried to store. See `putGroupInfo`. */
 export type CartaoGuardado =
   | { ok: true }
-  /** From another epoch that is not the channel's. `epoch` is the channel's. */
+  /** From an epoch other than the channel's. `epoch` is the channel's. */
   | { ok: false; reason: "stale-groupinfo"; epoch: number }
-  /** Not a GroupInfo for this channel, and would not serve whoever retrieves it. */
+  /** Not a GroupInfo for this channel, and useless to whoever picked it up. */
   | { ok: false; reason: "illegible" }
 
 /**
- * One commit per epoch: the rule, in one place only, because it runs in two, live
- * in `appendEvent` and over history in `inicializarEpochs`. Two copies of it were
- * a start that disagreed with what the server would do live.
+ * One commit per epoch: the rule, in one place only, because it runs in two (live
+ * in `appendEvent` and over history in `inicializarEpochs`). Two copies of it would
+ * mean a startup that disagrees with what the server would do live.
  *
- * - No channel memory, accept it, and the next is `epoch + 1`.
+ * - No memory of the channel: accept, and the next is `epoch + 1`.
  * - `epoch` equal to the next one: it is the commit we were waiting for.
- * - `epoch` 0 with `refundavel`: the group remade with the same name, and the
- *   channel starts over. Who can refund decides who calls (`Gateway.#podeRefundar`).
- * - Everything else is refused: the second commit of an epoch that already had its,
- *   and a commit of an epoch ahead. That comes from a branch the server did not
- *   accept (the old client that applied its own anyway), from an old group with the
+ * - `epoch` 0 with `refundavel`: the group rebuilt under the same name, and the
+ *   channel starts over. The caller decides who may re-found (`Gateway.#podeRefundar`).
+ * - Everything else is refused: a second commit for an epoch that already had one,
+ *   and a commit for an epoch ahead. That comes from a branch the server did not
+ *   accept (an old client that applied its own anyway), from an old group with the
  *   same name, or from a forged header; jumping there would make it official and
  *   lock the real group.
  *
@@ -95,11 +95,11 @@ export interface ResultadoDoPut {
   aceites: { chave: string; versao: number }[]
   recusadas: { chave: string; razao: "versao" | "tecto" | "acolchoamento"; versao?: number }[]
   versaoGlobal: number
-  /** The bytes that entered, for metrics. Does not go on the wire. */
+  /** The bytes accepted, for metrics. Not sent on the wire. */
   bytesAceites: number
 }
 
-/** With `versao`, the tombstone entered with that version; with `razao`, it did not. `versaoActual` is the version of the key after. */
+/** With `versao`, the tombstone went in with that version; with `razao`, it did not. `versaoActual` is the key's version afterwards. */
 export type ResultadoDoDel =
   | { versao: number; razao?: undefined; versaoActual: number; versaoGlobal: number }
   | { versao?: undefined; razao: "versao" | "inexistente"; versaoActual: number; versaoGlobal: number }
@@ -113,11 +113,11 @@ export interface PaginaDoCofre {
   lapides: { chave: string; versao: number }[]
 }
 
-/** How many welcomes to keep per person and channel. See `pruneSupersededWelcomes`. */
+/** How many welcomes to keep per user and channel. See `pruneSupersededWelcomes`. */
 const WELCOMES_GUARDADOS = 5
 
 /**
- * Suspension now (`suspensoes`): `activa` and the end still to come, or no end.
+ * Suspended right now (`suspensoes`): `activa` and the end still to come, or no end.
  * The `?` is the current second. The VPS script (`scripts/denuncias.mjs`) has the
  * same rule written by hand.
  */
@@ -150,7 +150,7 @@ export class Store {
 
   /**
    * The account key stored at first login, or `undefined` if the account
-   * never logged in. Read-only: this is what the signed report request verifies
+   * never logged in. Read-only: this is what the signed abuse-report request checks against
    * (`pedido-assinado.ts`), and that path never writes to the database.
    */
   signingKeyOf(address: string): Uint8Array | undefined {
@@ -185,24 +185,24 @@ export class Store {
    * The device this account is currently using.
    *
    * Called after the challenge is satisfied, never before: registering a device
-   * before proof would let anyone write to another person's table.
+   * before the proof would let anyone write into another user's rows.
    *
    * **Up to `APARELHOS_POR_CONTA` rows per account, and above that the oldest
-   * leaves.** Until September 22, 2026 there was a `DELETE` here that kept the
-   * table to one row: each login wiped the previous device. That enforced one
-   * device per account on the server, and multi-device removes it.
+   * goes.** Until September 22, 2026 there was a `DELETE` here that kept the
+   * table to one row: each login wiped the previous device. That is what made
+   * the server enforce one device per account, and multi-device removes it.
    *
-   * Rotation preserves the behavior of someone reinstalling from scratch: new
+   * Rotation preserves the behavior for a user who reinstalls from scratch: a new
    * vault is a new device key, so a new row, and without rotation the fifth
-   * reinstall would be rejected by an invisible limit. The oldest leaves by
-   * `added_minute`, which is when the device ENTERED, not the last time it was
-   * used: storing "last seen" would put usage patterns into this table, which is
-   * exactly the metadata it does not track. Logging in again from the same
+   * reinstall would be rejected by an invisible limit. The oldest goes by
+   * `added_minute`, which is when the device was ADDED, not the last time it was
+   * used: storing "last seen" would put each machine's usage pattern into this
+   * table, which is exactly the metadata it does not keep. Logging in again from the same
    * device does not change its age.
    *
    * Nothing depends on what stays here, and it bears saying: whoever validates a
-   * frame validates the chain it carries, and the list of active devices for an
-   * account is the manifest they signed (`device_manifests`), not this table.
+   * leaf validates the chain it carries, and an account's list of active devices
+   * is the manifest it signed (`device_manifests`), not this table.
    * This is what the server knows; that is what the account says.
    */
   registerDevice(address: string, deviceKey: Uint8Array): void {
@@ -235,34 +235,34 @@ export class Store {
   /**
    * Store the device manifest for an account, if it deserves to be stored.
    *
-   * Both guards live HERE and not in the gateway, by the rule of `appendEvent`:
-   * this is the only place a manifest enters the database, and verification and
+   * Both guards live HERE and not in the gateway, by the same rule as `appendEvent`:
+   * this is the only place a manifest enters the database, and the check and the
    * write happen in the same transaction, with no path around them. The signature
    * (`verifyDeviceManifest`: the account signed this, and the address is the
    * hash of that account) prevents the server from storing what the account did
-   * not say; strictly greater version prevents an old manifest from overwriting a
-   * new one, and a race between two devices publishing the same version from
+   * not say; a strictly greater version keeps an old manifest from overwriting a
+   * new one, and keeps a race between two devices publishing the same version from
    * having two winners.
    *
    * What is NOT checked here, and belongs to the gateway: that the address is
-   * the authenticated connection. The database does not know who is connected.
+   * the authenticated connection's. The database does not know who is connected.
    *
-   * The stored text is from the stream as it came, not a rewrite: this is what
+   * The stored text is the wire text as it arrived, not a rewrite: this is what
    * `manifestOf` returns, and anyone receiving it verifies it again byte for
    * byte.
    *
-   * **Revocation starts here.** Each device that was in the stored manifest,
-   * missing from the new one, and appears in `revogar` (the `revoke` list from
-   * `manifest.publish`) goes into `revoked_devices`, and its outstanding packets
+   * **Revocation starts here.** Each device that was in the stored manifest, is
+   * missing from the new one, AND appears in `revogar` (the `revoke` list from
+   * `manifest.publish`) goes into `revoked_devices`, and its unclaimed key packages
    * are deleted: they leave the bundle and the single claim at the same moment
    * they leave the manifest. A manifest that lists an already-revoked device is
    * rejected (`revoked-device`): revocation is forever, and this prevents
    * auto-add (`#garantirManifesto` on the client) from putting back a device
-   * that someone else removed. `revogados` tells the caller which devices just
+   * that another device removed. `revogados` tells the caller which devices just
    * left, so it can close their connections.
    *
-   * What leaves without appearing in `revogar` just leaves: it is the cap from a
-   * 0.5.7 client that does not send the list and does not want to revoke anyone.
+   * What leaves without appearing in `revogar` just leaves: that is the cap-driven
+   * trim from a 0.5.7 client that does not send the list and does not want to revoke anyone.
    * See `aparelhosRevogados`.
    */
   putDeviceManifest(
@@ -306,9 +306,9 @@ export class Store {
    * Whether the account removed this device from its manifest. See `revoked_devices`.
    *
    * `deviceKey` in base64url (manifest form) or bytes (login form). A device that
-   * never appeared in a manifest is NOT revoked: it is the phone just paired and
-   * entering before the computer publishes the manifest that lists it (`emparelhar.ts`,
-   * the manifest publishes only after `pronto`).
+   * never appeared in a manifest is NOT revoked: it is the phone that was just paired and
+   * logs in before the computer publishes the manifest that lists it (`emparelhar.ts`:
+   * the manifest is published only after `pronto`).
    */
   isDeviceRevoked(address: string, deviceKey: string | Uint8Array): boolean {
     const chave = typeof deviceKey === "string" ? deviceKey : toBase64(deviceKey)
@@ -321,19 +321,19 @@ export class Store {
   // ------------------------------------------------------------------ suspensions
 
   /**
-   * Whether the account is suspended now (`suspensoes`, reports §8). The gateway
-   * asks it at login, in each `channel.send`, and in each key package request:
+   * Whether the account is suspended now (`suspensoes`, abuse reports §8). The gateway
+   * checks it at login, in each `channel.send`, and in each key package request:
    * a query by primary key. A suspension with an end (`ate_second`) stops
-   * counting in the next second, with no one lifting it.
+   * counting the next second, with no one having to lift it.
    */
   estaSuspensa(address: string): boolean {
     return this.#db.prepare(`SELECT 1 AS x FROM suspensoes WHERE address = ? AND ${SUSPENSA_AGORA}`).get(address, currentSecond()) !== undefined
   }
 
   /**
-   * Suspend the account, because of report `denuncia` (or of none: an authority
-   * order, an operator decision). Only the VPS script calls this, for one person:
-   * nothing on the server suspends itself. Suspending an already-suspended or
+   * Suspend the account over abuse report `denuncia` (or none: an order from an
+   * authority, an operator decision). Only the VPS script calls this, run by a
+   * person: nothing on the server suspends on its own. Suspending an already-suspended or
    * lifted account overwrites. `ateSecond` is the last second of suspension, or
    * `null`: until review.
    */
@@ -355,7 +355,7 @@ export class Store {
     this.#db.prepare("UPDATE suspensoes SET activa = 0 WHERE address = ?").run(address)
   }
 
-  /** The suspended accounts now, in order. The rule of `estaSuspensa`. */
+  /** The accounts suspended right now, in order. Same rule as `estaSuspensa`. */
   suspensas(): string[] {
     return (
       this.#db.prepare(`SELECT address FROM suspensoes WHERE ${SUSPENSA_AGORA} ORDER BY address`).all(currentSecond()) as {
@@ -375,9 +375,9 @@ export class Store {
   }
 
   /**
-   * Raise the possession generation of this device, for the import with this mark.
+   * Raise the possession generation of this device, for the import with this tag.
    *
-   * The same mark again raises nothing: it is the same copy with two connections.
+   * The same tag again raises nothing: it is the same copy with two connections.
    * `subiu` tells the caller if there are other copies to close.
    */
   assumirPosse(address: string, deviceKey: Uint8Array, marca: string): { geracao: number; subiu: boolean } {
@@ -402,8 +402,8 @@ export class Store {
       | undefined
     if (!row) return null
     // What is in the database passed through `verifyDeviceManifest` on entry. The
-    // read passes through the mold again: a row written by hand in the database by
-    // an operator should not come out as if it were a manifest.
+    // read goes through the schema again anyway: a row written by hand in the database
+    // by an operator should not come out of here as if it were a manifest.
     const parsed = DeviceManifestWire.safeParse(JSON.parse(row.manifest))
     return parsed.success ? parsed.data : null
   }
@@ -418,19 +418,20 @@ export class Store {
    * senders cannot both read the same max and collide on the primary key.
    *
    * **And one commit per epoch.** This is the only place an event enters the
-   * database, the gateway and federation both go through here -, and that is why
-   * the rule lives here and not in the caller: verification and write happen in
-   * the same transaction, with no path around it. A rejected commit is not saved,
-   * and the caller does not spread it. See `aceitarCommit`.
+   * database (the gateway and federation both go through here), and that is why
+   * the rule lives here and not in the caller: the check and the write happen in
+   * the same transaction, with no path around it. A rejected commit is not stored,
+   * and the caller does not broadcast it. See `aceitarCommit`.
    *
    * What counts as a commit is the CONTENT, not the declared `kind`: the client
    * hands to MLS everything that is not Welcome, and a commit sent as `application`
    * would be applied anyway. Proposals, application messages, and Welcomes pass
-   * without checking the epoch, they do not move the group forward.
+   * without an epoch check: they do not move the group forward.
    *
-   * `refundavel`: if an epoch 0 commit from this send can restart the channel,    * the group remade with the same identifier, which is what a client does to
+   * `refundavel`: whether an epoch 0 commit from this send can restart the channel
+   * (the group rebuilt with the same identifier, which is what a client does to
    * its feed and conversations when it loses state, and what `#acceptWelcome`
-   * describes as how a remade channel heals. The caller decides, because it knows
+   * describes as the way a rebuilt channel heals). The caller decides, because it knows
    * who sent it: see `Gateway.#podeRefundar`.
    */
   appendEvent(
@@ -442,11 +443,11 @@ export class Store {
     },
     politica: { refundavel: boolean },
   ): EventoGuardado {
-    // Recipient only in a Welcome. A directed event reaches only who it names, and
-    // backfill only shows it to them: in a Welcome that is what we want; in a commit
-    // it was a commit that counted for the channel epoch and other members never saw,
-    // and in a message it was a channel with holes that nobody knows it has. No client
-    // sends it; refused without touching the database.
+    // Recipient only on a Welcome. A directed event reaches only the address it names,
+    // and backfill shows it only to that address: on a Welcome that is what we want; on
+    // a commit it would be a commit that counts for the channel epoch but other members
+    // never see, and on a message a channel with gaps nobody knows about. No client
+    // sends it; it is refused without touching the database.
     if (input.recipient !== undefined && input.kind !== "welcome") {
       return { ok: false, reason: "recipient-not-welcome" }
     }
@@ -456,16 +457,16 @@ export class Store {
       const epoch = input.kind === "welcome" ? undefined : epochDeCommit(input.ciphertext, input.channel)
       if (epoch !== undefined) {
         const atual = this.epochDoCanal(input.channel)
-        // Resend of an already-accepted commit is that commit, not a delayed one, and
-        // we see it BEFORE the rule, because refunding would catch the founder's epoch 0
-        // commit resend and restart the channel.
+        // A resend of an already-accepted commit is that commit, not a late one, and
+        // it is checked BEFORE the rule, because re-founding would catch a resend of the
+        // founder's epoch 0 commit and restart the channel.
         if (atual !== undefined && epoch !== atual) {
           const original = this.#commitGuardado(input.channel, input.ciphertext)
           if (original) return { ok: true as const, event: original, repetido: true }
         }
         const proxima = aceitarCommit(atual, epoch, politica.refundavel)
         if (proxima === undefined) {
-          // Only refused with channel memory, so `atual` is defined.
+          // Refusal only happens with memory of the channel, so `atual` is defined.
           return { ok: false as const, reason: "stale-epoch" as const, epoch: atual as number }
         }
         this.#gravarEpoch(input.channel, proxima)
@@ -485,7 +486,7 @@ export class Store {
         )
         .run(input.channel, seq, input.kind, input.ciphertext, input.recipient ?? null, minute)
 
-      // Mark that this channel had life, and retention does not erase. See
+      // Marks that this channel has been used; retention does not erase it. See
       // `channelNeverUsed`.
       this.#db.prepare("INSERT OR IGNORE INTO channel_activity (channel) VALUES (?)").run(input.channel)
 
@@ -534,7 +535,7 @@ export class Store {
     }
   }
 
-  /** The epoch in which this channel accepts the next commit, or `undefined` with no memory. */
+  /** The epoch at which this channel accepts the next commit, or `undefined` with no memory of it. */
   epochDoCanal(channel: string): number | undefined {
     const row = this.#db.prepare("SELECT epoch FROM channel_epochs WHERE channel = ?").get(channel) as
       | { epoch: number }
@@ -552,13 +553,13 @@ export class Store {
   }
 
   /**
-   * Remove from the database the frame that stopped describing the channel epoch.
+   * Remove from the database the card that no longer describes the channel epoch.
    *
-   * A frame only works for the epoch it describes: who enters with it builds a
-   * commit of that epoch, and that commit gets refused. Left here, `hello.ok`
-   * kept saying there is a frame, no member published another (that is the
-   * question it asks the client), and the next one to arrive spent a key package
-   * on a dead frame.
+   * A card only works for the epoch it describes: a client joining with it builds a
+   * commit for that epoch, and that commit gets refused. Left here, `hello.ok`
+   * would keep saying there is a card, no member would publish another (that is
+   * the question the client asks it), and the next newcomer would spend a key
+   * package on a dead card.
    */
   #descartarCartaoVencido(channel: string, proxima: number): void {
     const row = this.#db.prepare("SELECT info FROM group_infos WHERE channel = ?").get(channel) as
@@ -570,52 +571,53 @@ export class Store {
   }
 
   /**
-   * Give epoch to channels that do not have it yet, from the stored commits.
+   * Give an epoch to channels that do not have one yet, from the stored commits.
    *
-   * Runs at startup, and exists for the first time: a database from before this
+   * Runs at startup, and exists for the first run: a database from before this
    * table has every commit and no epoch memory, and without this the first commit
-   * from each channel would be accepted from any epoch, that is, the next late
-   * member would break the room again.
+   * from each channel would be accepted at any epoch; in other words, the next
+   * lagging member would break the room again.
    *
-   * The rule of `aceitarCommit` run over history, in the order it arrived, not
-   * the highest number in it, and, in a refundable channel, only from the LAST
-   * refund: the last epoch 0 commit, by `seq`.
+   * The `aceitarCommit` rule run over history, in arrival order, not
+   * the highest number found, and, in a channel that can be re-founded, only from
+   * the LAST re-founding: the last epoch 0 commit, by `seq`.
    *
-   * Why the last refund, not the rule from the start: before this table the
-   * server kept every commit, so the history of a remade feed with the same name
+   * Why the last re-founding, not the rule from the start: before this table the
+   * server kept every commit, so the history of a feed rebuilt under the same name
    * has the whole old group behind the new one, and sometimes a late commit from
-   * the old one AFTER the refund (G1 0..20, G2 0, G1 21). The group that stayed
-   * is from the last refund: outside the common room only the founder commits at
+   * the old one AFTER the re-founding (G1 0..20, G2 0, G1 21). The group that stayed
+   * is the one from the last re-founding: outside the common room only the founder commits at
    * epoch 0, once per group, so the last epoch 0 commit is the start of the last
    * group.
    *
-   * Why with no skip, also here: for the same reason, a group's history is
+   * Why no skipping, here too: for the same reason, a group's history is
    * contiguous from its start (retention cuts by age, and so only from the start,
    * which is "no memory"). A commit ahead of it is from another group with the
-   * same name, the late G1 21, which with skip would give 22 and lock G2 at 1.
-   * With no skip there is no way to tell a late commit from the old group that
-   * falls EXACTLY at the new epoch (G2 0, then a G1 stuck at 1): it counts. The
-   * number comes out right whenever the new group gets there too, and the case
-   * needs an old member stuck at epoch 1 committing after the refund. It is the
-   * least bad: the safe alternative (refuse everything until the first live commit)
-   * would leave the channel without memory, which is what lets a late member break
+   * same name, the late G1 21, which with skipping would give 22 and lock G2 at 1.
+   * Without decrypting there is no way to tell apart a late commit from the old group
+   * that lands EXACTLY on the new group's next epoch (G2 0, then a G1 stuck at 1): it counts. The
+   * number still comes out right whenever the new group gets there too, and the case
+   * needs an old member stuck at epoch 1 committing after the re-founding. It is the
+   * least bad option: the safe alternative (refuse everything until the first live commit)
+   * would leave the channel without memory, which is what lets a lagging member break
    * the room.
    *
-   * In the common room there is no refund, nor here: it is created empty only, and
-   * a late epoch 0 commit there is an entry by an old frame. It gives the highest
-   * plus one from its contiguous history.
+   * In the common room there is no re-founding, here either: it is only ever created
+   * empty, and a late epoch 0 commit there is a join through an old card. It gets
+   * the highest epoch plus one from its contiguous history.
    *
    * Idempotent: a channel that already has a row is not touched. A channel with no
-   * readable commits stays without a row, and is read again at the next startup,    * they are only handshakes, and there are few.
+   * readable commits stays without a row, and is read again at the next startup
+   * (they are only handshakes, and there are few).
    *
-   * Frames for ALL channels are reviewed at the end, for the same reason
+   * Cards for ALL channels are reviewed at the end, for the same reason
    * `#descartarCartaoVencido` exists.
    *
-   * @param refundavel whether the history of this channel can have refunds. The
+   * @param refundavel whether this channel's history can contain re-foundings. The
    * history does not say who sent each commit, so it is per channel: `buildServer`
-   * says all but the common room, including remade group channels from before the
-   * deploy, which at runtime no longer refund.
-   * @returns how many channels gained epoch.
+   * passes all but the common room, including group channels rebuilt before the
+   * deploy, which are no longer re-founded live.
+   * @returns how many channels gained an epoch.
    */
   inicializarEpochs(refundavel: (channel: string) => boolean): number {
     return this.#transaction(() => {
@@ -670,19 +672,19 @@ export class Store {
   }
 
   /**
-   * Trim accumulated welcomes, keeping the latest per person and channel.
+   * Trim accumulated welcomes, keeping the latest per user and channel.
    *
-   * Exists because a legitimate re-invite claims a new key package and builds a
+   * It exists because a legitimate re-invite claims a new key package and builds a
    * welcome against it: the old one stops opening, and left here it would be
    * redelivered at every login and always fail, the cycle of "no key package
    * matches".
    *
-   * Kept only ONE, and that premise holds only between honest invites. A forged
+   * It used to keep only ONE, and that premise holds only among honest invites. A forged
    * welcome does not claim any key package: it does not break the legitimate one,
-   * only buries it by having a higher `seq`. That alone, from a channel member,
-   * would deny entry to someone forever, the invite was sent, the server
-   * accepted it, and it never showed up again. Keeping some instead of one keeps
-   * the cycle closed and takes the burial power away from a single frame.
+   * it only buries it under a higher `seq`. That alone, from a channel member,
+   * was enough to lock someone out forever: the invite had been sent, the server
+   * had accepted it, and it never showed up again. Keeping a few instead of one keeps
+   * the cycle closed and takes the power to bury away from a single frame.
    */
   pruneSupersededWelcomes(): number {
     const result = this.#db
@@ -710,9 +712,9 @@ export class Store {
    * simply never receive it. Delivered at every handshake; already-consumed
    * ones fail silently on the client, which beats the server guessing.
    *
-   * Deliver ALL that remain, not just the latest per channel. It is this client
-   * tolerance for a welcome that does not open that lets the server not guess
-   * which is the right one, and not guessing is what prevents a forged welcome
+   * ALL that remain are delivered, not just the latest per channel. The client's
+   * tolerance for a welcome that does not open is what spares the server from guessing
+   * which one is good, and not guessing is what prevents a forged welcome
    * from burying the legitimate one. See `pruneSupersededWelcomes`.
    */
   pendingWelcomes(forAddress: string, limit: number): StoredEvent[] {
@@ -801,7 +803,7 @@ export class Store {
   /**
    * Delete anything past the retention window.
    *
-   * Not a housekeeping job — a privacy control. Data that no longer exists
+   * Not a housekeeping job: a privacy control. Data that no longer exists
    * cannot be seized, subpoenaed or leaked, and there is no legitimate reason
    * for a relay to hold ciphertext it has already delivered.
    */
@@ -835,7 +837,7 @@ export class Store {
    *
    * The server cannot read the ratchet tree, so it cannot know who is truly a
    * member. What it can do is refuse to serve an account that was never seated
-   * here by any path — which is the difference between "anyone with an address"
+   * here by any path, which is the difference between "anyone with an address"
    * and "someone who was once let in". See `mayReach` in the gateway.
    */
   isSubscribed(channel: string, address: string): boolean {
@@ -854,32 +856,32 @@ export class Store {
   }
 
   /**
-   * How long the founder has to create the channel before the slot passes to
-   * whoever arrives next.
+   * How long the designated creator has to create the channel before the role passes
+   * to whoever arrives next.
    *
    * Creating an MLS group and publishing the first message takes seconds; two
-   * minutes is enough slack for bad connection and short enough that a dead room
+   * minutes is enough slack for a bad connection and short enough that a dead room
    * does not stay dead for a whole day.
    */
   static readonly CLAIM_GRACE_SECONDS = 120
 
   /**
-   * Claim creation of a channel. First to ask wins.
+   * Claim the creation of a channel. The first to ask wins.
    *
-   * Wins, but not forever. The claim was permanent, and the server cannot know if
-   * it was honored, it cannot create the group or join it. Then all it took was
+   * Wins, but not forever. The claim used to be permanent, and the server cannot
+   * know whether it was honored: it cannot create the group or join it. Then all it took was
    * for the winner not to create the room (closed the app, creation failed, lost
    * the connection in the middle) for the identifier to stay claimed and empty:
-   * everyone who arrived after got `mine: false`, asked to join a group that does
+   * everyone who arrived afterwards got `mine: false`, asked to join a group that does
    * not exist, and the server's common room became unreachable forever, without
    * a single error anywhere.
    *
-   * So the claim expires, but only while the channel stays unused. From the
-   * moment there is a message inside, the group exists and the founder stops
-   * mattering.
+   * So the claim expires, but only while the channel is still unused. From the
+   * moment there is a message inside, the group exists and the designated creator
+   * no longer matters.
    *
-   * @returns the address of who became founder, the requester themselves if they
-   * won, someone else if they arrived late.
+   * @returns the address of the designated creator: the caller itself if it
+   * won, someone else if it arrived late.
    */
   /**
    * Set the entry card for a channel, replacing what was there.
@@ -887,21 +889,21 @@ export class Store {
    * Replace, don't accumulate: only the most recent one matters, because a card
    * is valid for the epoch it describes and the previous one no longer lets
    * anyone in. Whether THIS channel can have a card is decided by the gateway,
-   * and the decision is final: the common channel and no other.
+   * and the answer is always the same: the common channel and no other.
    *
-   * **Only the card from the channel's epoch.** Any card would be replaced, but
-   * a member running behind would put their epoch's card on top of the good one:
+   * **Only the card for the channel's epoch.** It used to replace whatever was there,
+   * and a lagging member would put its epoch's card on top of the good one:
    * the common room once had an external commit made from an epoch 6 card while
    * the group was at 13, and whoever entered that way opened another branch. A
    * card from an epoch in the FUTURE also doesn't go in: it describes a commit
-   * this server refused, and whoever claimed it would enter a branch only the
-   * commit's author knows. Without memory of the channel's epoch, it goes in as
-   * it did before.
+   * this server refused, and whoever picked it up would join a branch only that
+   * commit's author knows. With no memory of the channel's epoch, it goes in as
+   * it used to.
    *
    * A card that can't be read, or that belongs to another group, doesn't either.
-   * It wouldn't help anyone: the client rejects it before touching it: and
-   * storing it would cost the new arrival two things: the good card it hides,
-   * and the claim, which is single-use.
+   * It would help no one (the client rejects it before using it), and
+   * storing it would cost the newcomer two things: the good card it hides,
+   * and the pickup, which is single-use.
    */
   putGroupInfo(channel: string, info: Uint8Array): CartaoGuardado {
     return this.#transaction(() => {
@@ -922,16 +924,16 @@ export class Store {
   }
 
   /**
-   * Claim the card and leave it claimed.
+   * Take the card, and leave it taken.
    *
-   * One delivery and the card disappears. This is what stops two arrivals from
-   * claiming the same card at the same moment: the two commits that would follow
+   * One delivery and the card is gone. This is what stops two newcomers arriving
+   * at the same moment from taking the same card: the two commits that would follow
    * would race for the same epoch, the room would accept one, and the other
    * would end up with a group only it knows, with the right name and no one
    * inside. See `group.externo.test.ts`, which measures exactly this.
    *
-   * The card resets itself: whoever enters publishes the next one, and any
-   * member who signs on publishes one if it's missing.
+   * The card replenishes itself: whoever joins publishes the next one, and any
+   * member that connects publishes one if it's missing.
    */
   takeGroupInfo(channel: string): Uint8Array | undefined {
     return this.#transaction(() => {
@@ -944,7 +946,7 @@ export class Store {
     })
   }
 
-  /** Is a card waiting for someone to arrive? So a member doesn't publish over it. */
+  /** Is a card waiting for the next newcomer? So a member doesn't publish over it. */
   hasGroupInfo(channel: string): boolean {
     const row = this.#db.prepare("SELECT 1 AS ok FROM group_infos WHERE channel = ? LIMIT 1").get(channel) as
       | { ok: number }
@@ -973,17 +975,17 @@ export class Store {
   }
 
   /**
-   * Nothing has been said in this channel, and never has been.
+   * Nothing is said in this channel, and nothing ever has been.
    *
    * This is what a channel looks like at the moment its creator makes it, and
    * letting any account subscribe to these is what keeps channel creation
    * working without handing out third-party feeds.
    *
    * Both halves are needed. "No events" alone doesn't tell a new channel from a
-   * private room where retention deleted thirty days: after a month of silence,
-   * any account in the world could subscribe to it again and write inside: and
+   * private room whose thirty days retention has deleted: after a month of silence,
+   * any account in the world could subscribe to it again and write inside (and
    * five frames of garbage are enough for each member to declare itself deaf and
-   * for history to be lost by future secrecy. The activity marker is not erased
+   * for the history to be lost to forward secrecy). The activity marker is not erased
    * by retention, and it's what closes that.
    */
   channelNeverUsed(channel: string): boolean {
@@ -1016,16 +1018,16 @@ export class Store {
    * `device` is the public key of the device that signs the leaves of these
    * packages, or `null` when unknown (client 0.2.3 with no chain at login).
    *
-   * **`replace` deletes those from THIS device and those with `device IS NULL`.** Those
-   * from other devices stay: they're from another machine with its own pool and
+   * **`replace` deletes those of THIS device and those with `device IS NULL`.** Those
+   * of other devices stay: they're from another machine with its own pool and
    * its own private halves, and deleting them would make that machine
-   * uninvitable until it signs on again. Lines with no device are from before
+   * uninvitable until it connects again. Rows with no device are from before
    * September 22, 2026, or from a client with no chain, and they're deleted
    * because they may be from a reinstalled vault whose private half was lost:
    * serving one of those is the worst failure there is (the invite is accepted,
-   * the package is spent, and the person never enters; see `keypackage.publish`
+   * the package is spent, and the user never gets in; see `keypackage.publish`
    * in wire.ts). A client that says `replace` is saying "what was here, I can
-   * no longer open", and what has no declared owner counts as theirs.
+   * no longer open", and what has no declared owner counts as its own.
    */
   publishKeyPackages(address: string, packages: Uint8Array[], replace = false, device: Uint8Array | null = null): void {
     const insert = this.#db.prepare("INSERT INTO key_packages (address, package, device) VALUES (?, ?, ?)")
@@ -1052,7 +1054,7 @@ export class Store {
    * secret, which silently breaks forward secrecy for both. The read and the
    * mark are one transaction so a race cannot produce a double-serve.
    *
-   * With `device`, a package from THAT device and no other: lines with no device
+   * With `device`, a package from THAT device and no other: rows with no device
    * don't count, because we don't know who they're from. Without `device`, the
    * usual behavior: the most recent for the account, whatever device it's from.
    * This is what a `keypackage.claim` without `bundle` gets, and it spends one.
@@ -1095,10 +1097,10 @@ export class Store {
   }
 
   /**
-   * One package per device from the account's manifest, all in the same transaction.
+   * One package per device in the account's manifest, all in the same transaction.
    *
    * **The manifest decides, and the `devices` table is not consulted.** The table
-   * is what the server observed at logins and rotates by age; the manifest is
+   * is what the server saw at logins, rotated by age; the manifest is
    * what the account signed. A device that the account lists and that rotation
    * has already removed from the table is still served; one that's in the table
    * and the account doesn't list is not. This is the only reading that's
@@ -1106,13 +1108,13 @@ export class Store {
    * and never against a table it can't see. (Closes C3 in docs/PENDENTES.md.)
    *
    * `devices`, if given, restricts to the requested devices, and a request that
-   * isn't in the manifest is ignored: the caller only asks for devices it's
-   * missing from the tree, to not spend packages of devices already there.
+   * isn't in the manifest is ignored: the inviter only asks for the devices
+   * missing from its tree, so it doesn't spend packages of devices already there.
    *
    * **Partial failure policy:** a device from the manifest with no package to
-   * claim is not an error. Those with packages join, and the caller client
-   * repairs the rest by `seat` when the device publishes again. When NONE of
-   * the requests have packages, serve the most recent with no device (`device IS
+   * claim is not an error. The devices with packages get in, and the inviting client
+   * repairs the rest via `seat` when the device publishes again. When NONE of
+   * the requested devices has a package, the most recent with no device is served (`device IS
    * NULL`): this is the pool from before September 22, 2026, and the credential
    * inside says which device it is, which the client checks against the
    * manifest. We don't fall back to "the most recent from any device" because
@@ -1143,11 +1145,11 @@ export class Store {
   }
 
   /**
-   * How many packages does the account, or one of its devices, have to claim.
+   * How many unclaimed packages the account, or one of its devices, has.
    *
    * With `device`, count those from that device AND those with no device: for a
    * 0.2.3 client whose entire pool has no device, this is the only answer that
-   * doesn't make it reset twenty packages at every sign-on from seeing zero.
+   * doesn't make it re-upload twenty packages on every connect after seeing zero.
    */
   availableKeyPackages(address: string, device?: Uint8Array): number {
     const row = (
@@ -1170,18 +1172,18 @@ export class Store {
    * The same hash again in the same channel (a client retrying the request)
    * returns the code it already had, and gives it one if it's an invite from
    * before the column. The same hash in another channel doesn't touch the
-   * existing line and returns nothing: an invite's code belongs to whoever can
-   * see it, and whoever registers someone else's hash in another channel isn't
-   * that person.
+   * existing row and returns nothing: an invite's code belongs to whoever can
+   * see the invite, and a client registering someone else's hash in another
+   * channel is not that client.
    */
   createInvite(input: {
     codeHash: string
     channel: string
     expiresAt: number | null
     maxUses: number | null
-    /** The public key of the code proof, or nothing (a client 0.9.x). See `prova-do-convite.ts`. */
+    /** The public key of the code proof, or nothing (a 0.9.x client). See `prova-do-convite.ts`. */
     codeKey?: string
-    /** The seal of the channel's name, or nothing. The server doesn't read it. See `selo-do-convite.ts`. */
+    /** The sealed channel name, or nothing. The server doesn't read it. See `selo-do-convite.ts`. */
     selo?: string
   }): string | undefined {
     return this.#transaction(() => {
@@ -1200,7 +1202,7 @@ export class Store {
   }
 
   /**
-   * Draw a free short code and write it to this invite's line.
+   * Draw a free short code and write it to this invite's row.
    *
    * The unique index is the referee: a code that already exists makes the UPDATE
    * fail, and we draw another. With 31^8 codes and a small server's live invites,
@@ -1222,10 +1224,10 @@ export class Store {
   }
 
   /**
-   * The invite for a short code, if it still matters: channel and hash.
+   * The invite for a short code, if it is still valid: channel and hash.
    *
    * Same rules as `redeemInvite` (deadline, uses), without spending anything.
-   * An expired invite deletes itself when found, like there.
+   * An expired invite is deleted when found, as there.
    */
   resolveShortCode(
     codigo: string,
@@ -1244,11 +1246,11 @@ export class Store {
   }
 
   /**
-   * The seal of an invite by `codeHash`, if the invite still matters (1.0
+   * The seal of an invite by `codeHash`, if the invite is still valid (1.0
    * "Arca", slice 5c). This is the path for the long link, which has no short
    * code. Same rules as `resolveShortCode`, without spending anything. `undefined`
-   * for an invite that doesn't exist, that no longer matters, or with no seal:
-   * to the asker, all three say the same thing.
+   * for an invite that doesn't exist, that is no longer valid, or with no seal:
+   * to the caller, all three look the same.
    */
   seloDoConvite(codeHash: string): string | undefined {
     const row = this.#db
@@ -1260,7 +1262,7 @@ export class Store {
     return row.selo ?? undefined
   }
 
-  /** Deadline and uses, like in `redeemInvite`. An expired invite deletes itself when found. */
+  /** Deadline and uses, like in `redeemInvite`. An expired invite is deleted when found. */
   #conviteQueJaNaoVale(row: {
     code_hash: string
     expires_at: number | null
@@ -1280,11 +1282,11 @@ export class Store {
   }
 
   /**
-   * Minute of the last storage restart, if there was one.
+   * Minute of the last storage reset, if there was one.
    *
-   * Written by hand by whoever cleans the base; read at every `hello`. It's the
+   * Written by hand by whoever wipes the database; read at every `hello`. It's the
    * only reliable sign that the client's state became orphaned: the server
-   * doesn't know which MLS groups exist: the keys are in each vault: and so it
+   * doesn't know which MLS groups exist (the keys are in each user's vault), and so it
    * has no other way to say so.
    */
   resetAtMinute(): number | undefined {
@@ -1296,10 +1298,10 @@ export class Store {
    *
    * Different from `resetAtMinute`, and the difference is the point: clearing
    * storage leaves accounts standing and only takes away their rooms; this
-   * declares the identities themselves before it obsolete. It's for cutting off
-   * a set of accounts all at once: after a test phase, for example, when old
-   * files have been floating around and no one knows which is which: without
-   * relying on each person to delete theirs by hand.
+   * declares the earlier identities themselves obsolete. It's for cutting off
+   * a set of accounts all at once (after a test phase, for example, when old
+   * files have been imported around and no one knows which is which) without
+   * relying on each user to delete theirs by hand.
    *
    * Written by hand by whoever does the cut. The client compares it to the
    * birth date of the identity it has in the vault.
@@ -1344,7 +1346,7 @@ export class Store {
       expiresAt: row.expires_at,
       maxUses: row.max_uses,
       uses: row.uses,
-      // Missing, not `null`, in an invite from before the column: the thread template
+      // Missing, not `null`, in an invite from before the column: the wire schema
       // is `optional`, and a 0.9 client never saw the field.
       ...(row.short_code === null ? {} : { codigoCurto: row.short_code }),
     }))
@@ -1361,7 +1363,7 @@ export class Store {
     codeHash: string,
     /**
      * The code proof, checked against the invite's key (`code_key`, NULL in a
-     * 0.9.x invite) BEFORE spending the use. False answers `unknown`, like an
+     * 0.9.x invite) BEFORE spending the use. A false proof answers `unknown`, like an
      * invite that doesn't exist: the answer doesn't tell someone who only has the
      * hash that the invite is there. See `prova-do-convite.ts`.
      */
@@ -1409,13 +1411,13 @@ export class Store {
   /**
    * Delete claims that no longer decide anything.
    *
-   * A claim older than a grace period, on a channel that's still not launched,
+   * A claim past its grace period, on a channel that's still unused,
    * is inert: `claimChannel` writes over it at the next request, and so deleting
-   * it changes nothing about who wins. What changes is the table stopping
-   * growing forever: and it started growing faster once the not-yet-launched
-   * channel tolerance began consulting claims (see `#mayOpen` in the gateway).
+   * it changes nothing about who wins. What changes is that the table stops
+   * growing forever (and it grows faster since the unused-channel
+   * tolerance started consulting claims) (see `#mayOpen` in the gateway).
    *
-   * A claim on a CHANNEL ALREADY LAUNCHED stays where it is. It costs nothing
+   * A claim on a channel ALREADY USED stays where it is. It costs nothing
    * and it's not worth the risk: it's what the client reads so it doesn't create
    * a second MLS group with the same identifier.
    */
@@ -1433,7 +1435,7 @@ export class Store {
 
   // ---------------------------------------------------------------- federation
 
-  /** Returns false if this (origin, nonce) was already seen — i.e. a replay. */
+  /** Returns false if this (origin, nonce) was already seen, i.e. a replay. */
   recordNonce(origin: ServerName, nonce: string): boolean {
     const result = this.#db
       .prepare("INSERT OR IGNORE INTO federation_nonces (origin, nonce, seen_second) VALUES (?, ?, ?)")
@@ -1532,12 +1534,12 @@ export class Store {
    * Each entry goes through this order, and the first to fail is the reason:
    * padding (multiple of `COFRE_BALDE_BYTES`), cap per entry, CAS
    * (`versaoEsperada` equal to the current version of the key, 0 if it does not
-   * exist), and the place in scope (live entries and live bytes). A refused one
+   * exist), and room in the scope (live entries and live bytes). A refused one
    * changes nothing; the others go in. Each accepted one gets the next version of
    * the scope, and two entries with the same key in the same frame are two
    * consecutive writes.
    *
-   * The server does not read the content or try: it measures it.
+   * The server does not read the content, or try to: it measures it.
    */
   cofrePut(escopo: string, entradas: readonly EntradaParaOCofre[], limites: LimitesDoEscopo): ResultadoDoPut {
     return this.#transaction(() => {
@@ -1590,11 +1592,11 @@ export class Store {
   /**
    * Delete an entry, leaving a tombstone with a new version.
    *
-   * The tombstone stays for whoever reads by delta to know the entry left.
+   * The tombstone stays so a delta reader knows the entry is gone.
    * So the scope doesn't grow forever from writes and deletes of new keys,
    * tombstones above `lapidesMax` are pruned from oldest to newest, and
    * `podado_ate` remembers the highest version pruned: whoever asks for a delta
-   * from before it gets the whole vault (`cofreGet`, `complete`).
+   * from before it gets the whole vault (`cofreGet`, `completo`).
    */
   cofreDel(escopo: string, chave: string, versaoEsperada: number | undefined, lapidesMax: number): ResultadoDoDel {
     return this.#transaction(() => {
@@ -1634,16 +1636,16 @@ export class Store {
   /**
    * A page of what changed in a scope since `desdeVersao`, in version order.
    *
-   * **The whole vault (`complete`) in three cases:** asked since 0; asked since
-   * before tombstones already pruned (the delta would stop saying what left); or
-   * asked since a version this scope never gave (the server was cleaned or
-   * restored from a copy: the asker has state that doesn't exist here anymore,
-   * and it must know).
+   * **The whole vault (`completo`) in three cases:** asked from 0; asked from
+   * before tombstones already pruned (the delta would no longer say what left); or
+   * asked from a version this scope never issued (the server was wiped or
+   * restored from a backup: the caller has state that no longer exists here,
+   * and must be told).
    *
    * **By pages:** a page's content doesn't exceed `orcamentoBytes` (there's always
-   * at least one line) or `maxLinhas`. First read just versions and sizes, so
+   * at least one row) or `maxLinhas`. First read just versions and sizes, so
    * we don't load into memory what won't fit; then the content of what fits.
-   * `ate` is the highest version in the page, and the next one asks from there.
+   * `ate` is the highest version in the page, and the next page is requested from there.
    */
   cofreGet(escopo: string, desdeVersao: number, orcamentoBytes: number, maxLinhas: number): PaginaDoCofre {
     const meta = this.#metaDoCofre(escopo)
@@ -1700,11 +1702,11 @@ export class Store {
   /**
    * Sweep of vaults for channels with no subscribers (decision D7).
    *
-   * Off by default: only runs if the operator gives `ENCLAVE_COFRE_GC_DIAS`
-   * (see `app.ts`). Each pass looks at each scope `canal:`: with someone
-   * subscribed, forget the mark; with no one and no mark, mark the minute; with
-   * no one and the mark older than `dias`, delete the channel vault. Scopes
-   * `conta:` are not swept: an account does not cease to exist on this server,
+   * Off by default: only runs if the operator sets `ENCLAVE_COFRE_GC_DIAS`
+   * (see `app.ts`). Each pass looks at every `canal:` scope: with someone
+   * subscribed, clear the mark; with no one and no mark, mark the minute; with
+   * no one and the mark older than `dias`, delete the channel vault. `conta:`
+   * scopes are not swept: an account does not cease to exist on this server,
    * and its vault is its own.
    *
    * @returns how many channel vaults were deleted.
@@ -1750,7 +1752,7 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
  * A random short code, from the 31 symbols in `ALFABETO_DO_CODIGO_CURTO`.
  *
  * By rejection, not by remainder: 256 is not a multiple of 31, and `byte % 31`
- * gave the first nine symbols extra probability. A byte only works if it's less
+ * would give the first nine symbols extra probability. A byte only counts if it's less
  * than 248 (31 × 8, the largest multiple that fits), and the remainder from
  * that is uniform. We lose a byte in every 32, and ask for twice as many to
  * almost never have to ask again.

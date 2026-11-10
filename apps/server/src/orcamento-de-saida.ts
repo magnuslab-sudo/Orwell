@@ -1,32 +1,32 @@
 /**
- * The outbound budget for the entire server, not for a single call.
+ * The egress budget for the whole server, not for a single call.
  *
  * The caps in `media.ts` are per call (`PARTICIPANTES_POR_AMBITO`,
- * `CAMARAS_POR_AMBITO`, `ECRAS_POR_AMBITO`, `PESSOAS_COM_ECRA`). None of them see
- * other calls, and all pass through the SAME worker and the SAME network card.
+ * `CAMARAS_POR_AMBITO`, `ECRAS_POR_AMBITO`, `PESSOAS_COM_ECRA`). None of them sees
+ * the other calls, and all of them go through the SAME worker and the SAME network card.
  * Measured on 3 November 2026: a worker uses ~400 Mbit/s at 70 % of
- * one core, and the card delivered 300 a 745 Mbit/s outbound, shared with
+ * one core, and the card gave 300 to 745 Mbit/s of egress, shared with
  * magnuslab.pt. When the sum exceeds that, ALL calls degrade, including voice.
- * This counter prevents the sum from reaching that point.
+ * This counter keeps the sum from getting there.
  *
- * **The budget is per consumer, not per stream.** The output of an SFU is
- * `bitrate × espectadores`: a screen with ten viewers costs 10 × 2,5 Mbit/s.
- * Each active consumer reserves the cap of the producer it consumes; the reserve
- * is released when it pauses or closes.
+ * **The count is per consumer, not per stream.** An SFU's egress is
+ * `bitrate × espectadores`: a screen share with ten viewers costs 10 × 2.5 Mbit/s.
+ * Each active consumer reserves the cap of the producer it consumes; the
+ * reservation is released when it pauses or closes.
  *
- * **Two bands, and voice is never rejected.** Video has its own budget and is
+ * **Two lanes, and voice is never rejected.** Video has its own budget and is
  * rejected when the new request does not fit. Voice counts against a separate
- * reserve that video cannot consume; when that reserve runs out, it is logged
- * and voice enters anyway. Voice is cheap (~35 kbit/s per consumer) and
+ * reserve that video cannot eat into; when that reserve runs out, it is logged
+ * and voice gets in anyway. Voice is cheap (~35 kbit/s per consumer) and
  * a call without voice is not a call.
  *
  * Numbers only: no channel, no account, no address passes through here.
  */
 
-/** A reserve band. */
+/** The lane of a reservation. */
 export type FaixaDeSaida = "video" | "voz"
 
-/** The cost of voice on the wire, in bits per second: Opus at 32 kbit/s CBR with headers. */
+/** The cost of one voice stream on the wire, in bits per second: Opus at 32 kbit/s CBR with headers. */
 export const CUSTO_DA_VOZ_NO_FIO = 35_000
 
 /** The default video budget, in Mbit/s. Below the card's lowest measurement (300). */
@@ -38,7 +38,7 @@ export const RESERVA_DA_VOZ_MBPS = 40
 export interface LeituraDaFaixa {
   /** Bits por segundo reservados agora. */
   uso: number
-  /** The limit of this band, in bits per second. */
+  /** The cap of this lane, in bits per second. */
   tecto: number
   /** Quantos consumidores reservam nesta faixa. */
   fluxos: number
@@ -55,7 +55,7 @@ export class OrcamentoDeSaida {
   readonly #fluxos: Record<FaixaDeSaida, number> = { video: 0, voz: 0 }
   readonly #reservas = new Map<string, { faixa: FaixaDeSaida; bits: number }>()
   readonly #aoPassarDaReservaDaVoz: (leitura: LeituraDaSaida) => void
-  /** To report the transition once, not on every voice entering above it. */
+  /** So the crossing is logged once, not on every voice that joins above it. */
   #vozAcima = false
 
   /**
@@ -69,23 +69,23 @@ export class OrcamentoDeSaida {
   }
 
   /**
-   * Change the video limit: the cut near the monthly quota (`quota-mensal.ts`).
+   * Changes the video cap: the cut-off near the monthly quota (`quota-mensal.ts`).
    *
-   * Only applies to admissions after this. Those already reserved keep their
-   * reserve, even above the new limit: the cut does not remove the picture
-   * from those who already have it.
+   * Applies only to later admissions. Consumers that already hold a reservation
+   * keep it, even above the new cap: the cut-off does not take the picture away
+   * from anyone who already has it.
    */
   definirTectoDoVideo(bits: number): void {
     this.#tectos.video = bits
   }
 
-  /** Does this video fit? Does not reserve anything. */
+  /** Does one more video fit? Reserves nothing. */
   cabeVideo(bits: number): boolean {
     return this.#uso.video + bits <= this.#tectos.video
   }
 
   /**
-   * Reserve `bits` for `chave`.
+   * Reserves `bits` for `chave`.
    *
    * @returns `false` only when it is video and does not fit; nothing gets
    * reserved. Voice always returns `true`. A key already reserved returns
@@ -105,7 +105,7 @@ export class OrcamentoDeSaida {
     return true
   }
 
-  /** Release the reserve for `chave`. No reserve, no action: closing twice is normal. */
+  /** Releases the reservation for `chave`. Without one, does nothing: closing twice is normal. */
   libertar(chave: string): void {
     const reserva = this.#reservas.get(chave)
     if (!reserva) return
@@ -115,7 +115,7 @@ export class OrcamentoDeSaida {
     if (reserva.faixa === "voz" && this.#uso.voz <= this.#tectos.voz) this.#vozAcima = false
   }
 
-  /** Does this key have a reserve? */
+  /** Does this key hold a reservation? */
   reservado(chave: string): boolean {
     return this.#reservas.has(chave)
   }
@@ -141,7 +141,7 @@ function mbps(bits: number): string {
   return (bits / 1_000_000).toFixed(1)
 }
 
-/** A reading in one log line, without names. */
+/** The current reading as one log line, with no names. */
 export function linhaDaSaida(leitura: LeituraDaSaida): string {
   return (
     `vídeo ${mbps(leitura.video.uso)}/${mbps(leitura.video.tecto)} Mbit/s (${leitura.video.fluxos} consumos), ` +

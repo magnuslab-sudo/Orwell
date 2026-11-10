@@ -39,9 +39,9 @@ import { Gateway } from "./gateway.js"
  * Account suspension (Task 8; `docs/planos/denuncias-design.md`, §8 and §9b),
  * end to end with real clients.
  *
- * Suspension is written the way the VPS script writes it (Task 10): the line in
- * `suspensoes` by `store.suspender`, and the notice by
- * `ArquivoDeDenuncias.escreverAviso`. Never by SQL or by hand file.
+ * Suspension is written the way the VPS script writes it (Task 10): the row in
+ * `suspensoes` via `store.suspender`, and the notice via
+ * `ArquivoDeDenuncias.escreverAviso`. Never through SQL or a hand-written file.
  */
 
 const PAR = parseServerName("par.example")
@@ -56,7 +56,7 @@ let canal: string
 const abertas: ContaDeTeste[] = []
 
 beforeAll(async () => {
-  // The federated link, so the federated route for key packages has someone to serve.
+  // Federation enabled, so the federated key package route has someone to serve.
   servidor = await levantarServidor({ allowlist: [PAR] })
   arquivo = new ArquivoDeDenuncias(join(dirname(servidor.baseDeDados), "denuncias"))
   par = loadOrCreateServerKey(join(dirname(servidor.baseDeDados), "par"))
@@ -89,7 +89,7 @@ function avisoDe(endereco: string, revisao: Partial<AvisoDeSuspensao["revisao"]>
   }
 }
 
-/** How the VPS script suspends: the line in the base and the notice in file. */
+/** How the VPS script suspends: the row in the database and the notice in a file. */
 async function suspender(endereco: string): Promise<void> {
   servidor.enclave.store.suspender(endereco, 1)
   await arquivo.escreverAviso(endereco, avisoDe(endereco))
@@ -129,7 +129,7 @@ async function entrarCru(identidade: AccountIdentity): Promise<{ resposta: Serve
   return { resposta: await proximo(), fechou }
 }
 
-/** A signed request to a reports route, by `inject`. */
+/** A signed request to an abuse report route, via `inject`. */
 async function pedir(identidade: Identity | AccountIdentity, rota: (typeof ROTAS_DA_DENUNCIA)[keyof typeof ROTAS_DA_DENUNCIA], corpo: unknown) {
   const resposta = await servidor.enclave.app.inject({
     method: "POST",
@@ -161,7 +161,7 @@ async function pedirAoPar(endereco: string, bundle: boolean) {
 
 describe("suspensão de conta no servidor, com clientes reais", () => {
   it("uma conta suspensa não entra: error account-suspended fatal com a frase, e a sessão emite status account-suspended com o aviso", async () => {
-    // A raw socket: the frame the server sends, as is.
+    // A raw socket: the frame the server sends, exactly as sent.
     const crua = generateIdentity(servidor.casa)
     ;(await Cliente.ligar(servidor.url, crua)).fechar()
     await suspender(crua.address)
@@ -169,7 +169,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     expect(resposta).toEqual({ t: "error", code: "account-suspended", message: Gateway.FRASE_CONTA_SUSPENSA, fatal: true })
     await fechou
 
-    // The session: reads the notice by the signed request, says it and doesn't sign on again.
+    // The session: reads the notice via the signed request, reports it and doesn't reconnect.
     const [dora] = await contasDeTeste(servidor, ["Dora"])
     abertas.push(dora!)
     dora!.session.disconnect()
@@ -182,11 +182,11 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     const suspensa = estados.find((estado) => estado.code === "account-suspended")
     expect(suspensa).toMatchObject({ route: "toast", aviso: avisoDe(dora!.address) })
     await new Promise((resolver) => setTimeout(resolver, 300))
-    // Doesn't retry: no connection ever reaches "online" or stays to reconnect.
+    // Doesn't retry: no connection ever reaches "online", and it doesn't keep reconnecting.
     expect(ligacoes).not.toContain("online")
     expect(ligacoes.at(-1)).not.toBe("reconnecting")
 
-    // No gateway, by the signed request: asks for review and reads the marked notice.
+    // No gateway, via the signed request: asks for a review and reads the marked notice.
     expect(await dora!.session.pedirRevisao("Peço que revejam.")).toEqual({ ok: true })
     expect((await dora!.session.avisoDeSuspensao())?.revisao.pedida).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   }, 60_000)
@@ -220,7 +220,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     expect(bundle.corpo).toMatchObject({ keyPackage: null, keyPackages: [] })
     expect(store.availableKeyPackages(bruno.address)).toBe(antes)
 
-    // An account that is not suspended remains served (the route did not close).
+    // Those of an account that is not suspended are still served (the route was not shut).
     expect((await pedirAoPar(carla.address, false)).corpo.keyPackage).not.toBeNull()
   }, 60_000)
 
@@ -228,7 +228,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     const identidade = generateIdentity(servidor.casa)
     const cliente = await Cliente.ligar(servidor.url, identidade)
     servidor.enclave.store.suspender(identidade.address, null)
-    // The ping goes through: it is not about the account, it is about the connection.
+    // The ping goes through: it belongs to the connection, not the account.
     expect(await cliente.ateAoPong()).toEqual([])
     cliente.enviar({ t: "presence.set", visible: false })
     expect(await cliente.proximoDe("error")).toEqual({
@@ -267,7 +267,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     const agora = Date.now()
     const dia = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
     // Suspended two days ago, ending the day after that (like `--ate`):
-    // the last second of that day in UTC. Only the Date is false, and only here.
+    // the last second of that day in UTC. Only the Date is faked, and only here.
     vi.useFakeTimers({ toFake: ["Date"] })
     try {
       vi.setSystemTime(agora - 2 * 86_400_000)
@@ -332,8 +332,8 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     expect(lido.estado).toBe(200)
     const aviso = lido.corpo["aviso"] as AvisoDeSuspensao
     expect(aviso).toEqual(avisoDe(gil.address))
-    // The fields of article 17, paragraph 3: measure, duration, scope, facts, origin,
-    // without automated means, standard, and review.
+    // The fields of article 17, paragraph 3: measure, duration, scope, facts, source,
+    // no automated means, legal basis, and review.
     for (const campo of ["medida", "desde", "ate", "ambito", "factos", "origem", "semMeiosAutomaticos", "norma", "revisao"]) {
       expect(aviso).toHaveProperty(campo)
     }
@@ -358,7 +358,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     const fila = (): Fila => JSON.parse(readFileSync(join(pasta, "fila.json"), "utf8")) as Fila
     const pendentes = fila().revisoesPendentes
 
-    // The second and third on the same day pass; the fourth gets 429.
+    // The second and third on the same day go through; the fourth gets 429.
     expect((await pedir(gil, ROTAS_DA_DENUNCIA.revisao, { nota: "Segunda nota." })).estado).toBe(200)
     expect((await pedir(gil, ROTAS_DA_DENUNCIA.revisao, { nota: "Terceira nota." })).estado).toBe(200)
     expect(await pedir(gil, ROTAS_DA_DENUNCIA.revisao, { nota: "Quarta nota." })).toEqual({
@@ -368,7 +368,7 @@ describe("suspensão de conta no servidor, com clientes reais", () => {
     expect(revisoes()).toHaveLength(3)
     expect(fila().revisoesPendentes).toBe(pendentes + 2)
 
-    // The core states the refusal with the key from 219, whether it is the cap or a non-suspended account.
+    // The core reports the refusal with the 219 key, whether it is the cap or an account that is not suspended.
     const origem = origemDoServidorDe(gil.address)
     await expect(pedirRevisao(origem, gil as unknown as Identity, "Quinta nota.")).rejects.toThrow(
       "the server did not take the review request",

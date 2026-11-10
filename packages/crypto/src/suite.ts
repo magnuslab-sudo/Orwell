@@ -50,9 +50,9 @@ export function loadSuite(name: CiphersuiteName = DEFAULT_CIPHERSUITE): Promise<
  * The capabilities of each of our leaves.
  *
  * With `EXTENSAO_RETRATO` in `extensions` since 1.1: this is how the inviter
- * knows this leaf reads the Welcome portrait (`declaraRetrato` in `group.ts`).
+ * knows this leaf reads the Welcome snapshot (`declaraRetrato` in `group.ts`).
  * Only here, never in `required_capabilities` in the group context: there
- * it would expel leaves from 1.0.x clients that do not declare it.
+ * it would kick out the leaves of 1.0.x clients, which do not declare it.
  */
 export function enclaveCapabilities(): Capabilities {
   const base = defaultCapabilities()
@@ -83,7 +83,7 @@ export const enclavePaddingConfig: PaddingConfig = { kind: "padUntilLength", pad
  *
  * MLS by itself will happily let a member put any string in their credential.
  * Left unchecked, `@mallory:evil.example` can join a space and present itself as
- * `@alice:enclave.example` to every other member, the transport is encrypted
+ * `@alice:enclave.example` to every other member: the transport is encrypted
  * and the impersonation still works.
  *
  * Enclave closes this without a PKI: an account id *is* a hash of its signing
@@ -92,19 +92,20 @@ export const enclavePaddingConfig: PaddingConfig = { kind: "padUntilLength", pad
  *
  * **v2 validates a chain instead of a direct digest.** The leaf stopped being
  * signed by the account key and now is signed by the device key, so the direct
- * digest no longer matches, and cannot match again, or the address would depend
- * on the device. What is checked are three links:
+ * digest no longer matches (and must never match again, or the address would depend
+ * on the device). Three links are checked:
  *
  *   1. the address is the digest of the account key written in the credential;
  *   2. the account key signed the device key written in the credential;
  *   3. that device key is the one signing this leaf.
  *
  * Without the third link, anyone could copy someone else's credential to their
- * leaf: the first two would still match, and the leaf belonged to whoever wanted.
- * The root of trust is the same as always, the address is the digest of the key,  * just the account key's.
+ * leaf: the first two would still match, and the leaf would belong to whoever wanted it.
+ * The root of trust is the same as always (the address is the digest of the key),
+ * only now it is the account key.
  *
- * **Nothing here throws.** An unreadable credential, truncated, with an extra byte,
- * or with a wrong signature returns `false`, and the leaf is rejected silently.
+ * **Nothing here throws.** A credential that is unreadable, truncated, has an extra byte,
+ * or has a wrong signature returns `false`, and the leaf is rejected silently.
  */
 export const addressBindingAuthService: AuthenticationService = {
   async validateCredential(credential: Credential, signaturePublicKey: Uint8Array): Promise<boolean> {
@@ -114,7 +115,7 @@ export const addressBindingAuthService: AuthenticationService = {
       if (!chain) return false
       if (!verifyDeviceChain(chain)) return false
       // Third link: the leaf must be signed by the device that the account certified,
-      // not by any device displaying someone else's certificate.
+      // not by some other device showing someone else's certificate.
       return equalBytes(chain.deviceKey, signaturePublicKey)
     } catch {
       return false

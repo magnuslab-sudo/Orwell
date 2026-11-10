@@ -6,20 +6,21 @@ import { ClientFrame, ServerFrame } from "./wire.js"
  *
  * Two things were added to the wire for video to pass, and both must follow the
  * house rule: **a new field is OPTIONAL, and its absence must still mean what it
- * already meant.** A Phase 2 client never sent `fonte`, it only produced audio,  * and must still be read without complaint, because the server validates with Zod
- * and a refused frame is a call that does not mount.
+ * already meant.** A Phase 2 client never sent `fonte` (it only produced audio),
+ * and must still be read without complaint, because the server validates with Zod
+ * and a refused frame is a call that does not come up.
  *
- * The `sfu.produce.close` is new `t`, and this is safe only in this plan: it is the
- * gateway plan, where an unknown `t` gives non-fatal `bad-frame` on the server side
- * and falls through on the client side. In the MLS payload plan (`payload.ts`) a new
+ * `sfu.produce.close` is a NEW `t`, and that is safe only on this layer: the
+ * gateway layer, where an unknown `t` gives a non-fatal `bad-frame` on the server side
+ * and is dropped on the client side. On the MLS payload layer (`payload.ts`) a new
  * `t` fails the entire union, the payload counts as ignored, and repeated ignores
  * trigger the repair that deletes history. See `payload.sfu.test.ts`, where that
- * rule is stated as executable.
+ * rule is stated as an executable test.
  */
 describe("a fonte de um fluxo", () => {
   it("aceita as três fontes num `sfu.produce`, e ENTREGA-AS", () => {
     /*
-     * The second half is what stores something. A `z.object` without the field
+     * The second half is the one that guards anything. A `z.object` without the field
      * declared does not REFUSE an extra field: it silently drops it and returns
      * success. A test that only checked `success` would pass with the old schema,
      * on a frame that reached the engine with no source at all, and everyone's
@@ -49,7 +50,8 @@ describe("a fonte de um fluxo", () => {
   it("não põe `fonte` por omissão — a ausência tem de sobreviver à validação", () => {
     /*
      * A `.default("camara")` here looked harmless and it is not: the server could no longer
-     * tell "not said" apart from "said camera", and the rule of reading absence by `kind`,      * audio means microphone, would mark every old client's microphone as camera. With the
+     * tell "not said" apart from "said camera", and the rule of reading absence by `kind`
+     * (audio means microphone) would mark every old client's microphone as camera. With the
      * camera cap applied to a voice track.
      */
     const frame = ClientFrame.parse({ t: "sfu.produce", transport: "t1", kind: "audio", rtpParameters: {} })
@@ -81,7 +83,7 @@ describe("a fonte de um fluxo", () => {
   })
 
   it("lê um `sfu.scope.joined` com produtores SEM fonte", () => {
-    // Forward tolerance: a Phase 2 server talking to a Phase 3 client. The field is optional on
+    // Tolerance the other way: a Phase 2 server talking to a Phase 3 client. The field is optional on
     // both sides or it is not optional.
     const entrada = ServerFrame.safeParse({
       t: "sfu.scope.joined",
@@ -101,7 +103,8 @@ describe("fechar um produtor sem sair da chamada", () => {
   })
 
   it("leva a etiqueta, como todos os pedidos que esperam resposta", () => {
-    // Without `ref` the client matched the response by SHAPE, and two stops at the same time, // the app button and the browser button, are two indistinguishable responses. That is the
+    // Without `ref` the client matched the response by SHAPE, and two stops at the same time
+    // (the app button and the browser button) are two indistinguishable responses. That is the
     // race the label exists to end.
     const frame = ClientFrame.safeParse({ t: "sfu.produce.close", producer: "p1", ref: "s7" })
     expect(frame.success).toBe(true)
@@ -110,9 +113,9 @@ describe("fechar um produtor sem sair da chamada", () => {
   it("não é um `t` do plano dos payloads MLS", async () => {
     /*
      * The boundary you do not cross. A new `t` in `payload.ts` fails the whole union on an
-     * old client: the payload is discarded, counts as ignored event, and consecutive ignored
-     * events declare the channel deaf and trigger repair that DELETES HISTORY. Here is the
-     * gateway plan, where an unknown `t` is a non-fatal `bad-frame`, and that is why this
+     * old client: the payload is discarded, counts as an ignored event, and consecutive ignored
+     * events declare the channel deaf and trigger the repair that DELETES HISTORY. This is the
+     * gateway layer, where an unknown `t` is a non-fatal `bad-frame`, and that is why this
      * frame can exist and a new `voice.*` cannot.
      */
     const { Payload } = await import("./payload.js")

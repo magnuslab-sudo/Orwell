@@ -36,9 +36,9 @@ export type FederationBody = z.infer<typeof FederationBody>
 /**
  * The nonce for everything a server signs (FED-01, external audit at 1.1.0).
  *
- * Ours are 16 bytes drawn in base64url without padding: 22 characters. Between
- * 16 and 64, and only the base64url alphabet. Until now it was `z.string()`
- * with nothing more, and the receiver stored it on disk exactly as it came.
+ * Ours are 16 random bytes in base64url without padding: 22 characters. Between
+ * 16 and 64, and only the base64url alphabet. Until now it was a bare `z.string()`,
+ * and the receiver stored it on disk exactly as it came.
  */
 export const NONCE_FEDERADO = z.string().regex(/^[A-Za-z0-9_-]{16,64}$/, "expected a base64url nonce of 16 to 64 characters")
 
@@ -93,8 +93,8 @@ export interface VerifyOptions {
   /** Resolve `keyId` to the origin's advertised public key, or undefined. */
   resolveKey: (origin: ServerName, keyId: string) => Uint8Array | undefined
   /**
-   * Spend the nonce: store the pair (origin, nonce) and return whether it was new. `false`
-   * means it's a replay. Must be ONE atomic operation (on the server, an
+   * Spend the nonce: store the (origin, nonce) pair and return whether it was new. `false`
+   * means a replay. Must be ONE atomic operation (on the server, an
    * `INSERT OR IGNORE`), so two concurrent uses cannot both pass.
    *
    * Called ONLY AFTER the signature verifies (FED-01): asking earlier would let
@@ -104,7 +104,7 @@ export interface VerifyOptions {
   nowSeconds: number
 }
 
-/** The fields that anything signed by a server carries in its header. */
+/** The header fields of anything a server signs. */
 interface SignedHeader {
   origin: string
   destination: string
@@ -117,10 +117,10 @@ interface SignedHeader {
 /**
  * The four checks we run on anything a server signs: who it goes to, when it was
  * made, whether the signature verifies, and whether we've seen it before. In
- * this order: the first three do not write anything, and only what a pair
- * genuinely signed reaches the point of spending a nonce (FED-01).
+ * this order: the first three write nothing, and only what a peer
+ * really signed gets to spend a nonce (FED-01).
  *
- * Written once and used by two, the delivery envelope and the key package
+ * Written once and used twice, by the delivery envelope and the KeyPackage
  * request, because the ceremony is the same and only the body changes. Two
  * copies of this function would be two chances for one to forget the nonce.
  */
@@ -135,9 +135,9 @@ function verifySignedHeader(
     origin = parseServerName(header.origin)
     destination = parseServerName(header.destination)
   } catch {
-    // A server name that is not actually a server name. Rejected here rather than
-    // raised as an exception up the route: whoever sends garbage gets a rejection,
-    // not a 500 saying we broke.
+    // A server name that is not a valid server name. Rejected here rather than
+    // thrown as an exception up the route: whoever sends garbage gets a rejection,
+    // not a 500 that says we broke.
     return { ok: false, reason: "bad-origin" }
   }
 
@@ -178,18 +178,18 @@ export function verifyEnvelope(envelope: FederationEnvelope, options: VerifyOpti
 }
 
 /**
- * A key package request, signed by whoever makes it.
+ * A KeyPackage request, signed by whoever makes it.
  *
- * The route that serves key packages CONSUMES what it serves: each response
+ * The route that serves KeyPackages CONSUMES what it serves: each response
  * spends a package that is never delivered again. Deciding who can call it by
- * headers, the `Origin`, or an `X-Enclave-Server`, would let the caller decide:
- * anyone with a `curl` could write the name of a pair on the allowlist and drain
- * their pool, with the victim seeing only invites that never arrive. Even worse
- * on the production server, whose allowlist includes its own name: you just had
- * to claim you were it.
+ * headers (the `Origin`, or an `X-Enclave-Server`) would let the caller decide:
+ * anyone with `curl` could put an allowlisted peer's name and drain
+ * anyone's pool, with the victim seeing only invites that never arrive. Even worse
+ * on the production server, whose allowlist includes its OWN name: you just had
+ * to claim to be it.
  *
- * A header proves nothing. This proves it: only whoever has the private key of
- * the server that the directory announces can sign, and each request is good once
+ * A header proves nothing. This does: only whoever holds the private key that
+ * the server's directory announces can sign, and each request is valid once
  * (nonce) and for two minutes (clock).
  */
 export const PeerClaim = z.object({
@@ -197,20 +197,20 @@ export const PeerClaim = z.object({
   destination: z.string(),
   issuedAt: z.number().int().positive(),
   nonce: NONCE_FEDERADO,
-  /** The local account of whoever wants the key package. */
+  /** The local account whose KeyPackage is wanted. */
   address: z.string(),
   signature: z.string(),
   keyId: z.string(),
   /**
-   * The same `bundle`/`devices` as in `keypackage.claim` from the gateway, so an
-   * invite to someone on another server can account for all their devices.
+   * The same `bundle`/`devices` as the gateway's `keypackage.claim`, so an
+   * invite to someone on another server can add all their devices.
    *
-   * **Outside the signature, and that is a choice.** The signature covers the
-   * five fields above and a pair on 0.2.3 verifies exactly those five: if these
+   * **Outside the signature, on purpose.** The signature covers the
+   * five fields above and a 0.2.3 peer verifies exactly those five: if these
    * went into the signed canonical form, each bundled request to an old server
    * would fail with `bad-signature`, and inviting someone there would stop working
    * altogether instead of degrading to a single package. Outside the signature,
-   * the old pair discards them by schema and serves the singular. What the
+   * the old peer drops them via its schema and serves a single package. What the
    * signature proves does not change: whoever made it has the right to spend
    * packages from this account; these fields just say how many, and never more
    * than the devices in their manifest.
@@ -245,9 +245,9 @@ export function signPeerClaim(
 export type PeerClaimResult = { ok: true; address: string; origin: ServerName } | VerifyFailure
 
 /**
- * The body the `/keypackage` route responds with: the `keypackage.claimed` from
- * the gateway without `t` or `address`. A pair on 0.2.3 sends only `keyPackage`;
- * the other two fields come when the request had `bundle`, with the meaning from
+ * The body the `/keypackage` route responds with: the gateway's `keypackage.claimed`
+ * without `t` or `address`. A 0.2.3 peer sends only `keyPackage`;
+ * the other two fields come when the request had `bundle`, with the same meaning as
  * there.
  */
 export const PeerClaimReply = z.object({

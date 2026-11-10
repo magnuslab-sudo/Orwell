@@ -6,20 +6,20 @@ import { Payload } from "./payload.js"
 /**
  * The rule for the signed form (S4 review, finding 9; written in the plan, §4.1).
  *
- * The author signs the payload NORMALIZED by the schema: with default values
- * filled in and without fields the schema does not know. A new field (or a new
- * default value) in one of the fourteen types that carry authorship changes the
- * normalized form in one version and not the other: what one version signs,
- * the other verifies with different bytes, and the report is rejected as
- * `autoria`.
+ * The authorship signature covers the payload NORMALIZED by the schema: with
+ * default values filled in and without fields the schema does not know. A new
+ * field (or a new default value) in one of the fourteen types that carry
+ * authorship changes the normalized form in one version and not the other: what
+ * one version signs, the other verifies over different bytes, and the relayed
+ * copy is rejected as `autoria`.
  *
- * So the form of each of these schemas is locked here, to the format version
+ * So the form of each of these schemas is pinned here, to the format version
  * (`Autoria.v`). Changing a schema without bumping the version makes this test
- * fail. Bumping the version is deciding how the two coexist (the old one verifies
- * with the old form), and only then updating the impressions.
+ * fail. Bumping the version means deciding how the two coexist (the old one
+ * verifies with the old form), and only then updating the fingerprints.
  */
 
-/** The version of the authorship format that the impressions below belong to. */
+/** The version of the authorship format that the fingerprints below belong to. */
 const VERSAO_DAS_IMPRESSOES = 1
 
 /*
@@ -32,10 +32,10 @@ const VERSAO_DAS_IMPRESSOES = 1
 /*
   `message` changed again 28/10/2026 without bumping the version (phase 3 of 0.9,
   moderation): it gained `apelido`, and the `ticket` mark gained `removed`. Both
-  are optional and have no default value: a message without them has the same
-  signed form in 0.9.3 and here, which are all that already exist. A message WITH
-  them, reported (and not live) to a 0.9.3, does not verify there, because 0.9.3
-  strips the field before verifying; live MLS authenticates the sender and
+  are optional and have no default value: a message without them (every message
+  that exists today) has the same signed form in 0.9.3 and here. A message WITH
+  them, relayed (not live) to a 0.9.3, does not verify there, because 0.9.3
+  strips the field before verifying; live, MLS authenticates the sender and
   authorship is not read. Proven in `payload.moderar.test.ts`.
 */
 /*
@@ -43,21 +43,21 @@ const VERSAO_DAS_IMPRESSOES = 1
   (phase 8.2 of 0.9, "Merge accounts"): it gained `sucessora`, and the invite
   (`invite`) gained `sucessao`. Both are optional and have no default value,
   like those from phase 3: a message without them signs the same in 0.9.4 and
-  here. One WITH them, reported to a 0.9.4, does not verify there; live authorship
+  here. One WITH them, relayed to a 0.9.4, does not verify there; live, authorship
   is not read. Proven in `payload.sucessora.test.ts`.
 */
 /*
   `channel.meta` changed 2/11/2026 without bumping the version (AFK room, after 1.0.6):
-  it gained `afk`, optional and with no default value. A room without it signs the
-  same in 1.0.6 and here, which are all that already exist. An AFK room reported
-  (and not live) to a 1.0.6 does not verify there; live authorship is not read.
+  it gained `afk`, optional and with no default value. A room without it (every
+  room that exists today) signs the same in 1.0.6 and here. An AFK room relayed
+  (not live) to a 1.0.6 does not verify there; live, authorship is not read.
   Proven in `payload.afk.test.ts`.
 */
 /*
   `profile` entered 2/11/2026 (decision D1 from the encrypted state plan, phase 1
   of 1.1): it is the 14th form. It entered with `Autoria.v` at 1 because the signed
   form is per type and no profile carried authorship before: there is no prior
-  version to coexist with. The portrait (`avatar`) enters the form only by name
+  version to coexist with. The avatar (`avatar`) enters the form only by name
   and type, with the digest in `m`, like attachments (`eRetratoDoPerfil` in
   `autoria.ts`). A 1.0.x client drops the field and reads the profile as always.
 */
@@ -66,10 +66,10 @@ const VERSAO_DAS_IMPRESSOES = 1
   bumping the version (the permissions model, §4.2 from the parity plan): they
   gained `perms` (the first two) and `rank` (the third), optional and with no
   default value. A room, a category or a role without them signs the same in 1.1.0
-  and here. WITH them, reported (and not live) to a 1.1.0, does not verify there,
-  because it strips the field before verifying; live MLS authenticates the sender
-  and authorship is not read. Inviting a 1.1.0 does not skip the cascade
-  (`EXTENSAO_PERMISSOES`), so it receives live what the portrait does not prove.
+  and here. One WITH them, relayed (not live) to a 1.1.0, does not verify there,
+  because it strips the field before verifying; live, MLS authenticates the sender
+  and authorship is not read. Whoever invites a 1.1.0 does not skip the cascade
+  (`EXTENSAO_PERMISSOES`), so it receives live what the snapshot cannot prove to it.
   Proven in `payload.permissoes.test.ts`.
 */
 const IMPRESSOES: Record<string, string> = {

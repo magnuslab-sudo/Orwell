@@ -24,14 +24,14 @@ import { currentSecond } from "./db.js"
  * serves them.
  *
  * It decided by headers: an `Origin`, or an `X-Enclave-Server`, compared
- * against the allowlist. Neither proves anything, the caller chooses them, so
- * anyone who knew the name of a peer in the allowlist could drain the pool of
+ * against the allowlist. Neither proves anything (the caller picks them), so
+ * anyone who knew the name of a peer on the allowlist could drain the pool of
  * any account here with a `curl` loop, and the victim only saw invites that
- * never came. The production server has its OWN name in the allowlist, so it was
- * enough to say you were it: this was not a latent flaw waiting for someone to
+ * never arrived. The production server has its OWN name on the allowlist, so it was
+ * enough to claim to be it: this was not a latent flaw waiting for someone to
  * turn federation on, it was an open door.
  *
- * It was latent in another way, a true one: federation never ran between two
+ * It was latent in another sense, a real one: federation never ran between two
  * servers for real, and that is why the route could change form (GET with
  * headers → POST with a signed request) without breaking anyone.
  */
@@ -70,7 +70,7 @@ async function montar(allowlist: string[]): Promise<void> {
   enclave = await buildServer(config)
 
   // The peer's key, already cached: without this the server would fetch it from
-  // their directory over HTTPS, and a test does not talk to the network. It is
+  // its directory over HTTPS, and a test does not talk to the network. It is
   // the same cache that `#ensurePeerKey` fills in real life.
   enclave.store.cachePeerKey(PAR, par.keyId, par.publicKey, currentSecond() + 3600)
 
@@ -87,11 +87,11 @@ async function montar(allowlist: string[]): Promise<void> {
 /**
  * A SIGNED request over the fields given to it.
  *
- * The fields go in before signing on purpose. Swapping them after, which was
- * the first version of this, makes everything fall into `bad-signature`, and a
- * test that wants to measure the clock or the allowlist passes without getting
- * there. Caught by mutation: with the clock off, the old-request test stayed
- * green.
+ * The fields go in before signing on purpose. Swapping them afterwards (the
+ * first version of this did) makes everything fail with `bad-signature`, and a
+ * test meant to measure the clock or the allowlist passes without reaching
+ * them. Caught by mutation: with the clock check off, the old-request test
+ * stayed green.
  */
 function pedido(
   campos: Partial<{ origin: ServerName; destination: ServerName; issuedAt: number; address: string }> = {},
@@ -142,16 +142,16 @@ describe("key packages para um par, com a federação LIGADA", () => {
   })
 
   /**
-   * The flaw, in its exact form: naming the peer without having their key.
+   * The flaw, in its exact form: claiming to be the peer without having its key.
    *
-   * The request names the peer from the allowlist in all fields, even the
-   * `keyId`, the identifier of the key that the peer publishes in their
-   * directory, and that this server has cached. Only the signature is a
-   * different key. Without that detail, the request would be refused with
-   * `unknown-key` and the test would pass without measuring the signature:
-   * verified by mutation, faking that the signature always checks out.
+   * The request names the allowlisted peer in every field, even the `keyId`
+   * (the identifier of the key the peer publishes in its directory, which this
+   * server has cached). Only the signature comes from a different key. Without
+   * that detail, the request would be refused with `unknown-key` and the test
+   * would pass without measuring the signature: verified by mutation, pretending
+   * the signature always checks out.
    *
-   * This was exactly what the headers let through, and they no longer exist:
+   * This is exactly what the headers let through, and they no longer exist:
    * there is no `Origin` here to make up.
    */
   it("quem se diz o par sem ter a chave dele não é servido, e não gasta nada", async () => {
@@ -171,8 +171,8 @@ describe("key packages para um par, com a federação LIGADA", () => {
    * The same, by another route: the good request with the address swapped.
    *
    * A signature is worth what it signs. If the address did not go into the
-   * signed bytes, any capture of a legitimate request would empty the pool of
-   * any other account, just rewrite one line of the JSON.
+   * signed bytes, any captured legitimate request could drain the pool of
+   * any other account: rewriting one line of the JSON was enough.
    */
   it("mexer no endereço depois de assinado invalida o pedido", async () => {
     const outra = generateIdentity(NOS)
@@ -187,22 +187,22 @@ describe("key packages para um par, com a federação LIGADA", () => {
   })
 
   /**
-   * A malformed body responds 403, not a 400 that would tell it apart.
+   * A malformed body gets a 403, not a 400 that would set it apart.
    *
    * The name of this test used to be "a request without any signature is
    * refused", and it was lying by omission: a `signature: undefined` never
-   * reaches the verifier, it dies in zod's `safeParse`. Verified by mutation,
-   * faking that the signature always checks out: the test stayed green, so it
+   * reaches the verifier: it dies in zod's `safeParse`. Verified by mutation,
+   * pretending the signature always checks out: the test stayed green, so it
    * measured no signature at all. Anyone reading it would think that guard was
-   * covered, and that is how a check dies without a soul noticing.
+   * covered, and that is how a check dies without anyone noticing.
    *
-   * What it really measures, and does measure, is the response always being
-   * the same. A 400 for the malformed body, a 403 for the rest, and the route
-   * started to tell apart "I did not understand what you sent" from "I do not
-   * serve you": the first step of an oracle. Mutate the code to 400, this test
-   * fails.
+   * What it really measures (and it does) is that the response is ALWAYS the
+   * same. With a 400 for the malformed body and a 403 for the rest, the route
+   * would tell "I did not understand what you sent" apart from "I will not
+   * serve you": the first step toward an oracle. Mutate the code to 400 and
+   * this test fails.
    *
-   * The signature itself is measured in the imposter test above.
+   * The signature itself is measured in the impostor test above.
    */
   it("um corpo malformado responde o mesmo 403 que uma recusa, sem se distinguir", async () => {
     const antes = enclave.store.availableKeyPackages(conta.address)
@@ -212,17 +212,17 @@ describe("key packages para um par, com a federação LIGADA", () => {
   })
 
   /**
-   * The production case today: the allowlist with our own name.
+   * The case production has today: the allowlist with OUR own name.
    *
-   * `#allowed` refuses to federate with itself, and that blocks a request
-   * signed by us, or by whoever claims to be us, from serving itself. With
+   * `#allowed` refuses to federate with itself, and that is what stops a request
+   * signed by us (or by anyone claiming to be us) from serving itself. With
    * the decision in the headers, `Origin: https://orwell.pt` would match the
    * production allowlist and pass.
    */
   it("o nosso próprio nome na allowlist não abre a porta a quem se diz nós", async () => {
-    // Our own key, and our own name: the request closes from the cryptographic
-    // angle and gets refused anyway, because a server is not a peer of itself.
-    // The same guard that `#allowed` already enforced in delivery.
+    // Our own key, and our own name: the request checks out cryptographically
+    // and is refused anyway, because a server is not its own peer.
+    // It is the same guard `#allowed` already applied on delivery.
     const nosso = loadOrCreateServerKey(dataDir)
     enclave.store.cachePeerKey(NOS, nosso.keyId, nosso.publicKey, currentSecond() + 3600)
     const antes = enclave.store.availableKeyPackages(conta.address)
@@ -242,7 +242,7 @@ describe("key packages para um par, com a federação LIGADA", () => {
     rmSync(outroDir, { recursive: true, force: true })
   })
 
-  /** Replaying a good request does not count twice. */
+  /** Capturing a good request and replaying it does not work twice. */
   it("repetir o mesmo pedido não gasta um segundo key package", async () => {
     const claim = pedido()
     expect((await pedir(claim)).estado).toBe(200)
@@ -257,13 +257,13 @@ describe("key packages para um par, com a federação LIGADA", () => {
     expect((await pedir(pedido({ destination: ESTRANHO }))).estado).toBe(403)
   })
 
-  /** A request stored from yesterday does not either. */
+  /** Nor does a request saved from yesterday. */
   it("um pedido velho é recusado", async () => {
     expect((await pedir(pedido({ issuedAt: currentSecond() - 3600 }))).estado).toBe(403)
   })
 
   /**
-   * The old port, sealed.
+   * The old door, sealed.
    *
    * While GET exists, nothing above matters: you could just call it again with
    * the usual headers.
@@ -291,10 +291,10 @@ describe("key packages para um par, com a federação DESLIGADA", () => {
 })
 
 /**
- * The bundle crosses federation with the same contract as the gateway: request,
+ * The bundle crosses federation with the same contract as the gateway: requested,
  * never offered. A peer on 0.2.3 sends the usual request and gets the usual
- * response; a peer that asks for `bundle` gets one package per device and the
- * manifest, which goes to their client so they can verify it.
+ * response; a peer that asks for `bundle` gets one key package per device and the
+ * manifest, which goes to the client on its side to verify.
  */
 describe("key packages em bundle para um par", () => {
   const A = ed25519.getPublicKey(sha256(Uint8Array.from([1])))
@@ -303,7 +303,7 @@ describe("key packages em bundle para um par", () => {
   beforeEach(async () => {
     await montar([PAR])
     // The account now has two devices with a pool, and the manifest with both.
-    // The pool with no device from `mount` stays there (five NULL lines).
+    // The device-less pool from `montar` stays there (five NULL rows).
     enclave.store.publishKeyPackages(conta.address, [new Uint8Array([10]), new Uint8Array([11])], false, A)
     enclave.store.publishKeyPackages(conta.address, [new Uint8Array([20])], false, B)
     const agora = currentSecond()
@@ -366,9 +366,9 @@ describe("key packages em bundle para um par", () => {
     const segunda = await pedirCompleto(claim)
     expect(segunda.estado).toBe(403)
     expect(enclave.store.availableKeyPackages(conta.address)).toBe(depois)
-    // And the same request with `bundle` added after signing (different nonce,
-    // same signature) still verifies: new fields do not enter the signature on
-    // purpose.
+    // And the same request with `bundle` added AFTER signing (different nonce,
+    // same signature) still verifies: the new fields stay out of the signature,
+    // on purpose.
     const semBundle = signPeerClaim(
       { keyId: par.keyId, privateKey: par.privateKey },
       { origin: PAR, destination: NOS, issuedAt: currentSecond(), nonce: toBase64(crypto.getRandomValues(new Uint8Array(16))), address: conta.address },

@@ -84,8 +84,8 @@ describe("channel.meta.afk", () => {
  * Coexistence of the signed form with 1.0.6 (see `autoria.forma.test.ts`).
  *
  * `afk` is optional and has no default value: a room without it signs the same way in
- * both versions. An AFK room checks here, and does not check in a version that
- * does not know it: that is the boundary stated, and it only matters in a report (live, authorship is not read).
+ * both versions. An AFK room verifies here, and does not verify in a version that
+ * does not know it: that is the stated limit, and it only matters in a relayed copy (live, authorship is not read).
  */
 describe("a forma assinada de uma sala, com e sem `afk`", () => {
   const semente = new Uint8Array(32).fill(7)

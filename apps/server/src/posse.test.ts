@@ -25,8 +25,8 @@ import type { ServerConfig } from "./config.js"
  * the old copy continued to speak and read after import, and the two broke the
  * channel for each other. What we measure here, with real connections: the
  * copy that takes ownership closes the other connected one; the old copy does
- * not rejoin; the new one rejoin with the generation it received; and a client
- * that does not know ownership continues to join until someone takes it.
+ * not rejoin; the new one rejoins with the generation it received; and a client
+ * that does not know about ownership can still join while no one has taken it.
  */
 
 let HOME: ReturnType<typeof parseServerName>
@@ -135,7 +135,7 @@ afterAll(async () => {
 
 type Identidade = ReturnType<typeof generateIdentity>
 
-/** Join with the chain: it is how every client since August 11 joins. */
+/** Join with the chain: this is how every client has joined since August 11. */
 async function entrar(
   identity: Identidade,
   posse: { posse?: number; assumirPosse?: string } = {},
@@ -195,7 +195,7 @@ describe("gateway: a posse de um aparelho importado", () => {
       expect(antiga.resposta).toMatchObject({ t: "error", code: "device-revoked", fatal: true })
       await antiga.client.esperarFecho()
     }
-    // And the new one joins with the generation it received.
+    // And the new one rejoins with the generation it received.
     const deVolta = await entrar(ana, { posse: 1 })
     expect(deVolta.resposta).toMatchObject({ t: "auth.ok", posse: 1 })
     deVolta.client.close()
@@ -211,10 +211,10 @@ describe("gateway: a posse de um aparelho importado", () => {
   })
 
   it("duas ligações da MESMA cópia importada não se fecham uma à outra", async () => {
-    // A `connect` that tramples another (Session.connect) opens two connections,
-    // and both ask for ownership with the same mark. Measured in the desktop app
-    // on 10/27: without the mark, the second closed the first and login gave
-    // Error 203.
+    // A `connect` that overlaps another (Session.connect) opens two connections,
+    // and both claim ownership with the same mark. Measured in the desktop app
+    // on 10/27: without the mark, the second closed the first and login failed
+    // with Error 203.
     const ana = generateIdentity(HOME)
     const primeira = await entrar(ana, { assumirPosse: MARCA_A })
     const segunda = await entrar(ana, { assumirPosse: MARCA_A })

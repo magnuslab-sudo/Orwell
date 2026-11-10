@@ -12,10 +12,10 @@ import {
 /**
  * Phase 1h: the chosen state (busy, away) reaches the others.
  *
- * The interface published `activity` on the profile and read it from others'
- * directory, and the schema accepted it. But the core threw it away when
+ * The interface published `activity` on the profile and read it from the others'
+ * directory entries, and the schema accepted it. But the core discarded it when
  * building the `profile` payload (`#payloadDoPerfil`), and the web bridge did
- * not even pass it: "busy" only showed on the same device.
+ * not even pass it on: "busy" only showed on one's own device.
  */
 
 let servidor: ServidorDeTeste

@@ -1,6 +1,6 @@
 // The autoria.ts from 0.8.0, as released (commit 5004d0b, packages/protocol/src/autoria.ts).
-// For compatibility tests only: outside src/, does not enter tsc -b nor dist/.
-// Only change: the import of canonical.js points to src/ (the file has not changed since).
+// For compatibility tests only: it lives outside src/, so it is in neither tsc -b nor dist/.
+// The only change: the canonical.js import points to src/ (that file has not changed since).
 // @ts-nocheck
 import { ed25519 } from "@noble/curves/ed25519.js"
 import { sha256 } from "@noble/hashes/sha2.js"
@@ -11,43 +11,43 @@ import { fromBase64, toBase64 } from "../../src/canonical.js"
  * Authorship of an event: the signature of the device that wrote it (phase S4
  * of absolute sync, `docs/planos/2026-10-20-sincronia-absoluta.md`, §4.1).
  *
- * **The problem.** MLS authenticates the leaf that SENDS. If I forward Ana's
+ * **The problem.** MLS authenticates the leaf that SENDS. If I relay Ana's
  * comment, it arrives signed by my leaf and gets my name. So until now, only
- * the author could say again that it was his.
+ * the author could vouch for their own events.
  *
- * **The piece.** Each new event of a reportable type carries an optional
- * field `autoria`: the device key and an Ed25519 signature of it over
+ * **The design.** Each new event of a relayable type carries an optional
+ * field `autoria`: the device key and an Ed25519 signature by it over
  *
  * ```
  * "orwell-autoria-v1" 0 canal 0 autor 0 JSON canónico de { p: forma assinada, m: resumos dos anexos }
  * ```
  *
- * The channel goes into the signature: a report doesn't move from one channel
- * to another. The author (the address) too: the same device key doesn't speak
+ * The channel goes into the signature: a relayed event can't move from one
+ * channel to another. The author (the address) too: the same device key doesn't speak
  * for another account.
  *
- * **The signed form doesn't carry attachment bytes.** The vault dumps the
+ * **The signed form doesn't carry attachment bytes.** The vault evicts the
  * bytes of old messages (`evictEntryMedia`) and keeps only the name and type; a signature
- * over the bytes would stop verifying on dump day, and the event could never
- * be reported again. So each attachment goes into the signed form only with
- * `name` and `mediaType`, and the full SHA-256 do hash goes separately, in `m`,
- * which the signature also covers. When bytes arrive later (phase S5) the
- * receiver checks them against `m`. Link card thumbnails stay out: they're
- * preview, and dump removes them too.
+ * over the bytes would stop verifying on eviction day, and the event could never
+ * be relayed again. So each attachment goes into the signed form only with
+ * `name` and `mediaType`, and the SHA-256 digest of the whole attachment goes
+ * separately, in `m`, which the signature also covers. Whoever receives the bytes
+ * later (phase S5) checks them against `m`. Link card thumbnails stay out: they're
+ * previews, and eviction removes them too.
  *
  * **Who verifies.** Live, nobody needs to: MLS already authenticates the
- * sender, and authorship is redundant. Only in a report, when the sender
- * isn't the author, does it matter. The receiver verifies the signature and
+ * sender, and authorship is redundant. It only matters in a relay, when the
+ * sender isn't the author. The receiver verifies the signature and
  * chain (the account signed this device), and rejects a revoked or
  * out-of-manifest device.
  *
  * **A 0.5.7 client drops the field**, because the schemas are not `strict()`.
  * Tested in `autoria.test.ts`, against the copied schema.
  *
- * **What this costs to deniability.** Authorship makes a payload portable
+ * **What this costs in deniability.** Authorship makes a payload portable
  * proof of who wrote it. MLS was already not deniable (each message carries
- * the leaf's signature), but the proof needed group context. It's the decision
- * 1 do owner (§12), approved at 20/10/2026: authorship in everything,
+ * the leaf's signature), but the proof needed the group context. This is the
+ * owner's decision 1 (§12), approved on 20/10/2026: authorship on everything,
  * messages included.
  */
 
@@ -60,25 +60,25 @@ export const AssinaturaEd25519 = z.string().length(86).regex(B64)
 /** An SHA-256 digest (32 bytes) in base64url: 43 characters. */
 const Resumo256 = z.string().length(43).regex(B64)
 
-/** The maximum attachments in a payload: 10 in `attachments` and 10 in `media`. */
+/** The maximum number of attachments in a payload: 10 in `attachments` and 10 in `media`. */
 export const ANEXOS_COM_RESUMO_MAX = 20
 
 export const Autoria = z.object({
-  /** The format version. An unknown version does not verify. */
+  /** The format version. An unknown version never verifies. */
   v: z.literal(1),
   /** The DEVICE key that signed. */
   ap: ChaveEd25519,
   /** The signature, over `mensagemDaAutoria`. */
   as: AssinaturaEd25519,
-  /** The digest of each attachment, in the order of `CHAVES_DE_ANEXOS`. Missing: none. */
+  /** The digest of each attachment, in the order of `CHAVES_DE_ANEXOS`. Absent: no attachments. */
   m: z.array(Resumo256).max(ANEXOS_COM_RESUMO_MAX).optional(),
 })
 export type Autoria = z.infer<typeof Autoria>
 
 /**
- * The types that carry authorship. The reportable ones (§4.3) and the channel state with
- * its own record. Out: the ephemeral (`typing`, `buzz`, `voice.*`), the friends and invites
- * book (decides access, and only what came from the server counts, §7.8), the profile and
+ * The types that carry authorship. The relayable ones (§4.3) and the channel state with
+ * its own record. Out: the ephemeral (`typing`, `buzz`, `voice.*`), the friendship and invite
+ * ledger (decides access, and only what came from the server counts, §7.8), the profile and
  * shown friends (have their own request, `pede-perfis`), and the account channel (has its
  * own state).
  */
@@ -105,7 +105,7 @@ export function levaAutoria(tipo: unknown): tipo is TipoComAutoria {
   return typeof tipo === "string" && COM_AUTORIA.has(tipo)
 }
 
-/** The lists of attachments with bytes, the same ones the vault dumps (`MEDIA_KEYS`). */
+/** The attachment lists with bytes, the same ones the vault evicts (`MEDIA_KEYS`). */
 export const CHAVES_DE_ANEXOS = ["attachments", "media"] as const
 
 /**
@@ -146,7 +146,7 @@ const texto = (valor: unknown): string => (typeof valor === "string" ? valor : "
 /**
  * The payload as the signature sees it: no `autoria`, each attachment reduced to name and
  * type, and link cards without thumbnail. This form survives vault eviction, and so
- * a report can still prove it.
+ * a relay can still prove it.
  *
  * Receives the payload ALREADY NORMALIZED by the schema (with default values
  * filled in): the signer and verifier must see the same fields.
@@ -179,11 +179,11 @@ function anexoInteiro(item: unknown): boolean {
 }
 
 /**
- * The SHA-256 hash of each attachment, in the order of `CHAVES_DE_ANEXOS`.
+ * The SHA-256 digest of each attachment, in the order of `CHAVES_DE_ANEXOS`.
  *
- * Only for those who SIGN, with the full payload in hand. An evicted attachment
- * has no hash to compute: the reporter uses the `m` that came with the
- * autoria.
+ * Only for the SIGNER, with the full payload in hand. An evicted attachment
+ * has no digest to compute: the relayer uses the `m` that came with the
+ * `autoria`.
  */
 export function resumosDosAnexos(payload: Readonly<Record<string, unknown>>): string[] {
   const resumos: string[] = []
@@ -217,7 +217,7 @@ export function mensagemDaAutoria(
 }
 
 /**
- * Sign a normalized payload. `assinar` is the device's private key wrapped in a function,
+ * Sign a normalized payload. `assinar` is the device's private key behind a function,
  * so this module never sees it.
  */
 export function assinarAutoria(opcoes: {
@@ -237,10 +237,10 @@ export type VeredictoDaAutoria =
   | { ok: false; razao: "sem-autoria" | "autoria-ilegivel" | "assinatura-invalida" }
 
 /**
- * Verify authorship of a normalized payload, which carries it in the `autoria` field.
+ * Verify the authorship of a normalized payload, which carries it in the `autoria` field.
  *
- * Just the signature: the chain (the account signed the device) and the
- * revoked list are up to the caller, who has the manifest and vault. Returns, never throws.
+ * Only the signature: the chain (the account signed the device) and the
+ * revocation list are up to the caller, who has the manifest and the vault. Returns, never throws.
  */
 export function verificarAutoria(canal: string, autor: string, payload: Readonly<Record<string, unknown>>): VeredictoDaAutoria {
   if (payload["autoria"] === undefined) return { ok: false, razao: "sem-autoria" }
@@ -259,23 +259,23 @@ export function verificarAutoria(canal: string, autor: string, payload: Readonly
 // ------------------------------------------------------------------ relatos
 
 /**
- * How many items a report `typing` carries. The frame limit; senders split on
+ * How many items a relay `typing` carries. The frame's cap; senders split by
  * bytes well before this (`relato.ts` in the core).
  */
 export const RELATOS_POR_TRAMA_MAX = 256
 
 /**
- * A reported event: the original payload, with authorship, and what the reporter
+ * A relayed event: the original payload, with its authorship, and what the relayer
  * knows about it.
  *
- * - `s`: the origin `seq`, stated by the reporter. Not signed (the author didn't know it
- *   when signing). Orders the timeline only, never gates access (§7.8). -1 when the reporter doesn't know it.
+ * - `s`: the origin `seq`, as stated by the relayer. Not signed (the author didn't know it
+ *   when signing). Only orders the timeline, never gates access (§7.8). -1 when the relayer doesn't know it.
  * - `a`: the author's address. Goes into the signature.
- * - `p`: the payload, with `autoria`. Opaque here: the receiver normalizes it by
+ * - `p`: the payload, with `autoria`. Opaque here: the receiver normalizes it with
  *   the schema before verifying.
- * - `k`, `x`: the chain, for those without the author in the tree: the author's ACCOUNT key
- *   and device certificate (account signing the device key).
- *   It's public (in the leaf credential and manifest).
+ * - `k`, `x`: the chain, for receivers without the author in the tree: the author's ACCOUNT key
+ *   and the device certificate (the account signing the device key).
+ *   It's public (in the leaf credential and the manifest).
  */
 export const ItemRelatado = z.object({
   s: z.number().int().min(-1),
@@ -288,8 +288,8 @@ export type ItemRelatado = z.infer<typeof ItemRelatado>
 
 /**
  * The `relatos` field of a `typing` with `until: 0` (§4.5): the vehicle for
- * reports, like the device signal in phase 5. All clients know the
- * `typing`, none display it when born expired, and a 0.5.7 discards this field
+ * relays, like the device signal in phase 5. All clients know
+ * `typing`, none shows it when it is born expired, and a 0.5.7 client drops this field
  * without rejecting the payload.
  *
  * `q`: the request this answers, so the requester can stop waiting.

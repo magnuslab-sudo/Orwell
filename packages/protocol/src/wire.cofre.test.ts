@@ -47,7 +47,7 @@ describe("cofre.* no fio", () => {
     // A logical key in the clear, or of the wrong size.
     expect(put({ entradas: [{ chave: "sala:geral", conteudo: "AAEC" }] })).toBe(false)
     expect(put({ entradas: [{ chave: "A".repeat(21), conteudo: "AAEC" }] })).toBe(false)
-    // A scope that is not a channel: not account: either.
+    // A scope that is not `canal:`, nor `conta:` either.
     expect(put({ escopo: "!sala:localhost" })).toBe(false)
     expect(put({ escopo: "canal:" })).toBe(false)
     expect(put({ escopo: "canal:com espaço" })).toBe(false)

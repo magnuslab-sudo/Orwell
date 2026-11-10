@@ -11,13 +11,13 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * Opaque addresses on the server (1.0 "Arca", slices 4 e 6a).
+ * Opaque addresses on the server (1.0 "Arca", slices 4 and 6a).
  *
- * The server at 1.0 s introduces opaque addresses (`!<40 base32>:<servidor>`),
- * arbitrated by whoever requests first, because a 200 bits address cannot be
- * guessed and names no one, and the common room uses the address at `hello`. The
- * forms in 0.9 (`!dm-a.b`, `!feed-x`, `!self-x`, `!<nome>`) are not introduced
- * by anyone, nor by those in the name. Until slice 6a this was a gate
+ * The 1.0 server only creates opaque addresses (`!<40 base32>:<servidor>`),
+ * with the first claimer winning, because a 200-bit address cannot be guessed
+ * and names no one, plus the common room, through the address in `hello`. The
+ * 0.9 forms (`!dm-a.b`, `!feed-x`, `!self-x`, `!<nome>`) cannot be created by
+ * anyone, not even by whoever is named in them. Until slice 6a this was a gate
  * (`ENCLAVE_SO_MORADAS_OPACAS`); now it is the only behavior, and there is no
  * configuration to turn it off.
  */
@@ -117,7 +117,7 @@ describe("o servidor da 1.0: só moradas opacas", () => {
     const dm = `!dm-${[ana.local, bruno.local].sort().join(".")}:${servidor.casa}`
     const formas = [dm, `!feed-${ana.local}:${servidor.casa}`, `!self-${ana.local}:${servidor.casa}`, `!cozinha:${servidor.casa}`]
     for (const canal of formas) {
-      // Who's in the name, and a third account, end up the same: the name gives
+      // Whoever is in the name and a third account get the same result: the name gives
       // nothing to anyone, and the response doesn't reveal if anyone tried before.
       for (const quem of [ana, bruno, terceira]) {
         const resposta = await reclamar(quem.cliente, canal)

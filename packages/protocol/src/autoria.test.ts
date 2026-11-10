@@ -66,7 +66,7 @@ describe("a autoria (fase S4, §4.1)", () => {
     for (const payload of exemplos()) {
       tipos.add(payload["t"] as string)
       const assinado = comAutoria(payload)
-      // In and back: the schema has the field, or else decode would have dropped it.
+      // Over the wire and back: the schema has the field, or decode would have dropped it.
       const lido = decodePayload(encodePayload(assinado as Payload)) as Record<string, unknown>
       expect(lido["autoria"]).toEqual(assinado["autoria"])
       expect(verificarAutoria(CANAL, ANA, lido)).toEqual({ ok: true, aparelho: toBase64(APARELHO) })
@@ -127,8 +127,8 @@ describe("a autoria e os relatos num cliente 0.5.7 (§4.6)", () => {
   /**
    * The schemas as 0.5.7 reads them: without `autoria` and without `relatos`. Copied
    * from the form of those types in that version, with only the required fields.
-   * They are not `strict()`, like no schema in the protocol: an extra field comes
-   * out, and the payload passes.
+   * They are not `strict()` (no schema in the protocol is): an extra field is
+   * stripped, and the payload passes.
    */
   const MensagemAntiga = z.object({ t: z.literal("message"), id: z.string(), sentAt: z.number(), body: z.string() })
   const ComentarioAntigo = z.object({

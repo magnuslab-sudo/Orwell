@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 #
-# The monthly egress report for the Orwell server, running in Docker and not seeing vnstat.
+# The month's egress for the Orwell server, which runs in Docker and cannot see vnstat.
 #
 # Runs on the HOST, via cron (`infra/quota-vnstat.cron`). Reads
 # `vnstat --json m`, extracts the current month's egress (tx) on the public interface, and
-# writes a small JSON that the container reads read-only
+# writes a small JSON that the container mounts read-only
 # (`ENCLAVE_QUOTA_FICHEIRO`, see `apps/server/src/quota-mensal.ts`):
 #
 #   {"mes":"2026-11","saidaBytes":1234,"lidoEm":"2026-11-03T02:00:00Z"}
 #
-# Starting at 80% of quota the server lowers the video budget. If this
+# From 80% of the quota the server lowers the video budget. If this
 # script stops, the file ages, and after 2 hours the server ignores it and reverts
 # to the normal budget: a stopped cron does not cut video for anyone.
 #
-# The month is UTC, as in `scripts/trafego-do-mes.mjs`. vnstat's `jsonversion` 1 (1.x) counts in KiB and 2 (2.x) in bytes: both read fine.
+# The month is UTC, as in `scripts/trafego-do-mes.mjs`. vnstat's `jsonversion` 1
+# (1.x) counts in KiB and 2 (2.x) in bytes: both are handled.
 #
-# Writes atomically (temp file and `mv`): the server
-# never reads a JSON halfway through.
+# Overwrites atomically (temp file and `mv`): the server
+# never reads a half-written JSON.
 #
 # Variables (all optional):
 #   QUOTA_INTERFACE   the public interface. Default: the one from the default route.
@@ -24,7 +25,7 @@
 #   QUOTA_VNSTAT_JSON reads this file instead of running vnstat (for tests).
 #   QUOTA_AGORA       the instant, ISO 8601 in UTC, instead of now (for tests).
 #
-# None of this is installed on the VPS. Install on deploy with approval.
+# NONE of this is installed on the VPS. It gets installed at deploy time, with approval.
 set -euo pipefail
 
 saida="${QUOTA_SAIDA:-/opt/enclave/quota/saida-do-mes.json}"
@@ -47,7 +48,7 @@ mkdir -p "$(dirname "$saida")"
 temporario="$(mktemp "$(dirname "$saida")/.saida-do-mes.XXXXXX")"
 trap 'rm -f "$temporario"' EXIT
 
-# Python, not jq: it comes with all Ubuntu, and jq doesn't.
+# Python, not jq: it ships with every Ubuntu, and jq doesn't.
 QUOTA_IFACE="$interface" QUOTA_AGORA="${QUOTA_AGORA:-}" python3 -I -c '
 import json, os, sys
 from datetime import datetime, timezone

@@ -35,11 +35,11 @@ const membros = (sessao: GroupSession): number => new Set(memberAddresses(sessao
  *
  * The production tree had a member added without a path (leaf in `unmerged_leaves`
  * of a parent node) below a node that another member had already updated with a
- * path (empty list). It is a valid tree by RFC 9420 (§7.9.2: only nodes BETWEEN
- * the leaf and its parent need to list it). The `validateRatchetTree` in ts-mls 1.6.2
- * required the list to be IDENTICAL in all nodes along the entire path, and rejected it
+ * path (empty list). It is a valid tree under RFC 9420 (§7.9.2: only the nodes BETWEEN
+ * the leaf and the parent that lists it must list it). The `validateRatchetTree` in ts-mls 1.6.2
+ * required the list to be IDENTICAL in all nodes along the whole path, and rejected it
  * with "non-blank intermediate node must list leaf node in its unmerged_leaves".
- * Whoever was there never revalidates the tree; whoever arrived failed the Welcome
+ * Existing members never revalidate the tree; newcomers failed the Welcome
  * and the card, silently. See `patches/ts-mls+1.6.2.patch`.
  *
  * The shape, in a four-leaf tree: C updates (nodes 5 and 3), A adds D (nodes 5 and 3 now
@@ -120,7 +120,7 @@ describe("árvore com folhas por fundir em níveis diferentes", () => {
 })
 
 /**
- * The patch only places the rule where RFC 9420 §12.4.3.1 says; it does not open anything else.
+ * The patch only puts the rule where RFC 9420 §12.4.3.1 puts it; it opens nothing else.
  * Each tree here is the one above with ONE change, and what the RFC forbids stays
  * refused, before the tree hash, by the rule's own message.
  */
@@ -179,7 +179,7 @@ describe("o que o RFC proíbe continua recusado", () => {
 })
 
 /**
- * The entry with the channel portrait (phase 1 of 1.1) uses `joinGroupWithExtensions`,
+ * Joining with the channel snapshot (phase 1 of 1.1) uses `joinGroupWithExtensions`,
  * and must go through the SAME patched validation. ts-mls 1.6.2's `joinGroup` is a
  * wrapper around it, so the patch in `patches/ts-mls+1.6.2.patch` applies to both;
  * this proves it by behavior, not by reading code.
@@ -222,7 +222,7 @@ describe("a entrada com o retrato passa pela mesma validação da árvore", () =
         undefined,
         enclaveClientConfig(),
       )
-    // The real tree (the production one, which unpatched ts-mls refused) opens, with the portrait.
+    // The real tree (the production one, which unpatched ts-mls refused) opens, with the snapshot.
     const [, extensoes] = await entrar(arvore)
     expect(retratoDasExtensoes(extensoes)).toEqual(RETRATO)
     // The root listing leaf 2 (C), with node 3 in between not listing it: the RFC forbids this.

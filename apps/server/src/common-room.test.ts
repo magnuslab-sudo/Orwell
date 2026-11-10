@@ -20,10 +20,10 @@ import type { ServerConfig } from "./config.js"
 /**
  * The common room, server side.
  *
- * The opening decided by the project owner is just one: any account on this
+ * The project owner decided on exactly one opening: any account on this
  * server can REQUEST to be admitted to the common room. This file exists
  * to pin down the gap between that and "any account can do everything in that
- * room", which is what the first opening granted, because request and
+ * room", which is what the first version of the opening granted, because request and
  * read and write all went through the same gate.
  */
 
@@ -32,13 +32,13 @@ import type { ServerConfig } from "./config.js"
  *
  * This file has been through 8452 and 8453 dodging collisions: a verification
  * server sleeping on the port made it crash with EADDRINUSE, chained `npm test`
- * stopped there, and the next suites, 812 interface tests, never ran,
- * the report reading like "server problem". Picking another number just changes
+ * stopped there, and the next suites (812 interface tests) never ran,
+ * with the report reading as "server problem". Picking another number just changes
  * who collides with whom; `port: 0` ends the whole class.
  *
  * The server name carries the assigned port, so it is decided after
  * `listen`, just like the common room, which is an identifier built from it.
- * The `ServerConfig` is read on request, never at startup.
+ * The `ServerConfig` is read on demand, never at startup.
  */
 let HOME: ReturnType<typeof parseServerName>
 let COMMON: string
@@ -46,7 +46,7 @@ let COMMON: string
 let enclave: Enclave
 let dataDir: string
 let gatewayUrl: string
-/** Who created the room. One per server, like in reality. */
+/** The room's creator. One per server, as in reality. */
 let fundador: TestClient
 
 class TestClient {
@@ -85,8 +85,8 @@ class TestClient {
       this.#waiters.push(waiter)
       setTimeout(() => {
         // Remove the waiter from the queue when giving up on it. Left there, the first
-        // REAL frame that arrives next is delivered to a promise that already resolved
-        //, in other words, it vanishes. You only notice in a client reused across
+        // REAL frame that arrives next is delivered to a promise that already resolved,
+        // in other words it vanishes. You only notice in a client reused across
         // tests, and you notice hard: each "got nothing" leaves a trap for the next test.
         const index = this.#waiters.indexOf(waiter)
         if (index >= 0) this.#waiters.splice(index, 1)
@@ -115,8 +115,8 @@ class TestClient {
    * It is the way to prove something did NOT arrive without waiting for it.
    * Before, each "a stranger cannot X" sent the request and did
    * `expect(await next()).not.toBe(...)`, which waited the 2.5 s timeout of
-   * `next()` and then took the `{ t: "error", code: "timeout" }` it makes up
-   * as good. Five tests like that are twelve and a half seconds of pure waiting.
+   * `next()` and then accepted the `{ t: "error", code: "timeout" }` it
+   * fabricates. Five tests like that are twelve and a half seconds of pure waiting.
    *
    * And worse than slow, they were blind: a timeout is what you get from
    * a server that refused the request, but it is ALSO what you get from a
@@ -126,7 +126,7 @@ class TestClient {
    * The `pong` fixes both at once. The server processes in order:
    * if what you feared had been delivered, it would come before the pong. The
    * pong arriving proves the server is ALIVE and has already reached this point
-   * in the queue, and absence becomes a measured absence, not a surrender.
+   * in the queue: absence becomes a measured absence, not giving up.
    */
   async ateAoPong(): Promise<ServerFrame[]> {
     this.send({ t: "ping" })
@@ -186,12 +186,12 @@ afterAll(async () => {
 })
 
 /**
- * @param identity the account to use. Defaults to a new one, we pass the same
+ * @param identity the account to use. Defaults to a new one; pass the same
  *   account across connections to prove what an account carries forward, which
  *   is where everything the server writes to disk lives.
  */
 async function login(client: TestClient, identity = generateIdentity(HOME)): Promise<string> {
-  // A real client: without `commit-after-echo` the server discarded the tickets
+  // A current client: without `commit-after-echo` the server discarded the cards
   // before the guards tested here had a chance to say anything.
   client.send({ t: "hello", version: 1, capabilities: ["commit-after-echo"] })
   await client.nextOf("hello.ok")
@@ -204,7 +204,7 @@ async function login(client: TestClient, identity = generateIdentity(HOME)): Pro
   // The `keypackage.low` that follows authentication sits in the queue and is the
   // first frame any `next()` would return. Without consuming it here, all
   // assertions "did not receive X" would pass by finding it first, meaning they
-  // would always pass, even with the bug inside.
+  // would always pass, even with the bug in place.
   await client.sync()
   return identity.address
 }
@@ -218,7 +218,7 @@ async function stranger(): Promise<TestClient> {
 
 /**
  * The one who created the common room: arrived first, subscribed to it while it
- * did not yet exist, and spoke inside. Speaking matters, the tolerance that
+ * did not yet exist, and spoke inside. Speaking matters: the tolerance that
  * lets any account touch an unused channel is what would mask everything tested
  * next.
  */
@@ -272,7 +272,7 @@ describe("sala comum: o que a abertura NÃO abriu", () => {
 
     // Five of these over thirty seconds are enough for each member to declare
     // itself deaf (DEAF_FAILURES), request a new seat, and the entire channel to
-    // enter a cascade of re-settlements that takes the history into future secrecy.
+    // enter a cascade of reseats that wipes history under forward secrecy.
     // Registering an account on this server takes one second.
     expect(await member.ateAoPong()).toEqual([])
 
@@ -297,7 +297,7 @@ describe("sala comum: o que a abertura NÃO abriu", () => {
     const outsider = await stranger()
     outsider.send({ t: "invite.list", channel: COMMON })
     const respostas = await outsider.ateAoPong()
-    // The server rescues an invite by its HASH, and the hash is what this list
+    // The server redeems an invite by its HASH, and the hash is what this list
     // returns: whoever gets it enters by an invite never given to them.
     expect(respostas.map((f) => f.t)).not.toContain("invite.list.result")
 
@@ -363,7 +363,8 @@ describe("sala comum: o que a abertura NÃO abriu", () => {
 describe("sala comum: o caminho inteiro de quem chega", () => {
   it("recebe o Welcome sem estar subscrito, e só depois passa a poder ler e escrever", async () => {
     // The risk of closing the subscription to someone who has no seat yet: if the
-    // Welcome depended on it, nobody would ever enter a room again. It does not, // a directed frame goes by the recipient's name and ignores subscriptions, which
+    // Welcome depended on it, nobody would ever enter a room again. It does not:
+    // a directed frame goes by the recipient's name and ignores subscriptions, which
     // is precisely why you can be invited to a channel you do not yet know.
     const recemChegado = await TestClient.connect(gatewayUrl)
     const address = await login(recemChegado)
@@ -419,8 +420,8 @@ describe("a tolerância para canais acabados de criar", () => {
   it("não se estende a uma sala privada a quem a retenção apagou o histórico", async () => {
     // Thirty days of silence and the room has no events. Only with `channelIsEmpty`
     // would it look brand new again, and any account in the world could start
-    // writing inside, five frames of garbage are enough for each member to declare
-    // itself deaf and the history to be lost by future secrecy.
+    // writing inside: five frames of garbage are enough for each member to declare
+    // itself deaf and the history to be lost to forward secrecy.
     const dormente = moradaDeSala(HOME)
     const member = await TestClient.connect(gatewayUrl)
     await login(member)
@@ -458,8 +459,8 @@ describe("a tolerância para canais acabados de criar", () => {
  * It was a frame with no answer: it left, and whoever sent it never knew if it
  * reached anyone or no one. Zero members online and two members ignoring the
  * request were exactly the same thing seen from outside, and that indistinction
- * kept the admission failure invisible on August 6th, four accounts, one invite,
- * and no one with a way to know why.
+ * kept the admission failure invisible on August 6 (four accounts, one invite,
+ * and no one with a way to know why).
  */
 describe("recibo do pedido de entrada", () => {
   it("diz zero quando não há ninguém a ouvir a sala", async () => {
@@ -490,8 +491,8 @@ describe("recibo do pedido de entrada", () => {
 /**
  * Writing to a channel without a seat there stops being silent.
  *
- * The refusal existed and was right, it is what stops three frames of garbage
- * from putting all members into declaring themselves deaf. What was wrong was
+ * The refusal existed and was right: it is what stops three frames of garbage
+ * from making every member declare itself deaf. What was wrong was
  * the silence: whoever wrote kept speaking to empty air with everything looking
  * fine on their side, because the message enters the local history before it
  * leaves.
@@ -503,7 +504,7 @@ describe("recibo do pedido de entrada", () => {
 describe("recusa de envio", () => {
   it("diz a quem escreve que não tem lugar no canal", async () => {
     // The common room, which the founder already used. A channel NEVER used is
-    // reachable on purpose, that is how you create a room, and would not serve
+    // reachable on purpose (that is how you create a room), and would not serve
     // here.
     const estranho = await stranger()
     estranho.send({ t: "channel.send", channel: COMMON, kind: "application", ciphertext: "bGl4bw" })
@@ -514,21 +515,21 @@ describe("recusa de envio", () => {
 })
 
 /**
- * The admission ticket, from the server side.
+ * The admission card, from the server side.
  *
- * What is at stake here is not the encryption, that is proven in
- * `group.externo.test.ts`, with two real ends. It is the guard: a ticket is a
+ * What this pins down is not the encryption (proven in
+ * `group.externo.test.ts`, with two real ends). It is the guard: a card is a
  * key to the door, and a key to the door kept for the wrong channel is the wrong
  * channel open to whoever gets their hands on it.
  */
 /**
- * A real ticket for the common room: a GroupInfo from the group with its
+ * A real card for the common room: a GroupInfo from the group with its
  * identifier, at epoch 0.
  *
- * It was any text ("ticket"), and it stopped being able to be: the server now
- * keeps only one ticket that is read and that describes the channel's epoch (see
- * `Store.putGroupInfo`). What these tests stake is the guard on who can put and
- * take, and that does not change because the ticket is real.
+ * It used to be any text ("cartão"), and can no longer be: the server now
+ * keeps only a card that parses and describes the channel's epoch (see
+ * `Store.putGroupInfo`). What these tests pin down is the guard on who can put and
+ * take one, and that does not change because the card is real.
  */
 async function cartaoDaSala(): Promise<Uint8Array> {
   return publishableGroupInfo(await createChannel(generateIdentity(HOME), COMMON))
@@ -544,7 +545,7 @@ describe("cartão de entrada da sala comum", () => {
     const entregue = await primeiro.nextOf("channel.groupinfo")
     expect(entregue.info).toBeDefined()
 
-    // Two arriving at the same moment would get the same ticket, build two commits
+    // Two arriving at the same moment would get the same card, build two commits
     // for the same epoch, and the room accepts only one. The second would end up with
     // a group with the right name and nobody inside.
     const segundo = await stranger()
@@ -565,16 +566,16 @@ describe("cartão de entrada da sala comum", () => {
     await novo.nextOf("channel.groupinfo")
 
     /*
-      The seat of whoever takes the ticket is TEMPORARY (INV-01, external audit
-      at 1.1.0): it lets out the external commit from the ticket and nothing
-      else. A message that is not an external commit from this channel is refused
+      The seat of whoever takes the card is TEMPORARY (INV-01, external audit
+      at 1.1.0): it lets through the card's external commit and nothing
+      else. A frame that is not an external commit from this channel is refused
       with `no-seat`, like one from someone with no seat at all, and does not
       reach the members.
-      
+
       The right path (the real external commit, accepted, promoting the seat to
       subscription) is in `admissao-pendente.test.ts`, with a server just for it:
-      accepting a commit here would change the epoch of the room that the tests
-      following this file use.
+      accepting a commit here would change the epoch of the room that the later
+      tests in this file use.
       */
     novo.send({
       t: "channel.send",
@@ -590,16 +591,17 @@ describe("cartão de entrada da sala comum", () => {
 
   it("mas quem o levanta e não entra não fica com lugar na sala para sempre", async () => {
     /*
-      Taking the ticket is not entering. `#entrarComCartao` gives up in silence
-      when it runs out of key packages, and gives up when the ticket no longer
-      describes the room; and a ticket can be requested by any account with a
-      message and nothing else, with no intention to use it.
-      
+      Taking the card is not joining. `#entrarComCartao` gives up in silence
+      when it runs out of key packages, and gives up when the card no longer
+      describes the room; and a card can be requested by any account with a
+      frame and nothing else, with no intention to use it.
+
       The seat granted to whoever takes it was saved to disk, and a line on disk
-      is a seat on ALL later connections. What that bought, for one message:
-      writing garbage in everyone's common room, five are enough for each member
-      to declare itself deaf and the history to follow by persistent secrecy,       and publishing its ticket, which sends to a dead epoch everyone who arrives
-      next.
+      is a seat on ALL later connections. What that bought, for one frame:
+      writing garbage in everyone's common room (five are enough for each member
+      to declare itself deaf and history to go with it under forward secrecy),
+      and publishing a card for it, which sends everyone who arrives next to a
+      dead epoch.
       */
     const identidade = generateIdentity(HOME)
 
@@ -611,7 +613,7 @@ describe("cartão de entrada da sala comum", () => {
     primeira.send({ t: "channel.groupinfo.take", channel: COMMON })
     expect((await primeira.nextOf("channel.groupinfo")).info).toBeDefined()
     // And never builds the commit: that is exactly what happens to someone who runs
-    // out of key packages, and what happens to someone who only wanted the ticket.
+    // out of key packages, and what happens to someone who only wanted the card.
     primeira.close()
 
     const segunda = await TestClient.connect(gatewayUrl)
@@ -626,18 +628,18 @@ describe("cartão de entrada da sala comum", () => {
     expect(resposta.t === "channel.rejected" && resposta.reason).toBe("no-seat")
     // And the refusal is real refusal: the garbage did not reach the members.
     // (Presence arrives, and that is another matter: the connection that took the
-    // ticket announced itself to the room and has not shut up yet.)
+    // card announced itself to the room and has not gone quiet yet.)
     expect((await fundador.ateAoPong()).map((f) => f.t)).not.toContain("channel.event")
 
     segunda.close()
   }, 20_000)
 
   it("um estranho não pode publicar cartão nenhum", async () => {
-    // An old ticket put back on top of the good one sends everyone who arrives next
+    // An old card put back on top of the good one sends everyone who arrives next
     // to a dead epoch: they enter, think they are inside, and they are not.
     const outsider = await stranger()
-    // A real ticket, not garbage: garbage is refused for being unreadable, and this
-    // test would pass without the guard on the seat that exists to prove it.
+    // A real card, not garbage: garbage is refused for being unreadable, and this
+    // test would pass without the seat guard it exists to prove.
     outsider.send({ t: "channel.groupinfo.put", channel: COMMON, info: toBase64(await cartaoDaSala()) })
     await outsider.sync()
 
@@ -651,7 +653,7 @@ describe("cartão de entrada da sala comum", () => {
 
   it("e nenhum canal que não seja a sala comum tem cartão, nem sequer para quem lá está", async () => {
     // The guard that separates a public room from a door left open. Someone who
-    // enters by ticket is invited by nobody: in a private channel this would be the
+    // enters by card is invited by nobody: in a private channel this would be the
     // key left under the doormat.
     const privado = moradaDeSala(HOME)
     const dono = await TestClient.connect(gatewayUrl)
@@ -666,12 +668,12 @@ describe("cartão de entrada da sala comum", () => {
     await dono.nextOf("channel.event")
 
     // Real and from the private channel itself, for the same reason: an unreadable
-    // ticket is refused before the guard on the common room has to say anything.
+    // card is refused before the guard on the common room has to say anything.
     const cartaoPrivado = await publishableGroupInfo(await createChannel(generateIdentity(HOME), privado))
     dono.send({ t: "channel.groupinfo.put", channel: privado, info: toBase64(cartaoPrivado) })
     await dono.sync()
-    // At the source, not just in delivery: `take` has its own guard, and alone
-    // could not tell a refused ticket from a kept and undelivered one.
+    // In the database, not just in delivery: `take` has its own guard, and on its own
+    // could not tell a refused card from a kept and undelivered one.
     expect(enclave.store.hasGroupInfo(privado)).toBe(false)
 
     dono.send({ t: "channel.groupinfo.take", channel: privado })

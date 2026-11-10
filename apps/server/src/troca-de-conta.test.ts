@@ -3,19 +3,19 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { Cliente, levantarServidor, type ServidorDeTeste } from "../testes/cliente-de-teste.js"
 
 /**
- * AUTH-02 (external audit to 1.1.0, amendment of 3/11/2026): a second login
+ * AUTH-02 (external audit of 1.1.0, addendum of 3/11/2026): a second login
  * on the SAME socket.
  *
- * The `auth.begin` and `auth.finish` passed without an account, and therefore also with
- * an account. A second login on an already authenticated socket set `address` to null and
+ * `auth.begin` and `auth.finish` were allowed without an account, and therefore also with
+ * one. A second login on an already authenticated socket set `address` to null and
  * left `connection.channels` as it was; the `auth.finish` from account B
  * accepted the new identity on top, and `#isSeated` read that set in
  * memory. Account B then subscribed to account A's channel, the subscription went to
- * disk in B's name, and on a new socket B read A's history without Welcome.
+ * disk in B's name, and on a new socket B read A's history without a Welcome.
  *
  * No client does a second login on the same socket: `Session` opens a
  * new socket on each `connect()`, "Switch account" reloads the page, and the
- * paired phone uses one socket only for the inbox and another to log in.
+ * phone being paired uses one socket just for the pairing box and another to log in.
  * The rule is now one account per socket.
  */
 
@@ -38,7 +38,7 @@ describe("AUTH-02: uma conta por socket", () => {
     const b = generateIdentity(servidor.casa)
     const canal = moradaDeSala(servidor.casa)
 
-    // She creates a private channel and writes an encrypted frame there.
+    // A claims a new private channel and writes an encrypted frame there.
     const socket = await Cliente.ligar(servidor.url, a)
     socket.enviar({ t: "channel.subscribe", channels: [canal] })
     socket.enviar({
@@ -50,7 +50,7 @@ describe("AUTH-02: uma conta por socket", () => {
     const eco = await socket.proximoDe("channel.event")
     expect(eco.channel).toBe(canal)
 
-    // On the same socket, B logs in, like in the auditors' reproduction.
+    // On the same socket, B logs in, as in the auditors' reproduction.
     socket.enviar({ t: "auth.begin", address: b.address, signingKey: toBase64(b.signingPublicKey) })
     const resposta = await socket.proximo()
     if (resposta.t === "auth.challenge") {

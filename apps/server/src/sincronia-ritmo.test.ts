@@ -18,20 +18,20 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The anomaly from S5, reproduced and closed (S6 of absolute synchrony).
+ * The anomaly from S5, reproduced and closed (S6 of absolute sync).
  *
  * With 1,800 consecutive sends from one account, about 45% of likes and all votes
  * didn't reach the other member in 4 minutes. The cause: above
  * `Gateway.ENVIOS_POR_MINUTO` the server did `return` without saying anything. The
  * client saved the send as done (`seq` -1, waiting for an echo that never came);
- * the telemetry report that Dora sent next fell in the same minute, also silent;
+ * the anti-entropy report that Dora sent next fell in the same minute, also silent;
  * Ana asked three times, Dora marked the request as answered, and the rest waited
  * for the ten-minute clock.
  *
- * Measured before the fix, with the rate limit at 60 and 120 comments: after
+ * Measured before the fix, with the cap at 60 and 120 comments: after
  * 150 s Ana had 57. After: 120, one second after the last one left.
  *
- * The rate limit is lowered for the test not to take minutes: it's static, and reset.
+ * The cap is lowered so the test does not take minutes: it is static, and it is restored.
  */
 
 const TECTO_ORIGINAL = Gateway.ENVIOS_POR_MINUTO
@@ -102,10 +102,10 @@ describe("S6: o cliente pára, espera e repete", () => {
     const [ana, dora] = await contasDeTeste(servidor, ["Ana", "Dora"])
     abertas.push(ana!, dora!)
     /*
-      The foundation and anti-entropy spend Ana's sends with the rate limit low:
-      publication can be rejected and go out only when the minute allows (up to 60 s).
-      The timeout is therefore the rate limit's, not the 15 s of `ate`. Measured on 10/21:
-      in the whole suite, with 15 s, it failed once in three.
+      The founding and anti-entropy use up Ana's sends while the cap is low: the
+      publish may be rejected and only go out when the minute allows (up to 60 s).
+      So the timeout is the cap's, not the 15 s of `ate`. Measured on 10/21:
+      in the whole suite, with 15 s, it failed one time in three.
     */
     const canal = await canalComTodos(servidor, ana!, [dora!])
     const id = crypto.randomUUID()
@@ -116,7 +116,7 @@ describe("S6: o cliente pára, espera e repete", () => {
     for (let i = 0; i < total; i++) await dora!.session.commentOnPost(canal, id, `c${i}`)
     const comentarios = () => ana!.session.history(canal).filter((e) => e.payload["t"] === "post.comment").length
     await ate(() => comentarios() === total, "a Ana tem todos os comentários", 90_000)
-    // The time is what the rate limit says (30 sends at 20 per minute), not a target from §2.3.
+    // The time is what the cap dictates (30 sends at 20 per minute), not a target from §2.3.
     const linha = JSON.stringify({ fase: "S6", cenario: "rajada-acima-do-tecto", envios: total, tecto: TECTO, ateIgualarMs: Date.now() - inicio })
     console.log(`MEDIDA-S6 ${linha}`)
     const saida = process.env["MEDIR_SINCRONIA_SAIDA"]
@@ -131,7 +131,7 @@ describe("S6: o cliente pára, espera e repete", () => {
   }, 300_000)
 })
 
-/** Changes a `static readonly` in the gateway for the test, and returns how to reset it. */
+/** Changes a `static readonly` in the gateway for the test, and returns how to restore it. */
 function mudarEstatico(nome: string, valor: number): () => void {
   const alvo = Gateway as unknown as Record<string, number>
   const antes = alvo[nome] as number
@@ -154,11 +154,11 @@ describe("S6, revisão: dois baldes, e um tecto às recusas", () => {
         cliente.enviar({ t: "channel.send", channel: canal, kind: "application", ciphertext: toBase64(new Uint8Array([i])), ref: `a${i}` })
       }
       await cliente.ateAoPong()
-      // Capped messages: a handshake is never rate-limited.
+      // Messages at the cap: a handshake is not rate-limited.
       cliente.enviar({ t: "channel.send", channel: canal, kind: "handshake", ciphertext: toBase64(new Uint8Array([1, 2, 3])), ref: "h0" })
       const depoisDoHandshake = await cliente.ateAoPong()
       expect(depoisDoHandshake.filter((f) => f.t === "channel.rejected" && (f as { reason?: string }).reason === "rate-limited")).toEqual([])
-      // Three more handshakes fill their bucket; the fourth is rejected, and it's the `ref`.
+      // Three more handshakes fill their bucket; the fourth is rejected, with its own `ref`.
       for (let i = 1; i <= 3; i++) {
         cliente.enviar({ t: "channel.send", channel: canal, kind: "handshake", ciphertext: toBase64(new Uint8Array([i, 9])), ref: `h${i}` })
       }
@@ -185,7 +185,7 @@ describe("S6, revisão: dois baldes, e um tecto às recusas", () => {
       for (let i = 0; i < TECTO + 10; i++) {
         cliente.enviar({ t: "channel.send", channel: canal, kind: "application", ciphertext: toBase64(new Uint8Array([i])), ref: `r${i}` })
       }
-      // The twenty echoes and five rejections first; the sixth rejection is the close.
+      // The twenty echoes and five rejections first; the sixth rejection closes the connection.
       let fatal: { code?: string; fatal?: boolean } | null = null
       for (let i = 0; i < TECTO + 20 && !fatal; i++) {
         const frame = await cliente.proximo()

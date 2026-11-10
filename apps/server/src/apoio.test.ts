@@ -20,7 +20,7 @@ import { buildServer } from "./app.js"
 import { loadConfig } from "./config.js"
 
 /**
- * The test for the "Support" section (`apoio.ts`): the extractor against the real
+ * The tracker for the "Support" section (`apoio.ts`): the extractor against the real
  * GoFundMe page (stripped down, without donor data), the errors, and the JSON
  * the site reads.
  */
@@ -39,7 +39,7 @@ function paginaCom(campanha: Record<string, unknown>, raiz: Record<string, unkno
 
 const euros = (amount: number) => ({ __typename: "Money", amount, currencyCode: "EUR" })
 
-/** A `fetch` that always responds the same and counts requests. */
+/** A `fetch` that always returns the same response and counts the requests. */
 function pedidoFalso(corpo: string, estado = 200): typeof fetch & { pedidos: Array<{ url: string; init: RequestInit | undefined }> } {
   const pedidos: Array<{ url: string; init: RequestInit | undefined }> = []
   const falso = (async (url: string | URL | Request, init?: RequestInit) => {

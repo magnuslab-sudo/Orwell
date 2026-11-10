@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest"
 import { isPublicAddress, REDIRECT_MAX, urlPermitida } from "./link-preview.js"
 
 /**
- * Preview finder rejections.
+ * The refusals of the link preview fetcher.
  *
  * This file exists because an endpoint that fetches addresses chosen by the
- * caller is a textbook SSRF: without guards, anyone with an account uses our
- * server to reach where they cannot go, the machine's `localhost`, the private
- * network around it, and `169.254.169.254` where cloud credentials come from.
+ * caller is a textbook SSRF: without a guard, anyone with an account uses our
+ * server to hit what they cannot reach (the machine's `localhost`, the private
+ * network around it, and `169.254.169.254`, where cloud credentials come from).
  * The machine is shared with another site in production, so none of this is
  * hypothetical.
  *
- * It is a defense that gets written once and breaks at the first careless change,
- * which is why each rejection has a named line here.
+ * It is a defense that gets written once and broken by the first careless change,
+ * which is why each refusal has a named line here.
  */
 
 describe("isPublicAddress — IPv4", () => {
@@ -88,7 +88,7 @@ describe("isPublicAddress — IPv6", () => {
 
   it("recusa um IPv4 privado disfarçado de IPv6", () => {
     // The classic trap: the same machine, written another way. A guard that only
-    // looked at text form would let all of these through.
+    // looked at the text form would let all of these through.
     expect(isPublicAddress("::ffff:127.0.0.1")).toBe(false)
     expect(isPublicAddress("::ffff:7f00:1")).toBe(false)
     expect(isPublicAddress("::ffff:169.254.169.254")).toBe(false)
@@ -141,7 +141,7 @@ describe("urlPermitida — o esquema e a forma", () => {
   })
 
   it("segue redireccionamentos, mas não para sempre", () => {
-    // A site that answers 302 to itself would lock the server in a loop.
+    // A site that redirects (302) to itself would trap the server in a loop.
     expect(REDIRECT_MAX).toBeGreaterThan(0)
     expect(REDIRECT_MAX).toBeLessThanOrEqual(5)
   })

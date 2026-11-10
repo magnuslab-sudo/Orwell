@@ -22,9 +22,9 @@ import { loadConfig, TECTOS_DO_SINAL, type ServerConfig } from "./config.js"
 /**
  * `channel.sinal` with real connections (absolute sync, phase S3).
  *
- * What we prove: the signal reaches the connected members and no one else; it does
- * not store or repeat to those who come back; a non-member is refused; all three
- * caps fire with the correct code; persistence closes the connection; and a client
+ * What we prove: the signal reaches the connected members and no one else; it is
+ * not stored or replayed to those who come back; a non-member is refused; all three
+ * caps fire with the correct code; repeated retries close the connection; and a client
  * that announces nothing keeps working as before, never seeing the frame.
  */
 
@@ -87,7 +87,8 @@ class Cliente {
   /** A round-trip ping: everything the server had for this connection has arrived. */
   async sincronizar(): Promise<void> {
     this.enviar({ t: "ping" })
-    // Stores what arrives before the pong: tests that say "nothing arrived" look at this with `pendentes()`, and discarding it hid an echo.
+    // Keeps what arrives before the pong: tests that say "nothing arrived"
+    // look at this with `pendentes()`, and discarding it would hide an echo.
     const vistas: ServerFrame[] = []
     for (let i = 0; i < 50; i++) {
       const frame = await this.proxima()
@@ -126,31 +127,31 @@ async function entrar(
 const NOVO = ["commit-after-echo", CAPACIDADE_SINAL_EFEMERO]
 const ANTIGO = ["commit-after-echo"]
 
-/** A new opaque address: the server at 1.0 j does not introduce `!<nome>`. */
+/** A new opaque address: the 1.0 server no longer creates `!<nome>`. */
 function canalNovo(): string {
   return moradaDeSala(HOME)
 }
 
-/** The first claims the channel; the others enter by redeemed invite, as in reality. */
+/** The first claims the channel; the others join through a redeemed invite, as in real use. */
 async function sentar(anfitriao: Cliente, outros: { cliente: Cliente; endereco: string }[], canal: string): Promise<void> {
   anfitriao.enviar({ t: "channel.subscribe", channels: [canal] })
   await anfitriao.sincronizar()
   for (const { cliente: outro, endereco } of outros) {
-    // With code proof, as 1.0 rescues (slice 6a).
+    // With the code proof, as 1.0 redeems (slice 6a).
     const convite = conviteComProva()
     anfitriao.enviar({ t: "invite.create", channel: canal, ...convite.criar, expiresAt: null, maxUses: 1 })
     await anfitriao.proximaDe("invite.created")
     outro.enviar(convite.resgate(endereco))
     await anfitriao.proximaDe("invite.request")
     // The redemption is a request, not a seat (INV-01): the seat comes from the
-    // Welcome sent by whoever is already there, which is what a member sends when
+    // targeted Welcome from whoever is already there, which is what a member sends when
     // admitting.
     anfitriao.enviar({ t: "channel.send", channel: canal, kind: "welcome", ciphertext: toBase64(crypto.getRandomValues(new Uint8Array(64))), recipient: endereco })
     await outro.proximaDe("channel.event")
     outro.enviar({ t: "channel.subscribe", channels: [canal] })
     await outro.sincronizar()
   }
-  // Presences and invite requests that stayed in the queue do not matter here.
+  // Presence events and invite requests left in the queue do not matter here.
   for (const c of [anfitriao, ...outros.map((o) => o.cliente)]) {
     await c.sincronizar()
     c.pendentes()
@@ -233,7 +234,7 @@ describe("channel.sinal", () => {
     await new Promise((r) => setTimeout(r, 100))
     ana.cliente.enviar({ t: "channel.sinal", channel: canal, sinal: "QU5URVM" })
     await ana.cliente.sincronizar()
-    // Bruno's presence leaving may come; a signal or a refusal may not.
+    // Bruno's leave presence may arrive; a signal or a refusal must not.
     expect(ana.cliente.pendentes().filter((f) => f.t.startsWith("channel.sinal"))).toStrictEqual([])
 
     // It was not stored: the channel still has no events.
@@ -258,7 +259,7 @@ describe("channel.sinal", () => {
     const canal = canalNovo()
     await sentar(ana.cliente, [], canal)
 
-    // Trying to subscribe makes no difference: the channel is already claimed by Ana.
+    // Trying to subscribe gives no seat: the channel is already claimed by Ana.
     intruso.cliente.enviar({ t: "channel.subscribe", channels: [canal] })
     intruso.cliente.enviar({ t: "channel.sinal", channel: canal, sinal: "AAEC", ref: "x" })
     const recusa = await intruso.cliente.proximaDe("channel.sinal.rejected")
@@ -291,7 +292,7 @@ describe("channel.sinal", () => {
     await antigo.cliente.sincronizar()
     expect(antigo.cliente.pendentes().filter((f) => f.t === "channel.sinal")).toStrictEqual([])
 
-    // And if the old client sends one by mistake, here is why it hears it back.
+    // And if the old client sends one by mistake, it is told why.
     antigo.cliente.enviar({ t: "channel.sinal", channel: canal, sinal: "AAEC" })
     const recusa = await antigo.cliente.proximaDe("channel.sinal.rejected")
     expect(recusa.code).toBe("sinal-not-announced")
@@ -349,7 +350,7 @@ describe("channel.sinal", () => {
     expect(ocupado.code).toBe("sinal-channel-busy")
     expect(ocupado.retryAfterMs).toBeGreaterThan(0)
 
-    // A signal that costs by itself more than the cap does not wait: it is too big.
+    // A signal whose cost alone exceeds the cap does not wait: it is too big.
     carla.cliente.enviar({ t: "channel.sinal", channel: canal, sinal: "C".repeat(60) })
     const grande = await carla.cliente.proximaDe("channel.sinal.rejected")
     expect(grande.code).toBe("sinal-too-large")
@@ -390,7 +391,7 @@ describe("channel.sinal", () => {
     await ana.cliente.proximaDe("channel.sinal.rejected")
 
     const depois = enclave.gateway.metricasDoSinal().actual
-    // The minute may have turned in the middle; in that case only the shape is checked.
+    // The minute may have rolled over midway; in that case only the shape is checked.
     if (depois.minuto === antes.minuto) {
       expect(depois.aceites - antes.aceites).toBe(1)
       expect(depois.entregas - antes.entregas).toBe(2)

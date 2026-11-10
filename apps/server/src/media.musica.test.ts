@@ -6,14 +6,14 @@ import { MotorDeMedia, ORCAMENTO_DA_MUSICA, ORCAMENTO_DO_SOM_DO_ECRA, RecusaDeMe
 /**
  * The MUSIC of a call: an audio producer with source `musica`.
  *
- * Phase 9 of `docs/planos/definicoes-0-9.md`: the DJ speaks and plays at the
- * same time. Screen sound was already a second track, but it only comes after
- * the screen image from the same person (`ecra-som-sem-imagem`). Music has no
+ * Phase 9 of `docs/planos/definicoes-0-9.md`: the DJ talks and plays at the
+ * same time. Screen audio was already a second track, but it is only accepted
+ * behind the same person's screen video (`ecra-som-sem-imagem`). Music has no
  * image, so it has its own source. These tests fail with the old server: the
  * `#fonteDe` read `musica` as a video source and refused it.
  *
  * Against a real mediasoup worker, like `media.test.ts` and for the same
- * reason: a mock only proved we call what we invented for it.
+ * reason: a test double would only prove we call what we invented for it.
  */
 
 let motor: MotorDeMedia
@@ -138,7 +138,7 @@ describe("a música", () => {
     const [a, b] = [eu(), outro()]
     const ta = await emissor(chave, a)
     const tb = await emissor(chave, b)
-    // A plays music; B shares screen with sound. The cap of one screen per call
+    // A plays music; B shares the screen with sound. The cap of one screen per call
     // counts images, and music is not one.
     await motor.produzir(a, ta, "audio", opusDe(9050, TECTO_DA_MUSICA, true), "musica")
     await motor.produzir(b, tb, "video", imagemDe(9051, TECTO_DO_ECRA - TECTO_DO_SOM_DO_ECRA), "ecra")

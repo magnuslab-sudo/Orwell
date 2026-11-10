@@ -2,26 +2,26 @@
  * Write bits in Latin.
  *
  * An account address is the hash of a key, and the hash is 80 bits because
- * below that someone buys another person's identity on a GPU rental bill, the
- * account is in `ids.ts` and in `docs/THREAT-MODEL.md`. What this file changes
+ * below that someone can buy another person's identity with a GPU rental bill (the
+ * math is in `ids.ts` and in `docs/THREAT-MODEL.md`). What this file changes
  * is the clothes, not the body: the same 80 bits, written as four Latin words
  * instead of sixteen base32 characters.
  *
- * The swap has a price, and it's worth knowing what it is. The density of
+ * The swap has a price, and it's worth knowing it. The density of
  * readable text is stuck at about three bits per character, against base32's
  * five, so the address goes from sixteen characters to about thirty-three. In
  * return it stops having sixteen symbols with no relation to each other and has
  * four words instead: `h98q8e9us3g8y4em` you can spell, one character at a time
  * with the alphabet in front; `martinus-bellocor-tenegus-carpylla` you can say.
- * What got short is what costs a person, not what takes up on screen.
+ * What got shorter is the effort for a person, not the space on screen.
  *
- * A derived name apart, the technical address on one side, a pretty nickname
- * on the other, the way Docker does with containers, was considered and
+ * A separate derived name (the technical address on one side, a pretty nickname
+ * on the other, the way Docker names containers) was considered and
  * rejected. The nickname would have to be short to work as a nickname, short
  * means few bits, and few bits mean you forge a key whose nickname matches
  * another person's in an afternoon. And since it's the nickname people read and
- * say, the personification happens right in the layer where nobody is verifying
- * anything. Here there's no two layers: the word *is* the address.
+ * say, the impersonation would happen right in the layer where nobody is verifying
+ * anything. Here there are no two layers: the word *is* the address.
  */
 
 /**
@@ -30,21 +30,21 @@
  * The tables are written by hand, and what decides each entry is not just Latin.
  * An identifier is read aloud in front of other people, and there are words that
  * must never come up by chance: `names.test.ts` scans the entire space of 2^20
- * words and fails if any of them contains what shouldn't be said. Several
- * absences below, `rn`, `ss`, `ch`, `rd`, `br`, `sp`, are not oversights by
- * a Latinist, they're the result of that scan.
+ * words and fails if any of them contains something that shouldn't be said. Several
+ * absences below (`rn`, `ss`, `ch`, `rd`, `br`, `sp`) are not a Latinist's
+ * oversights; they're the result of that scan.
  *
- * The mechanics that does the rest of the work is the medial always having two
- * characters: that settles the whole family of vulgarities with
- * consonant-vowel-consonant-vowel shape, which is most of them. And the second
- * nucleus having no `a` kills the other half, besides settling the `-anus` that
- * would make English speakers laugh while staying Latin.
+ * The mechanism that does the rest of the work is the medial always having two
+ * characters: that rules out the whole family of vulgarities shaped
+ * consonant-vowel-consonant-vowel, which is most of the Portuguese ones. And the second
+ * nucleus having no `a` kills the other half, besides ruling out the `-anus` that
+ * would make English speakers laugh while still being Latin.
  */
 
-/** Onset. The empty entry gives words starting with a vowel, Aurelius, Octavia. */
+/** Onset. The empty entry gives the words that start with a vowel: Aurelius, Octavia. */
 export const ONSET_TABLE = ["", "b", "c", "d", "g", "h", "l", "m", "n", "p", "r", "s", "t", "v", "x", "z"] as readonly string[]
 
-/** First nucleus. This is where the `a` lives that makes Marcus and Cassius. */
+/** First nucleus. This is where the `a` of Marcus and Cassius lives. */
 export const V1_TABLE = ["a", "e", "i", "o"] as readonly string[]
 
 /**
@@ -62,13 +62,13 @@ export const MEDIAL_TABLE = [
   "ct", "pt", "gn", "mn", "qu", "ps", "xt", "gm", "bs", "dm",
 ] as readonly string[]
 
-/** Second nucleus. No `a`, and with the `y` that brings Greek. */
+/** Second nucleus. No `a`, and with the `y` that brings in Greek. */
 export const V2_TABLE = ["e", "i", "o", "y"] as readonly string[]
 
 /**
- * Ending. Always starts with a consonant, the previous nucleus gives the
- * vowel, and that's how `-inus`, `-ensis`, `-orum`, `-ylla` come out without
- * two vowels stuck together by accident. Seven of the entries are whole Latin
+ * Ending. Always starts with a consonant (the previous nucleus supplies the
+ * vowel), and that's how `-inus`, `-ensis`, `-orum`, `-ylla` come out without
+ * two vowels colliding by accident. Seven of the entries are whole Latin
  * words (`rex`, `dux`, `lux`, `pax`, `vox`, `nox`, `cor`), which is the flavor
  * at zero cost.
  */
@@ -84,7 +84,7 @@ export const ENDING_TABLE = [
   "nsis", "ntus", "ndus",
 ] as readonly string[]
 
-/** 4 + 2 + 6 + 2 + 6. Twenty divides eighty in four, which is the number of words in an address. */
+/** 4 + 2 + 6 + 2 + 6. Twenty divides eighty into four, the number of words in an address. */
 export const WORD_BITS = 20
 export const WORD_SPACE = 2 ** WORD_BITS
 
@@ -116,7 +116,7 @@ export function encodeWord(value: number): string {
  * The way back.
  *
  * Reading is by position, not by trial: only the onset has variable length, and
- * it's told apart by a rule that doesn't fail, if the first character is a
+ * a rule that never fails tells it apart: if the first character is a
  * vowel, there's no onset. Vowels and consonants are disjoint sets, so no word
  * has two readings, and that's what guarantees the 80 bits that go in are the
  * 80 bits that come out.
@@ -153,7 +153,7 @@ function writeBits(bytes: Uint8Array, offset: number, count: number, value: numb
   }
 }
 
-/** Bytes to name. The number of bytes must fill all the words: no leftovers or padding. */
+/** Bytes to name. The byte count must fill all the words exactly: no leftovers, no padding. */
 export function encodeName(bytes: Uint8Array, words: number): string {
   const bits = words * WORD_BITS
   if (bytes.length * 8 !== bits) {
@@ -180,21 +180,21 @@ export type RoomKind = "text" | "voice"
 /**
  * The prefix says what the room is, and it's fixed by type instead of drawn
  * from a family of synonyms: drawn would be flavor, fixed is information. Rome
- * kept the two places and the two words work perfectly, the *forum* is where
+ * kept the two places apart and the two words fit exactly: the *forum* is where
  * you write and post, the *contio* is the assembly where someone speaks aloud
  * and the rest listen. Whoever doesn't know Latin still sees two consistent
  * prefixes; whoever does, reads the function.
  *
- * `praeconium` (the herald's proclamation) is held for the day there's a room
- * type that's only announcements.
+ * `praeconium` (the herald's proclamation) is reserved for the day there is an
+ * announcements-only room type.
  */
 const ROOM_PREFIX: Record<RoomKind, string> = { text: "forum", voice: "contio" }
 
 /**
- * Forty bits of entropy, compared to the thirty-two from `randomUUID().slice(0,8)`
- * that this replaces. The room identifier does not hash any key and forging it
- * grants no power to anyone, the worst a collision does is make two rooms share
- * history, so the number here is for comfort, not security.
+ * Forty random bits, against the thirty-two of the `randomUUID().slice(0,8)`
+ * that this replaces. The room identifier is not the hash of any key and forging it
+ * grants no power to anyone (the worst a collision does is make two rooms share
+ * history), so the number here is for comfort, not security.
  */
 export function roomIdFromBytes(kind: RoomKind, bytes: Uint8Array): string {
   return `${ROOM_PREFIX[kind]}-${encodeName(bytes, 2)}`

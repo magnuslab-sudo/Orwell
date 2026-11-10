@@ -31,8 +31,8 @@ export interface OpenedApplicationMessage {
   /**
    * The tree of the epoch in which the message was encrypted, not the current one.
    *
-   * This is what the sender verified against, and this is where you read who they are.
-   * In a message from an epoch already left, the leaf may have become empty or already
+   * This is the tree the sender was verified against, and where you read who they are.
+   * In a message from an epoch we have already left, the leaf may be blank or
    * belong to someone else in the current tree (3/11/2026, Orwell channel).
    */
   senderTree: ClientState["ratchetTree"]
@@ -94,8 +94,8 @@ export async function openApplicationMessage(
  * The chain written in the leaf, as it is there.
  *
  * Without revalidation: `addressBindingAuthService` refused to admit any leaf whose
- * chain did not close, so what is in the tree already passed. Here only read, and
- * a read that fails returns `undefined`, never throws, because the caller is in the
+ * chain did not close, so whatever is in the tree has already passed. Here we only read, and
+ * a failed read returns `undefined`, never throws, because the caller is in the
  * middle of opening a message.
  */
 export function credentialAtLeaf(tree: RatchetTree, leafIndex: number): DeviceCredential | undefined {
@@ -111,10 +111,10 @@ export function credentialAtLeaf(tree: RatchetTree, leafIndex: number): DeviceCr
  * Safe to trust: `addressBindingAuthService` already refused to admit any leaf
  * whose credential did not hash to its own signing key.
  *
- * The address is the ACCOUNT one, and stays that way when an account has multiple
- * devices: whoever writes is the person, the leaf is just the machine they spoke from.
- * This is why foundation, roles, friendships and admin lists, everything stored by
- * address, do not know that devices exist.
+ * The address is the ACCOUNT address, and stays that way when an account has multiple
+ * devices: the writer is the person, the leaf is just the machine they spoke from.
+ * This is why founders, roles, friendships and admin lists (everything stored by
+ * address) do not know that devices exist.
  */
 export function addressAtLeaf(tree: RatchetTree, leafIndex: number): UserAddress | undefined {
   return credentialAtLeaf(tree, leafIndex)?.address
@@ -125,7 +125,7 @@ export function accountKeyAtLeaf(tree: RatchetTree, leafIndex: number): Uint8Arr
   return credentialAtLeaf(tree, leafIndex)?.accountKey
 }
 
-/** The DEVICE key in the leaf, which is also the one that signs what comes from it. */
+/** The DEVICE key in the leaf, which is also the key that signs what the leaf sends. */
 export function deviceKeyAtLeaf(tree: RatchetTree, leafIndex: number): Uint8Array | undefined {
   return credentialAtLeaf(tree, leafIndex)?.deviceKey
 }
@@ -138,9 +138,9 @@ export function deviceKeyAtLeaf(tree: RatchetTree, leafIndex: number): Uint8Arra
  * that: it is part of the group state everyone already agrees on.
  *
  * **An account can have multiple leaves, and this returns the lowest one.** This is
- * correct where the unit is the leaf itself and the caller already knows which one they want, and
+ * correct where the unit really is the leaf and the caller already knows which one it wants, and
  * it is wrong where the unit is the PERSON: removing someone from a channel by the leaf
- * this returns removes one device and leaves the others inside. For those use `leavesOf`,
+ * this returns removes one device and leaves the others inside. For those cases use `leavesOf`,
  * which returns all of them. See the comment on `leavesOf` for the list of places where
  * the difference has already bitten.
  */
@@ -152,13 +152,13 @@ export function leafIndexOf(tree: RatchetTree, address: UserAddress): number | u
  * ALL leaves of an address, in ascending order.
  *
  * An account with three devices has three leaves in the tree, each with its own key,
- * and each able to read everything the group encrypts from the moment it joined. Whoever
- * acts on the PERSON, expel, unfriend, declare someone left, must act on all of them:
+ * and each able to read everything the group encrypts from the moment it joined. Code that
+ * acts on the PERSON (kick, unfriend, mark someone as gone) must act on all of them:
  * `removeMembers` already takes the list and already proves the `UpdatePath` for each
  * removal, so removing an entire person is one commit, not N commits or a half removal.
  *
  * Returns empty for anyone not in the tree, the same answer `leafIndexOf` gave with
- * `undefined`, except without forcing the caller to distinguish "not here" from "here once".
+ * `undefined`, but without forcing the caller to tell "not here" from "here once".
  */
 export function leavesOf(tree: RatchetTree, address: UserAddress): number[] {
   const leaves: number[] = []

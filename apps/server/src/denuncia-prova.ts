@@ -18,13 +18,13 @@ import type { Store } from "./store.js"
  * The authenticity proof of each item in a report
  * (`docs/planos/denuncias-design.md`, §7).
  *
- * The reporter delivers text from third parties. The server does not read it to judge,
+ * The reporter hands over other people's text. The server does not read it to judge,
  * but verifies that each item is what the author signed, on the channel the report
  * names, with a device that speaks for that account. This is what separates "Bruno
  * said this" from "Ana says Bruno said this".
  *
  * An item without proof never causes the report to be rejected: it is stored with
- * the reason, and whoever reviews it decides with that information going forward.
+ * the reason, and the reviewer decides with that in front of them.
  */
 
 export type RazaoDoVeredicto =
@@ -47,7 +47,7 @@ export interface VeredictoDoItem {
 /**
  * The payload as the schema sees it, so the signed form matches the author's.
  *
- * Attachments arrive without bytes (the "evicted" marker, with the size back
+ * Attachments arrive without bytes (the `evicted` marker, with the size included
  * when the reporter knew it). The schema asks for `byteLength`; the signed form
  * only reads the name and the type, so a missing size passes as 0 without changing
  * anything that is verified.
@@ -67,7 +67,7 @@ function paraOEsquema(p: Readonly<Record<string, unknown>>): Record<string, unkn
 }
 
 type ProvaDoItem = Omit<VeredictoDoItem, "indice" | "autor"> & {
-  /** The payload by the schema, when the schema accepts it, without bytes: this is what is stored. */
+  /** The payload as the schema parsed it, when the schema accepts it, without bytes: this is what gets stored. */
   normal?: Record<string, unknown>
 }
 
@@ -76,7 +76,7 @@ type ProvaDoItem = Omit<VeredictoDoItem, "indice" | "autor"> & {
  * and the eviction marker if it had one. Nothing else (§5): no bytes
  * (`inline`, `poster`, `partes`), no blob path and keys (`url`, `key`, `nonce`,
  * `digest`), no `kind` that the schema set by default. The server does not trust
- * the reporter's device for this: a report of child abuse cannot put the material
+ * the reporter's device for this: a child abuse report must not put the material
  * on our disk.
  */
 function anexoParaGuardar(original: unknown): Record<string, unknown> {
@@ -127,8 +127,8 @@ function paraGuardar(original: Readonly<Record<string, unknown>>, lido: Readonly
  * 3. The device is not revoked. This comes before membership: a revoked device
  *    leaves the manifest and the tree, and without this the reason would just
  *    be "unknown".
- * 4. The device speaks for the account: the `k`/`x` chain closes with the address,
- *    or without a chain, the account registered it on this server.
+ * 4. The device speaks for the account: the `k`/`x` chain ends at the address,
+ *    or, without a chain, the account registered it on this server.
  * 5. If there is a manifest, the device is in it.
  */
 function provarItem(store: Store, canal: string, item: ItemRelatado): ProvaDoItem {
@@ -174,7 +174,7 @@ function provarSemLancar(store: Store, canal: string, item: ItemRelatado): Prova
     return provarItem(store, canal, item)
   } catch (erro) {
     // A malformed payload that still passed the schema (a number that canonical JSON
-    // does not encode): no proof, and the report continues. Only the error message,
+    // does not encode): no proof, and the report goes ahead. Only the error message,
     // never the item content.
     console.error(`enclave: a prova de um item da denúncia falhou: ${(erro as Error)?.message ?? "erro"}`)
     return { veredicto: "esquema" }
@@ -190,11 +190,11 @@ export function verificarItem(store: Store, canal: string, item: ItemRelatado): 
  * The proof for the entire report, and the items to store.
  *
  * `geral` is "verified" only when the proof covers what is reported (§7: the named
- * author wrote that text). With message target: the `denunciada` item checks out,
+ * author wrote that text). With a message target: the `denunciada` item checks out,
  * is from the reported account, has the target id and is in the room the report
- * names. With person target: all its items check out, and there is at least one.
+ * names. With a person target: all of that person's items check out, and there is at least one.
  *
- * Items to store carry the payload by the schema whenever the schema accepts it:
+ * Items to store carry the schema-parsed payload whenever the schema accepts it:
  * a key that nobody signed does not sit next to a "verified". And none carries bytes
  * or attachment secrets (`paraGuardar`), accepted or not.
  */
@@ -221,7 +221,7 @@ export function provarDenuncia(
     const daPessoa = veredictos.filter((item) => item.autor === corpo.denunciado)
     verificada = daPessoa.length > 0 && daPessoa.every((item) => item.veredicto === "verificada")
   }
-  // The entire item goes out without bytes, even the one the schema rejected.
+  // Every item goes out without bytes, even one the schema rejected.
   const itens = corpo.itens.map((item, indice) => ({ ...item, p: provas[indice]!.normal ?? paraGuardar(item.p, item.p) }))
   return { verificacao: { geral: verificada ? "verificada" : "nao-verificada", itens: veredictos }, itens }
 }

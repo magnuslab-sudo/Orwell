@@ -82,14 +82,15 @@ describe("SFrame counters", () => {
   })
 
   /**
-   * The late keyframe, which is the screen freezing with no error message.
+   * The late keyframe, which is the screen freezing without a single error message.
    *
    * The counter is shared across all tracks of the sender, so the window counts
    * audio, camera and screen frames added together. A keyframe is ten to twenty
    * times larger than a normal frame and travels split across many packets, and
-   * it is the first to arrive late on a lossy network. With the window at 128,    * just over one second of call time, it arrived outside the window and was
-   * rejected as REPETITION of a frame nobody had ever seen. On the side of the
-   * viewer: the image stopped, and there is no error anywhere to explain it.
+   * it is the first to arrive late on a lossy network. With the window at 128
+   * (just over one second of call time), it arrived outside the window and was
+   * rejected as a REPLAY of a frame nobody had ever seen. On the viewer's
+   * side: the image stopped, and there is no error anywhere to explain it.
    */
   it("aceita um keyframe atrasado duzentos contadores, em vez de o tomar por repetição", async () => {
     const sender = new SframeSender(await key())
@@ -106,10 +107,10 @@ describe("SFrame counters", () => {
     // A jump: the rest of the batch was lost or is in flight.
     expect(await receiver.decrypt(recente)).toBeDefined()
 
-    // And now what was left behind. Two hundred counter distances is what a call
+    // And now what was left behind. A gap of two hundred counters is what a call
     // with three tracks burns through in seconds.
     expect(await receiver.decrypt(atrasado)).toEqual(new Uint8Array([100]))
-    // And it is still rejected the second time: the window did not stop protecting.
+    // And it is still rejected the second time: the window still protects.
     expect(await receiver.decrypt(atrasado)).toBeUndefined()
   })
 
@@ -121,7 +122,7 @@ describe("SFrame counters", () => {
 })
 
 /**
- * Close the app and restart, which is the same problem in different clothes.
+ * Close the app and come back: the same problem in different clothes.
  *
  * The shared sender solves the various streams of a call. It does not solve the
  * next startup: the key derives from the channel epoch and the leaf index in
@@ -129,11 +130,11 @@ describe("SFrame counters", () => {
  * starting at zero would repeat, with the SAME key, all the nonces from the
  * previous call.
  *
- * And there was a second harm, the one you saw: the receiver on the other side
+ * And there was a second harm, the visible one: the receiver on the other side
  * rejects any counter it has already seen, and audio runs at fifty frames per
- * second, the first thousands of counters in a call are all spent within a
- * minute. Anyone who reloaded midway went silent to whoever stayed on, with the
- * connection live and the card on screen. With three people, you hear two.
+ * second, so the first thousands of counters in a call are all spent within a
+ * minute. Anyone who reloaded midway went silent to those who stayed, with the
+ * connection up and their tile on screen. Three people, and only two hear each other.
  */
 describe("SFrame entre arranques da aplicação", () => {
   it("um emissor reconstruído a zero repete os nonces do anterior", async () => {
@@ -156,12 +157,12 @@ describe("SFrame entre arranques da aplicação", () => {
     }
 
     // Rebuilt from zero: counter zero is among the 300 that the receiver already
-    // accepted, and an already-accepted counter is, by definition, a repetition.
+    // accepted, and an already-accepted counter is, by definition, a replay.
     const azero = new SframeSender(await key())
     expect(await receiver.decrypt(await azero.encrypt(new Uint8Array([42])))).toBeUndefined()
 
-    // And with the reserve, which is the fix: it starts above what was already
-    // used, and is heard right away again.
+    // And with the reservation, which is the fix: it starts above what was already
+    // used, and is heard again right away.
     const reservado = new SframeSender(await key(), 1_000_000)
     expect(await receiver.decrypt(await reservado.encrypt(new Uint8Array([42])))).toEqual(new Uint8Array([42]))
   })
@@ -178,7 +179,7 @@ describe("SFrame entre arranques da aplicação", () => {
 })
 
 /**
- * The repetition window has to fit a call with three streams.
+ * The replay window has to fit a call with three streams.
  *
  * The counter belongs to the SENDER, not the track: a single sender encrypts
  * the microphone, the camera and, from screen sharing onwards, what is on the
@@ -188,13 +189,13 @@ describe("SFrame entre arranques da aplicação", () => {
  * One second is less than it takes the network to deliver a late keyframe, and
  * a keyframe is exactly the frame that gets delayed: it is ten to twenty times
  * larger than others and travels split across many packets. Arriving outside the
- * window, it is rejected as if it were a repetition, with no error, no log,
+ * window, it is rejected as if it were a replay, with no error, no log,
  * nothing. On the viewer's side, the shared screen freezes at the last good
  * image and stays there until the next keyframe, which by the same path can also
  * be lost.
  *
  * Widening the window does not loosen anything: each counter is still accepted
- * once only. What changes is how much misalignment the network can cause before
+ * once only. What changes is how much reordering the network can cause before
  * an honest frame starts being treated as an attack.
  */
 describe("a janela de repetição e o keyframe atrasado", () => {
@@ -212,13 +213,13 @@ describe("a janela de repetição e o keyframe atrasado", () => {
 
     expect(await receiver.decrypt(atrasado)).toEqual(new Uint8Array([0xff]))
     // And what the window exists to prevent stays prevented: the SAME frame
-    // again is a repetition, wherever it falls within the window.
+    // again is a replay, wherever it falls within the window.
     expect(await receiver.decrypt(atrasado)).toBeUndefined()
   })
 
   it("mas um frame verdadeiramente antigo continua a ser recusado", async () => {
-    // The window is a window, not amnesty. With no ceiling, a hostile SFU could
-    // reinject at midnight what it recorded in the afternoon.
+    // The window is a window, not an amnesty. With no limit, a hostile SFU could
+    // reinject in the middle of the night what it recorded in the afternoon.
     const sender = new SframeSender(await key())
     const receiver = new SframeReceiver(await key())
 
@@ -234,8 +235,8 @@ describe("a janela de repetição e o keyframe atrasado", () => {
 /**
  * The window with THREE streams at once, which Phase 3 brought.
  *
- * The counter belongs to the SENDER, not the track, one `SframeSender` per
- * key, and through it pass the microphone, the camera and the screen. And on
+ * The counter belongs to the SENDER, not the track: one `SframeSender` per
+ * key, and the microphone, the camera and the screen all go through it. And on
  * the receiver side it is the same: one `SframeReceiver` per (person, key), with
  * frames from all three tracks coming through the same window, interleaved and
  * out of order, because they arrive over different RTP flows with different
@@ -245,28 +246,28 @@ describe("a janela de repetição e o keyframe atrasado", () => {
  * streams together". This measures it instead of asserting it, with the real
  * rates of this platform: microphone at 50 frames per second (Opus with `ptime`
  * of 20 ms), camera at 30, screen at 30 (`frameRate: { ideal: 30 }` in
- * `getDisplayMedia`, since November 2, 2026; it was 15).
+ * `getDisplayMedia`, since 2 November 2026; it was 15).
  */
 describe("a janela com o microfone, a câmara e o ecrã a passar pela mesma chave", () => {
   /** How many counters per second the three streams burn through together. */
   const POR_SEGUNDO = 50 + 30 + 30
 
   it("cobre mais de nove segundos dos três fluxos juntos", () => {
-    // The math that the `WINDOW` comment does, written as executable code: the day
-    // someone lowers the window to 128, where it was, this line says it now
+    // The arithmetic in the `WINDOW` comment, written as executable code: the day
+    // someone lowers the window back to 128, where it was, this line says it now
     // covers just over one second, which is not enough for a late keyframe.
     expect(SframeReceiver.WINDOW / POR_SEGUNDO).toBeGreaterThan(9)
   })
 
   it("aceita um keyframe do ECRÃ atrasado dois segundos, com as três faixas a contar", async () => {
     /*
-     * The case the window exists to hold, now with the traffic Phase 3 put in
-     * the air. A keyframe is ten to twenty times larger than a normal frame,
-     * travels split across many packets and is the first to slow when the line
-     * tightens, and while it waits, the microphone and camera keep burning
+     * The case the window exists to handle, now with the traffic Phase 3 put on
+     * the wire. A keyframe is ten to twenty times larger than a normal frame,
+     * travels split across many packets and is the first to be delayed when bandwidth
+     * tightens, and while it waits, the microphone and camera keep using up
      * counters from the SAME sequence. Outside the window, it is rejected as a
-     * repetition in silence: no error, no log, and the image frozen on the
-     * screen of whoever is watching.
+     * replay, silently: no error, no log, and the image frozen on the
+     * viewer's screen.
      */
     const sender = new SframeSender(await key())
     const receiver = new SframeReceiver(await key())
@@ -283,7 +284,7 @@ describe("a janela com o microfone, a câmara e o ecrã a passar pela mesma chav
   })
 
   it("e continua a recusar o mesmo keyframe reinjectado a seguir", async () => {
-    // The window is a window, not amnesty: an SFU that kept the keyframe and
+    // The window is a window, not an amnesty: a hostile SFU that kept the keyframe and
     // replayed it would put the same image on everyone's screen again. Accepting
     // late is not accepting twice.
     const sender = new SframeSender(await key())
@@ -300,7 +301,7 @@ describe("a janela com o microfone, a câmara e o ecrã a passar pela mesma chav
     /*
      * Three separate RTP streams arrive with different jitter, and what shows
      * in the window is the sender's sequence scrambled in blocks. This scrambles
-     * a full second at a time, much more misalignment than a real network
+     * a full second at a time, far more reordering than a real network
      * produces, and demands that EVERYTHING opens: a single lost frame here is
      * a click in the sound or a block of frozen image, and neither leaves a
      * trace.
@@ -313,7 +314,7 @@ describe("a janela com o microfone, a câmara e o ecrã a passar pela mesma chav
 
     let abertos = 0
     for (let bloco = 0; bloco < cifrados.length; bloco += POR_SEGUNDO) {
-      // The opposite within each second: the worst possible misalignment without
+      // Reversed within each second: the worst possible reordering without
       // swapping order between seconds, which the network does not do either.
       const pedaco = cifrados.slice(bloco, bloco + POR_SEGUNDO).reverse()
       for (const frame of pedaco) if (await receiver.decrypt(frame)) abertos++

@@ -3,9 +3,9 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { WORD_BITS, decodeName, encodeName } from "./names.js"
 
 /**
- * The vocabulary comes out here so `index.ts` does not have to change, which is
- * shared ground. Whoever imports `@enclave/protocol` gets the room name
- * generator by the same path they already got addresses.
+ * The vocabulary is exported here so `index.ts`, which is shared ground, does not
+ * have to change. Whoever imports `@enclave/protocol` gets the room name
+ * generator through the same path they already got addresses from.
  */
 export * from "./names.js"
 
@@ -23,16 +23,16 @@ export * from "./names.js"
  * group, encrypted, visible only to members of that space.
  */
 
-/** `@<accountId>:<homeserver>` — the only user identifier a server ever sees. */
+/** `@<accountId>:<homeserver>`: the only user identifier a server ever sees. */
 export type UserAddress = string & { readonly __brand: "UserAddress" }
-/** `!<spaceId>:<homeserver>` — a "server" in Discord terms; a community. */
+/** `!<spaceId>:<homeserver>`: a "server" in Discord terms; a community. */
 export type SpaceAddress = string & { readonly __brand: "SpaceAddress" }
 /** Opaque handle for one MLS group. One channel == one group == one address. */
 export type ChannelId = string & { readonly __brand: "ChannelId" }
 /** DNS name of a homeserver, e.g. `enclave.example`. */
 export type ServerName = string & { readonly __brand: "ServerName" }
 
-/** Lowercase Crockford-ish base32 without padding — case-insensitive, no confusables. */
+/** Lowercase Crockford-ish base32 without padding: case-insensitive, no confusables. */
 const B32 = "abcdefghijkmnpqrstuvwxyz23456789"
 
 export function base32Encode(bytes: Uint8Array): string {
@@ -85,7 +85,7 @@ export function parseServerName(value: string): ServerName {
  * Words in an account identifier.
  *
  * The number is not cosmetic, and the reason is in `ACCOUNT_ID_BITS` below.
- * Changing it shifts every address in existence: an address is the key, not a
+ * Changing it changes every address in existence: an address is the key, not a
  * name kept beside it.
  */
 export const ACCOUNT_ID_WORDS = 4
@@ -93,7 +93,7 @@ export const ACCOUNT_ID_WORDS = 4
 /** Twenty bits per word. The split is in `names.ts` and is a bijection. */
 export const ACCOUNT_ID_BITS = ACCOUNT_ID_WORDS * WORD_BITS
 
-/** Eighty bits are ten flat bytes: the identifier is the hash prefix, no padding. */
+/** Eighty bits are exactly ten bytes: the identifier is the hash prefix, no padding. */
 const ACCOUNT_ID_BYTES = ACCOUNT_ID_BITS / 8
 
 /**
@@ -103,15 +103,15 @@ const ACCOUNT_ID_BYTES = ACCOUNT_ID_BITS / 8
  * What this hash has to resist is not collision, it is second preimage, and
  * that difference sets the length. Nobody gains by making two of their own keys
  * with the same address; they gain by making a key that lands on someone else's
- * address. There is no PKI behind this, `addressBindingAuthService` accepts
- * any credential whose address matches the hash of the key that signs it, so
- * anyone who can pull off that second preimage speaks inside a room named after
- * someone else; and since admin lists are kept by address, the address is a
+ * address. There is no PKI behind this (`addressBindingAuthService` accepts
+ * any credential whose address matches the hash of the key that signs it), so
+ * anyone who pulls off that second preimage speaks inside a room under
+ * someone else's name; and since admin lists are kept by address, the address is a
  * capability, not a label.
  *
  * Each attempt at that attack is cheap by nature: the searcher does not do a
  * scalar multiply per candidate, they add the generator point to the previous
- * one and hash again, the trick in any Ed25519 vanity address generator. A
+ * one and hash again (the trick in any Ed25519 vanity address generator). A
  * modern GPU does about 10^8 candidates per second, and that number never goes
  * down:
  *
@@ -120,14 +120,14 @@ const ACCOUNT_ID_BYTES = ACCOUNT_ID_BITS / 8
  *    80 bits (4 words)  ~1.2×10^24            ~3.8×10^8 GPU-years
  *   128 bits            what was here before everything
  *
- * That is why four words, not the three aesthetics wanted: 365 GPU-years is a
- * few months of rental paid by someone who really means it, and a project that
+ * That is why four words, not the three that aesthetics wanted: 365 GPU-years is a
+ * few months of rental for someone who really means it, and a project that
  * pays the weight of a post-quantum KEM to defend against adversaries thirty
  * years out cannot leave the only anchor between key and name within reach of
  * an invoice.
  *
- * Writing in Latin changes nothing here, `names.ts` is a proven bijection word
- * by word across the whole space, and a bijection loses and gains no bits.
+ * Writing in Latin changes none of this: `names.ts` is a bijection, proven word
+ * by word across the whole space, and a bijection neither loses nor gains a bit.
  * Swapping alphabets is changing clothes; the body is these 80 bits.
  */
 export function accountIdFromSigningKey(signingPublicKey: Uint8Array): string {
@@ -173,31 +173,31 @@ export function serverOf(address: UserAddress | SpaceAddress): ServerName {
 /**
  * Opaque channel addresses (1.0 "Arca", `docs/planos/moradas-opacas-e-corte.md`).
  *
- * Until 0.9 a, a channel's address told the server things it should not know:
- * `!dm-<a>.<b>` named the two endpoints of each conversation, `!feed-<id>` the owner of
- * each room, and a room would go to disk with the name someone wrote
+ * Until 0.9, a channel's address told the server things it should not know:
+ * `!dm-<a>.<b>` named the two ends of each conversation, `!feed-<id>` the owner of
+ * each mural, and a room went to disk with the name someone gave it
  * (`THREAT-MODEL.md`, "The channel id is not opaque"). From here on, all
  * channels have the same form, `!<40 caracteres base32>:<servidor>`, and the form says nothing: what a channel is
  * lives in the vault of whoever is a member.
  *
- * Twenty-five bytes, not the twenty the spec writes. The spec asks for both
- * things at once ("twenty bytes" and "40 caracteres base32"), and both do not
- * fit: twenty bytes in base32 are 32 caracteres. The form stayed, because the rest of 1.0 se
- * writes against it, and 200 bits stayed instead of 160, which is
- * more and never less than the promise not to guess. See the report on slice 1.
+ * Twenty-five bytes, not the twenty the plan states. The plan asks for both
+ * things at once ("twenty bytes" and "40 base32 characters"), and the two do not
+ * fit together: twenty bytes in base32 are 32 characters. The form won, because the rest of 1.0
+ * is written against it, and we got 200 bits instead of 160, which is
+ * more, never less, than the unguessability promise. See the slice 1 write-up.
  *
  * The server part stays, because federation routes by it
  * (`federation.ts`).
  */
 export const MORADA_BYTES = 25
 
-/** 200 bits in base32 are 40 flat characters, with no padding bits at the end. */
+/** 200 bits in base32 are exactly 40 characters, with no padding bits at the end. */
 export const MORADA_CARACTERES = (MORADA_BYTES * 8) / 5
 
 /*
   Domain tags, one per channel type. Without them, the same 32-byte secret used
-  in two places would give the same address in both, and a secret that leaked
-  in one context leaked in the other. The suffix `-v2` says the channel form
+  in two places would give the same address in both, and a secret leaked
+  in one context would leak in the other. The `-v2` suffix names the channel form
   this replaces; a new derivation gets a new tag, never the same one.
 */
 const ETIQUETA_DIRECTA = new TextEncoder().encode("orwell-dm-v2")
@@ -224,8 +224,8 @@ function exigirTrintaEDois(bytes: Uint8Array, nome: string): void {
 }
 
 /**
- * Byte order of both strings, not `localeCompare`: the order must be the same
- * on every device and in every system language, or both sides pick different
+ * Byte order of the two strings, not `localeCompare`: the order must be the same
+ * on every device and in every system language, or the two sides pick different
  * servers and open two conversations.
  */
 function compararBytes(a: string, b: string): number {
@@ -244,10 +244,10 @@ function compararBytes(a: string, b: string): number {
  * pair.
  *
  * Until 0.9 it was the server of whoever opened it (`Session.openDirect`),
- * which between two servers gave two addresses for the same conversation, one
- * from each side. Federation never ran and never caught it. Picking by pair,
- * not by caller, is what makes both sides reach the same place without
- * arranging anything.
+ * which across two servers gave two addresses for the same conversation, one
+ * from each side. Federation never ran, so it never caught this. Picking by the pair,
+ * not by the caller, is what makes both sides reach the same place without
+ * coordinating.
  */
 export function servidorDaDirecta(enderecoA: string, enderecoB: string): ServerName {
   const menor = compararBytes(enderecoA, enderecoB) <= 0 ? enderecoA : enderecoB
@@ -268,16 +268,16 @@ export function servidorDaDirecta(enderecoA: string, enderecoB: string): ServerN
  * conversion is standard (the same as libsodium's
  * `crypto_sign_ed25519_*_to_curve25519`; in `@noble/curves` 2.0.1 it is called
  * `ed25519.utils.toMontgomery` and `toMontgomerySecret`). Using a signing key
- * in an agreement is the classic caveat, and it weighs little here: the agreed
- * secret does not encrypt anything or sign anything, it just hashes into an
+ * in a key agreement is the classic caveat, and it matters little here: the agreed
+ * secret neither encrypts nor signs anything, it is only hashed into an
  * address.
  *
- * It takes both addresses, not a server, for two reasons. First is the smaller
- * address rule for the server, which only holds with the pair in view; a server
- * passed by the caller was the old error waiting to return. Second is the
+ * It takes both addresses, not a server, for two reasons. The first is the
+ * smaller-address rule for the server, which only holds with the pair in view; a server
+ * passed by the caller was the old bug waiting to come back. The second is the
  * anchor between key and address: a public key swapped by mistake would give a
  * valid but wrong address, for a channel where the other side never shows up.
- * Here we check that each key is from the address it claims to be.
+ * Here we check that each key belongs to the address it claims.
  */
 export function moradaDirecta(
   chavePrivadaMinha: Uint8Array,
@@ -299,20 +299,20 @@ export function moradaDirecta(
     ed25519.utils.toMontgomerySecret(chavePrivadaMinha),
     ed25519.utils.toMontgomery(chavePublicaDoPar),
   )
-  // `@noble/curves` already rejects null from a low-order point; we repeat the
-  // check here because an address derived from zeros would be the same for all
-  // key pairs that produced it, and this error cannot depend on library version.
+  // `@noble/curves` already rejects the all-zero result from a low-order point; we repeat the
+  // check here because an address derived from zeros would be the same for every
+  // pair that produced it, and this error must not depend on the library version.
   if (partilhado.every((byte) => byte === 0)) throw new Error("degenerate shared secret")
   return moradaDerivada(ETIQUETA_DIRECTA, partilhado, servidorDaDirecta(meuEndereco, enderecoDoPar))
 }
 
 /**
- * A room's address: `H("orwell-feed-v2" ‖ segredo do mural)`.
+ * A mural's address: `H("orwell-feed-v2" ‖ segredo do mural)`.
  *
  * The secret (32 bytes) is generated once by the owner, stored in the vault, and travels
  * encrypted in the profile (`Profile.mural`) to whoever shares a channel with the owner.
- * Those without it do not know the address: this is what makes the room only for friends and
- * co-members (decision D1 of the spec).
+ * Those without it do not know the address: this is what keeps the mural to friends and
+ * co-members (decision D1 of the plan).
  */
 export function moradaDoMural(segredo: Uint8Array, servidor: ServerName): ChannelId {
   exigirTrintaEDois(segredo, "feed secret")
@@ -324,8 +324,8 @@ export function moradaDoMural(segredo: Uint8Array, servidor: ServerName): Channe
  *
  * Deterministic for any device that has the account key, and the
  * server no longer sees `self-<id>`. Devices without the key receive the address
- * at pairing (slice 2). The digest does not return the key: the address can
- * be on the server's disk without putting the account at risk.
+ * at pairing (slice 2). The hash does not give back the key: the address can
+ * sit on the server's disk without putting the account at risk.
  */
 export function moradaDaConta(chavePrivadaDeConta: Uint8Array, servidor: ServerName): ChannelId {
   exigirTrintaEDois(chavePrivadaDeConta, "account private key")
@@ -333,7 +333,7 @@ export function moradaDaConta(chavePrivadaDeConta: Uint8Array, servidor: ServerN
 }
 
 /**
- * The address of a new room: random bytes, nothing behind them.
+ * The address of a new room: random bytes, with nothing behind them.
  *
  * The room name goes into `room.created` encrypted, like all other state. There
  * is nothing to derive and nothing the two sides need to agree on: whoever
@@ -351,7 +351,7 @@ export function moradaDeSala(servidor: ServerName): ChannelId {
  * Exactly 40 characters from the `base32Encode` alphabet, in lowercase, and a
  * server name that `parseServerName` accepts. Old forms (`!dm-…`, `!feed-…`,
  * `!self-…`, `!forum-…`) always have a hyphen and never pass. This checks the
- * FORM; what the channel is (direct, feed, room, account) is not read from here,
+ * FORM; what the channel is (DM, mural, room, account) is not read from here,
  * it comes from the vault.
  */
 export function eMoradaOpaca(canal: string): boolean {
@@ -359,7 +359,7 @@ export function eMoradaOpaca(canal: string): boolean {
   if (!partes) return false
   const servidor = partes[2] as string
   // `parseServerName` accepts uppercase and normalizes; an address written by
-  // `moradaDeBytes` already comes out normalized, and no other form is this one.
+  // `moradaDeBytes` already comes out normalized, and any other form is not this one.
   if (servidor !== servidor.toLowerCase()) return false
   try {
     parseServerName(servidor)
@@ -370,13 +370,13 @@ export function eMoradaOpaca(canal: string): boolean {
 }
 
 /**
- * Whether the server allows a channel with this address to be created (1.0 "Ark"
+ * Whether the server allows a channel with this address to be created (1.0 "Arca"
  * 6a.1).
  *
  * An opaque address, or the common room the server announces in `hello` (empty or
  * `null` when there is none). Everything else is an old form, which no one can
- * create. The rule is the same for both sides: the server closes creation with
- * it (`#formaFechada` in `gateway.ts`) and the core refuses it before saving the
+ * create. The rule is the same on both sides: the server blocks creation with
+ * it (`#formaFechada` in `gateway.ts`) and the core rejects it before saving the
  * group (`Session.createSpaceChannel`), so they never diverge.
  */
 export function podeEstrearCanal(canal: string, salaComum: string | null | undefined): boolean {

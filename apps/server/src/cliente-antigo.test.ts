@@ -25,7 +25,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { Cliente, COMMIT_DEPOIS_DO_ECO, levantarServidor, type ServidorDeTeste } from "../testes/cliente-de-teste.js"
 
 /**
- * The old client: converses, but does not commit or touch the card.
+ * The old client: it chats, but does not commit or touch the card.
  *
  * The bundle `eabfd6c` applies its commit BEFORE sending it. When it loses
  * the race for the epoch it ends up alone in E+1, and from then on everything
@@ -33,7 +33,7 @@ import { Cliente, COMMIT_DEPOIS_DO_ECO, levantarServidor, type ServidorDeTeste }
  * If the server accepted either one, it would start following a single-person
  * branch and lock the room for everyone. So a connection is only trusted for
  * commits if the `hello` says `commit-after-echo`, and what does not depend on
- * that (conversing, proposals, Welcomes, history) keeps working for who has not updated.
+ * that (chatting, proposals, Welcomes, history) keeps working for anyone who has not updated.
  */
 
 let servidor: ServidorDeTeste
@@ -105,9 +105,9 @@ describe("uma ligação sem commit-after-echo", () => {
   it("vê o seu commit descartado em silêncio, seja qual for o kind, e ninguém o recebe", async () => {
     /*
       Silently, not with `update-required`: `eabfd6c` does not distinguish reasons.
-      Any `channel.rejected` fails sends waiting for receipt in that channel and shows
+      Any `channel.rejected` fails sends awaiting a receipt in that channel and shows
       "This room no longer exists… leave and ask to be invited again" (session.ts:7075-7101
-      of that commit). The advice to leave, to everyone with an old separator, at each
+      of that commit). The advice to leave, shown to everyone with an old tab, at each
       common room epoch.
     */
     const { sala } = servidor
@@ -156,11 +156,11 @@ describe("uma ligação sem commit-after-echo", () => {
   it("o Welcome de um separador antigo não se guarda nem chega a quem é convidado", async () => {
     /*
       Bundle `eabfd6c` sends the commit and Welcome back-to-back, without waiting
-      for a verdict (session.ts:1964-1972 in that commit). The commit does not
-      enter; the Welcome, if it did, would be accepted by whoever is invited: it
-      would replace their group with a branch E+1 that only the old separator has,
-      and they would go deaf in silence, real messages in epoch E count for them
-      as earlier than their seat.
+      for a verdict (session.ts:1964-1972 in that commit). The commit is not
+      accepted; the Welcome, if it were, would be accepted by the invitee: it
+      would replace their group with an E+1 branch that only the old tab has,
+      and they would silently go deaf: real messages, in epoch E, count for them
+      as older than their seat.
     */
     const { sala, url, casa } = servidor
     const idConvidado = generateIdentity(casa)
@@ -246,8 +246,8 @@ describe("uma ligação com commit-after-echo", () => {
 })
 
 /**
- * Everything that arrives at a `hello` without capabilities after `auth.ok`,
- * up to the `pong`. `Cliente.ligar` throws this away; here is what we want to see.
+ * Everything a `hello` without capabilities receives after `auth.ok`,
+ * up to the `pong`. `Cliente.ligar` discards this; here it is what we want to see.
  */
 async function oQueChegaAoLogin(url: string, identidade: Identity): Promise<ServerFrame[]> {
   const socket = new WebSocket(url)
@@ -282,7 +282,7 @@ async function oQueChegaAoLogin(url: string, identidade: Identity): Promise<Serv
 describe("o cofre cifrado e um cliente antigo (fase 3a)", () => {
   it("um hello sem a capacidade nunca recebe cofre.*, nem no login, nem no subscribe, nem quando outros escrevem", async () => {
     const { sala, url } = servidor
-    // A new device of the founder, with the vault: it has a seat in the room by subscription.
+    // A new device of the founder, with the vault: it has a seat in the room through its subscription.
     const novo = await Cliente.ligar(url, cena.idFundador, { capacidades: [COMMIT_DEPOIS_DO_ECO, CAPACIDADE_COFRE_CIFRADO] })
     const conteudo = toBase64(randomBytes(1024))
     novo.enviar({ t: "cofre.put", escopo: `canal:${sala}`, entradas: [{ chave: toBase64(randomBytes(16)), conteudo }] })
@@ -296,11 +296,11 @@ describe("o cofre cifrado e um cliente antigo (fase 3a)", () => {
     expect(tipos(await cena.antigo.ateAoPong())).toEqual([])
     expect(tipos(await cena.fundador.ateAoPong())).toEqual([])
 
-    // Subscribe again, with vault in the room: nothing.
+    // Subscribe again, with a vault in the room: nothing.
     cena.antigo.enviar({ t: "channel.subscribe", channels: [sala] })
     expect(tipos(await cena.antigo.ateAoPong())).toEqual([])
 
-    // Connect again, without capabilities, with vault of the account saved: nothing.
+    // Connect again, without capabilities, with the account vault saved: nothing.
     expect(tipos(await oQueChegaAoLogin(url, cena.idFundador))).toEqual([])
     expect(tipos(await oQueChegaAoLogin(url, cena.idAntigo))).toEqual([])
     novo.fechar()

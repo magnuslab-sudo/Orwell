@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest"
 import { avaliar, frase, mesCorrente } from "../../../scripts/trafego-do-mes.mjs"
 
 /**
- * The monthly quota script (`scripts/trafego-do-mes.mjs`), no SSH: account only.
+ * The monthly quota script (`scripts/trafego-do-mes.mjs`), without SSH: just the math.
  *
- * What matters to keep is the arithmetic that decides the alert. A factor of 1024
- * swapped between the two versions of `vnstat` JSON gave an alert a thousand times
- * late, and a late alert is a VPS cut off mid-month.
+ * What is worth locking down is the arithmetic that decides the alert. A factor of 1024
+ * swapped between the two versions of the `vnstat` JSON produced an alert a thousand
+ * times too late, and a late alert means a VPS cut off mid-month.
  */
 const AGORA = new Date(Date.UTC(2026, 10, 16)) // November 16, mid-month
 const vnstat = (rx: number, tx: number, jsonversion = "2") => ({

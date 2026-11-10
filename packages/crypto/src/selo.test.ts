@@ -37,7 +37,7 @@ describe("o selo da cópia do fundador", () => {
     const e = selado.e.slice()
     e[5] = e[5]! ^ 1
     expect(abrirComConta(fundador.privada, CANAL, { ...selado, e })).toBeNull()
-    // Malformed shapes also give null, without throwing.
+    // Malformed input also gives null, without throwing.
     expect(abrirComConta(fundador.privada, CANAL, { e: new Uint8Array(3), n: selado.n, c: selado.c })).toBeNull()
     expect(abrirComConta(fundador.privada, CANAL, { e: selado.e, n: new Uint8Array(12), c: selado.c })).toBeNull()
   })

@@ -18,7 +18,7 @@ import type { DenunciaGuardada } from "./denuncia.js"
 /**
  * The authenticity proof of each report item (Task 4), end to end: real accounts,
  * messages signed by the author's device, the report assembled from the reporter's
- * vault and sent by the signed request. No network format built by hand.
+ * vault and sent through the signed request. No network format built by hand.
  */
 
 let servidor: ServidorDeTeste
@@ -55,7 +55,7 @@ function mensagem(corpo: string): Payload {
 const idDe = (conta: ContaDeTeste, corpo: string): string | undefined =>
   conta.session.history(canal).find((entrada) => entrada.payload["body"] === corpo)?.payload["id"] as string | undefined
 
-/** `author` says `body` on the channel, and expects it to reach `readers`. Returns the id. */
+/** `autor` says `corpo` on the channel, and waits for it to reach `leitores`. Returns the id. */
 async function dizer(autor: ContaDeTeste, corpo: string, leitores: readonly ContaDeTeste[]): Promise<string> {
   await autor.session.send(canal, mensagem(corpo))
   for (const leitor of leitores) await ate(() => idDe(leitor, corpo) !== undefined, `"${corpo}" chega a ${leitor.nome}`)
@@ -73,7 +73,7 @@ function numerosGuardados(): number[] {
     .map((nome) => Number(nome.slice(0, -5)))
 }
 
-/** Report it and return the report that was stored as a result. */
+/** Reports, and returns the report stored as a result. */
 async function denunciarEGuardada(quem: ContaDeTeste, preparada: DenunciaPreparada): Promise<DenunciaGuardada> {
   const antes = new Set(numerosGuardados())
   const resposta = await quem.session.denunciar(preparada, { motivo: 3, nota: "Insultos.", boaFe: true }, origemDoServidorDe(quem.address), "1.2.0")
@@ -119,7 +119,7 @@ describe("prova de autenticidade da denúncia, com clientes reais", () => {
   it("uma mensagem sem autoria (anterior à S4) fica 'sem-autoria' e a denúncia não é recusada", async () => {
     const corpo = "do Bruno, guardada antes da S4"
     const id = await dizer(bruno, corpo, [carla])
-    // Carla's vault stores it the way an app before S4 would have stored it: without authorship.
+    // Carla's vault stores it the way a pre-S4 app did: without authorship.
     const guardadaNoCofre = entradasDoCanal(carla.vault.contents, canal).find((entrada) => entrada.payload["id"] === id)!
     delete (guardadaNoCofre.payload as unknown as Record<string, unknown>)["autoria"]
 

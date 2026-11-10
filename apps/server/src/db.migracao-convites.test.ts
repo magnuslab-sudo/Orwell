@@ -10,8 +10,8 @@ import { Store } from "./store.js"
  * The second column migration: `invites.short_code` (1.0 "Arca", slice 4).
  *
  * The short code for links `orwell.pt/c#<8>` lives in the invite row. The 0.9
- * production database has the table without the column, and the 1.0 cut removes
- * it; but this server can go to production BEFORE the cut, on the 0.9 database,
+ * production database has the table without the column, and the 1.0 cutover wipes
+ * it; but this server can go to production BEFORE the cutover, on the 0.9 database,
  * and must open it without losing an invite. This test creates the table as 0.9.5
  * created it and opens it with today's `openDatabase`.
  */

@@ -1,6 +1,6 @@
 // The estado.ts from 0.8.0, as released (commit 5004d0b, packages/protocol/src/estado.ts).
-// For compatibility tests only: outside src/, does not enter tsc -b nor dist/.
-// Only change: the import of canonical.js points to src/ (the file has not changed since).
+// For compatibility tests only: it lives outside src/, so it is in neither tsc -b nor dist/.
+// The only change: the canonical.js import points to src/ (that file has not changed since).
 // @ts-nocheck
 import { z } from "zod"
 
@@ -10,7 +10,7 @@ import { z } from "zod"
  * Two paths, same shape:
  *
  * - **Level M, the snapshot.** On pairing, the device that has the account sends the new
- *   device a complete `EstadoDeConta`, encrypted inside the vault (`pair.ts`), after the
+ *   device a complete `EstadoDeConta`, encrypted inside the box (`pair.ts`), after the
  *   certificate. The new device writes it to the vault before the first `connect()`.
  * - **Level L, the deltas.** After that, each change travels as an `estado.*` payload in
  *   the account channel (`canalDaContaDe`), a private MLS group with only the leaves of
@@ -23,12 +23,12 @@ import { z } from "zod"
  * the same payload serves as delta (one key) and full replacement (all): applying twice, or
  * in different orders, gives the same result.
  *
- * **The clocks are the devices' clocks.** Two devices with swapped clocks decide by the one
- * ahead. It is the same tradeoff as the profile (`updatedAt`), and what is at stake here is
+ * **The clocks are the devices' clocks.** When two devices disagree on the time, the one
+ * running ahead wins. It is the same tradeoff as the profile (`updatedAt`), and what is at stake here is
  * tidiness, not access.
  *
  * **None of these payloads goes to a channel with other people.** A 0.5.7 client does not
- * know them, rejects them, and five rejected in a row declare the channel deaf. They only
+ * know them, rejects them, and five rejections in a row make it declare the channel deaf. They only
  * flow in the account channel, and in that channel only leaves that announced
  * `CAPACIDADE_ESTADO_DA_CONTA` can enter (see the core, `#cuidarDoCanalDaConta`).
  */
@@ -37,17 +37,17 @@ import { z } from "zod"
 export const CAPACIDADE_ESTADO_DA_CONTA = "estado-da-conta"
 
 /**
- * The device that announces itself has the account key (revision of slot 1, I4).
+ * The announcing device holds the account key (wave 1 review, I4).
  *
- * It settles one decision only: who creates the account channel. With two
+ * It settles a single decision: who creates the account channel. With two
  * devices holding the key, each would create its own group with the same name,
  * and the account would have two account channels forever. The one with the
  * lowest device key among those that announced this capability creates it (see
- * `#cuidarDoCanalDaConta` in the core); the others announce themselves as
- * siblings and enter via Welcome.
+ * `#cuidarDoCanalDaConta` in the core); the others announce themselves like the
+ * siblings do and join via Welcome.
  *
- * It grants no power: anyone who lies about it only becomes the one creating
- * the channel, and only a device from the account itself can send the signal
+ * It grants no power: a device that lies about it only becomes the one that creates
+ * the channel, and only a device of the account itself can send the signal
  * (MLS authenticates the leaf).
  */
 export const CAPACIDADE_CHAVE_DE_CONTA = "chave-de-conta"
@@ -59,8 +59,8 @@ export const CapacidadesDeAparelho = z.array(z.string().min(1).max(32)).max(16)
  * The account's channel identifier: `!self-<id da conta>:<servidor>`.
  *
  * Deterministic, like the feed (`!feed-…`): any device on the account knows the
- * name without being told. Knowing the name grants no access: the server only passes what
- * comes from whoever has write access there, and only devices on the account can have it.
+ * name without being told. Knowing the name gives no seat: the server only relays what
+ * comes from whoever has a leaf there, and only devices on the account can have one.
  */
 export function canalDaContaDe(accountId: string, servidor: string): string {
   return `!self-${accountId}:${servidor}`
@@ -79,17 +79,17 @@ const Endereco = z
   .regex(/^@[^\s:@]+:[^\s@]+$/)
 
 /**
- * A preference key: lowercase, digits, `.`, `_` and `-`.
+ * A preference key: lowercase letters, digits, `.`, `_` and `-`.
  *
- * Tight on purpose. Preferences are for the interface (theme, color, sounds) and
+ * Narrow on purpose. Preferences are for the interface (theme, color, sounds) and
  * the core does not interpret them; what the core guarantees is that no key is
  * a bag of bytes traveling between devices.
  */
 export const CHAVE_DE_PREFERENCIA = /^[a-z][a-z0-9._-]{0,63}$/
-/** Cap on a preference value, in characters. */
+/** The cap on a preference value, in characters. */
 export const PREFERENCIA_MAX_CARACTERES = 2_000
 
-/** Caps per map. Loose for one person, tight for abuse. */
+/** Caps per map. Generous for one person, tight for abuse. */
 export const LIDAS_MAX = 2_000
 export const ARQUIVO_MAX = 2_000
 export const BLOQUEIO_MAX = 2_000
@@ -116,10 +116,10 @@ export type MarcasDePreferencias = z.infer<typeof MarcasDePreferencias>
 export type AmigosMostrados = z.infer<typeof AmigosMostrados>
 
 /**
- * The account channel payloads. They enter the union of `payload.ts` by spread.
+ * The account channel payloads. They join the union in `payload.ts` by spread.
  *
- * Each one carries a MAP, not a key: a delta is a map of one entry, a full
- * replacement is the entire map. The friend list shown is the exception because
+ * Each one carries a MAP, not a key: a delta is a one-entry map, a full
+ * replacement is the whole map. The shown friend list is the exception because
  * it is already a single value, with its own `updatedAt`.
  */
 export const PAYLOADS_DE_ESTADO = [
@@ -134,7 +134,7 @@ export const PAYLOADS_DE_ESTADO = [
 export const TIPOS_DE_ESTADO: ReadonlySet<string> = new Set(PAYLOADS_DE_ESTADO.map((esquema) => esquema.shape.t.value))
 
 /**
- * An entry from the friendships log, as the fold reads it (`#friendEvents`).
+ * An entry from the friendship book, as the fold reads it (`#friendEvents`).
  *
  * Only the fields the fold uses, plus the server's `seq`, which is what orders
  * it (see `#porOrdemDoServidor` in the core). `-1` is an act of ours with no echo.
@@ -149,17 +149,17 @@ export const EntradaDoLivro = z.object({
 })
 export type EntradaDoLivro = z.infer<typeof EntradaDoLivro>
 
-/** Caps on the log in the snapshot. One channel per friendship; two hundred acts per channel is plenty. */
+/** Caps on the book in the snapshot. One channel per friendship; two hundred acts per channel is plenty. */
 export const LIVRO_CANAIS_MAX = 2_000
 export const LIVRO_ENTRADAS_MAX = 200
 
 /**
  * The pairing snapshot (level M).
  *
- * `amizades` carries the log events per channel, not the already-folded bonds:
- * the new device folds them itself, with the same function and same order, and
- * reaches the same bonds (with each one's channel). Folding on one side and
- * copying the result to the other meant two folds diverging at the first new event.
+ * `amizades` carries the book's events per channel, not the already-folded ties:
+ * the new device folds them itself, with the same function and the same order, and
+ * reaches the same ties (with each one's channel). Folding on one side and
+ * copying the result to the other would mean two folds diverging at the first new event.
  */
 export const EstadoDeConta = z.object({
   v: z.literal(1),

@@ -11,28 +11,29 @@ import {
 } from "@enclave/protocol"
 
 /**
- * Fetch a link preview from the server.
+ * Fetches a link preview, from the server.
  *
  * Why this exists and what it costs: inside a browser, the destination page can
- * only be read if it sends headers to authorize it, and most do not. Without this,
- * title and thumbnail would have to be written by hand. The price is that the
- * server learns which links are published; this was accepted with full knowledge,
+ * only be read if it sends headers that allow it, and most do not. Without this,
+ * the title and thumbnail would have to be typed by hand. The price is that the
+ * server learns which links are published; this was accepted knowingly,
  * and the design keeps it to a minimum: only the publisher's device requests it,
  * once, and what comes out travels afterward inside the encrypted message. The
- * reader still does not speak with the site or with this server.
+ * reader still talks to neither the site nor this server.
  *
  * Nothing here is logged. What address was requested and by whom is not written
- * to any table or log, it would recreate, on the server side, exactly the reading
- * record that the entire product exists to avoid.
+ * to any table or log: that would rebuild, on the server side, exactly the reading
+ * log the whole product exists not to have.
  */
 
 // ------------------------------------------------------------------ addresses
 //
-// The dangerous part. A URL finder chosen by the caller is a textbook SSRF:
-// without guards, any account sends the server to reach where it cannot go, // `127.0.0.1`, the machine's private network, `169.254.169.254`. This machine
-// is shared with another site in production.
+// The dangerous part. A fetcher of caller-chosen URLs is a textbook SSRF:
+// without a guard, any account can make the server hit places it cannot reach
+// itself: `127.0.0.1`, the machine's private network, `169.254.169.254`. This
+// machine is shared with another site in production.
 
-/** Bytes of an IPv4 in decimal dotted form, or `null`. */
+/** Bytes of an IPv4 address in dotted decimal, or `null`. */
 function bytesIPv4(text: string): Uint8Array | null {
   if (!isIPv4(text)) return null
   const parts = text.split(".").map(Number)
@@ -41,7 +42,7 @@ function bytesIPv4(text: string): Uint8Array | null {
 }
 
 /**
- * Bytes of an IPv6, with `::` expanded and the suffix in IPv4 form accepted.
+ * Bytes of an IPv6 address, with `::` expanded and an IPv4-form suffix accepted.
  *
  * Written by hand, not by regex, because what matters is not the text form but
  * the 16 bytes: `::ffff:127.0.0.1` and `::ffff:7f00:1` are the same machine
@@ -50,7 +51,7 @@ function bytesIPv4(text: string): Uint8Array | null {
  */
 function bytesIPv6(text: string): Uint8Array | null {
   if (!isIPv6(text)) return null
-  // A zone (`fe80::1%eth0`) does not change the address; it only changes how it leaves.
+  // A zone (`fe80::1%eth0`) does not change the address; it only changes which interface it leaves by.
   const semZona = text.split("%")[0] ?? text
   const [cabeca = "", cauda] = semZona.split("::") as [string, string | undefined]
 
@@ -59,7 +60,7 @@ function bytesIPv6(text: string): Uint8Array | null {
     const saida: number[] = []
     for (const peca of parte.split(":")) {
       if (peca.includes(".")) {
-        // The IPv4 form suffix counts as two groups of 16 bits.
+        // An IPv4-form suffix counts as two 16-bit groups.
         const quatro = bytesIPv4(peca)
         if (!quatro) return null
         saida.push(((quatro[0] as number) << 8) | (quatro[1] as number))
@@ -94,7 +95,7 @@ function ipv4Reservado(b: Uint8Array): boolean {
   const [a = 0, segundo = 0, terceiro = 0] = b
   if (a === 0) return true // 0.0.0.0/8, "this network"
   if (a === 10) return true // privada
-  if (a === 127) return true // loopback, entire not just .0.1
+  if (a === 127) return true // loopback, the whole range, not just .0.1
   if (a === 100 && segundo >= 64 && segundo <= 127) return true // CGNAT
   if (a === 169 && segundo === 254) return true // link-local: cloud metadata
   if (a === 172 && segundo >= 16 && segundo <= 31) return true // privada
@@ -112,7 +113,7 @@ function ipv4Reservado(b: Uint8Array): boolean {
 /**
  * Is the address on the public Internet?
  *
- * Refuse by default: what cannot be read does not pass. A wrong `false` costs
+ * Deny by default: what cannot be parsed does not pass. A wrong `false` costs
  * a preview; a wrong `true` costs the rest of the machine.
  */
 export function isPublicAddress(address: string): boolean {
@@ -147,9 +148,9 @@ export function isPublicAddress(address: string): boolean {
 }
 
 /**
- * Does the URL pass on first look?
+ * Does the URL pass at first sight?
  *
- * Returns the parsed URL, or `null`. Scheme and literal address only, the
+ * Returns the parsed URL, or `null`. Scheme and literal address only: the
  * hostname has not been resolved yet, and resolving here would not help: that
  * is what `guardedLookup` does, closing the window between checking and
  * connecting.
@@ -173,9 +174,9 @@ export function urlPermitida(raw: string): URL | null {
  * Name resolution that also decides whether to connect.
  *
  * Checking the address and then letting `fetch` resolve again opens a window
- * between the two: a name that responds with a public address first and then
+ * between the two: a name that resolves first to a public address and then to
  * `127.0.0.1` passes the check and connects to the second one. Here there is
- * no window, what this function returns is exactly the address the socket
+ * no window: what this function returns is exactly the address the socket
  * connects to, because `net.connect` calls it.
  */
 type Lookup = Exclude<Parameters<typeof httpRequest>[1], undefined>["lookup"]
@@ -189,17 +190,17 @@ export const guardedLookup: Lookup = ((anfitriao, opcoes, callback) => {
       return callback(new Error("endereço não permitido"), "", 0)
     }
     const primeiro = seguros[0] as { address: string; family: number }
-    // `all` decides the response shape; both paths only return verified results.
+    // `all` decides the response shape; both paths return only checked addresses.
     if ((opcoes as { all?: boolean }).all) return callback(null, seguros as never, 0)
     return callback(null, primeiro.address, primeiro.family)
   })
 }) as Lookup
 
-// -------------------------------------------------------------------- limites
+// -------------------------------------------------------------------- limits
 
-/** How many redirects to follow. A site that responds 302 to itself would lock us up. */
+/** How many redirects to follow. A site that answers 302 to itself would trap us. */
 export const REDIRECT_MAX = 3
-/** Maximum time for a request. Short: this happens while someone waits. */
+/** Maximum time for a request. Short: someone is waiting on this. */
 export const REQUEST_TIMEOUT_MS = 6000
 /** Just enough for Open Graph, which lives in the `<head>`. */
 export const PAGE_MAX_BYTES = 256_000
@@ -222,7 +223,7 @@ interface RespostaCrua {
 }
 
 /**
- * A saved GET, with redirects followed manually.
+ * A guarded GET, with redirects followed by hand.
  *
  * Following redirects automatically seems the same and is not: the check done
  * on the first URL says nothing about the second, and a site that responds 302
@@ -241,9 +242,9 @@ async function buscar(url: URL, maxBytes: number, saltos = 0): Promise<RespostaC
         lookup: guardedLookup,
         timeout: REQUEST_TIMEOUT_MS,
         headers: {
-          // We say what we are. A client that disguises itself as a browser is an
-          // unnecessary lie, and some sites serve better those who identify as a
-          // preview reader.
+          // We say what we are. A client disguised as a browser is a needless lie,
+          // and some sites serve a client that identifies as a preview fetcher
+          // better.
           "user-agent": "OrwellLinkPreview/1.0 (+https://orwell.pt)",
           accept: "text/html,application/xhtml+xml,image/*;q=0.8,*/*;q=0.5",
           "accept-language": "pt-PT,pt;q=0.9,en;q=0.6",
@@ -308,8 +309,8 @@ async function buscar(url: URL, maxBytes: number, saltos = 0): Promise<RespostaC
   })
 }
 
-/** An image already fetched, as a data URL, or `undefined`. Never crashes: a
- * thumbnail that does not arrive does not break the title that already did. */
+/** An image already fetched, as a data URL, or `undefined`. Never throws: a
+ * thumbnail that fails to arrive does not spoil the title that already did. */
 async function buscarImagem(endereco: string): Promise<string | undefined> {
   try {
     const alvo = urlPermitida(endereco)
@@ -324,14 +325,15 @@ async function buscarImagem(endereco: string): Promise<string | undefined> {
 }
 
 /**
- * YouTube, which does not read like the others.
+ * YouTube, which cannot be read like the others.
  *
- * The page declares Open Graph, but at byte 691,000 of a 1.3 MB document,  * see `youtubeOembedUrl`. We go to oEmbed instead, which is 300 bytes, and to
+ * The page declares Open Graph, but at byte 691,000 of a 1.3 MB document (see
+ * `youtubeOembedUrl`). We go to oEmbed instead, which is 300 bytes, and to
  * the thumbnail via an address derived from the ID. Two small downloads instead
  * of one huge one, and with no HTML scraping.
  *
- * The ID is validated in `youtubeIdOf` before it enters any URL, eleven
- * characters from a known alphabet, because whoever published chose the link.
+ * The ID is validated in `youtubeIdOf` before it goes into any URL (eleven
+ * characters from a known alphabet), because the publisher chose the link.
  */
 async function preverYoutube(id: string, finalUrl: string): Promise<LinkPreviewResult> {
   let title: string | undefined
@@ -349,7 +351,7 @@ async function preverYoutube(id: string, finalUrl: string): Promise<LinkPreviewR
     if (typeof dados.author_name === "string") siteName = dados.author_name.slice(0, 100)
     else if (typeof dados.provider_name === "string") siteName = dados.provider_name.slice(0, 100)
   } catch {
-    // No title still brings a thumbnail, and the facade still works.
+    // Without a title there is still a thumbnail, and the facade still works.
   }
 
   let image: string | undefined
@@ -370,8 +372,8 @@ async function preverYoutube(id: string, finalUrl: string): Promise<LinkPreviewR
  * What the page says about itself, and the image it declared.
  *
  * The extraction is the same as on the client and comes from `@enclave/protocol`:
- * text partitioning, never a foreign HTML parser, and only one copy, two
- * handwritten lists end up disagreeing with each other.
+ * plain text splitting, never a third-party HTML parser, and a single copy: two
+ * hand-written lists end up disagreeing.
  */
 export async function fetchLinkPreview(raw: string): Promise<LinkPreviewResult> {
   const url = urlPermitida(raw)

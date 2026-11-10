@@ -8,7 +8,7 @@ import { OrcamentoDeSaida } from "./orcamento-de-saida.js"
 import { VigiaDaQuota, avaliarQuota, mesDe } from "./quota-mensal.js"
 
 /**
- * Video cap near the monthly quota (`quota-mensal.ts`), and the host script
+ * The video cutoff near the monthly quota (`quota-mensal.ts`), and the host script
  * that writes the file (`infra/quota-vnstat.sh`).
  */
 const QUOTA = 8e12
@@ -157,7 +157,7 @@ describe("infra/quota-vnstat.sh", () => {
   it("escreve a saída do mês corrente na interface pública", () => {
     const escrito = correr("2")
     expect(JSON.parse(escrito)).toEqual({ mes: "2026-11", saidaBytes: 6_400_000_000_000, lidoEm: "2026-11-16T12:00:00Z" })
-    // And that is what the server reads: 6.4 of 8 TB is 80 %, the cap.
+    // And that is what the server reads: 6.4 of 8 TB is 80 %, the cutoff.
     expect(avaliarQuota(escrito, QUOTA, AGORA)).toEqual({ estado: "reduzido", fracao: 0.8 })
   })
 

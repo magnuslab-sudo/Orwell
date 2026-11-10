@@ -3,10 +3,10 @@ import { DENUNCIAS_POR_PAYLOAD_MAX, DenunciaDaConta, PAYLOADS_DE_ESTADO } from "
 import { Payload } from "./payload.js"
 
 /**
- * Copies to the founder across the account's devices (report finishing, 11/4/2026).
- * The device holding the account key opens the copy and sends the report already
- * open to its siblings through the account channel, in an OPTIONAL field of `estado.fichas`,
- * like profiles: a 1.3.0 sibling knows the payload and discards the field.
+ * Founder copies across the account's devices (abuse report polish, 4/11/2026).
+ * The device holding the account key opens the copy and sends the already opened
+ * report to its siblings over the account channel, in an OPTIONAL field of `estado.fichas`,
+ * like profiles: a 1.3.0 sibling knows the payload and drops the field.
  */
 
 const CARLA = "@carla:orwell.pt"

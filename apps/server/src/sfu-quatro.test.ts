@@ -25,11 +25,11 @@ import type { ServerConfig } from "./config.js"
  * The SFU path was never exercised above two participants: the proofs in
  * `scripts/sfu-prova-fase2/` and `-fase3/` run with a pair, and
  * `scripts/carga-chamada.mjs` measured eight when it was still mesh. The
- * production report, three hearing each other, the fourth forever "calling"
- * them, falls exactly in that gap, and the first question to close is whether
- * the SERVER shows the fourth to the three.
+ * production report (three hearing each other, the fourth forever "connecting"
+ * to them) falls exactly in that gap, and the first question to settle is whether
+ * the SERVER introduces the fourth to the three.
  *
- * What is measured here is the gateway boundary, nothing more: whoever enters
+ * What is measured here is the gateway boundary, nothing more: whoever joins
  * gets the list of who is already there, and whoever produces is announced to
  * ALL the others.
  */
@@ -155,19 +155,19 @@ async function entrar(): Promise<{ client: TestClient; address: string }> {
   return { client, address: identity.address }
 }
 
-// A new opaque address: the server at 1.0 j does not introduce `!<nome>`.
+// A new opaque address: the 1.0 server no longer creates `!<nome>`.
 const novoCanal = (): string => moradaDeSala(HOME)
 const ambitoDe = (nome: string): string => createHash("sha256").update(nome).digest("base64url")
 
 async function sentarPorConvite(host: TestClient, guest: { client: TestClient; address: string }, channel: string): Promise<void> {
-  // With the code proof, like 1.0 redeems (slice 6a): the hash alone does not work.
+  // With the code proof, as 1.0 redeems (slice 6a): the hash alone does not get in.
   const convite = conviteComProva()
   host.send({ t: "invite.create", channel, ...convite.criar, expiresAt: null, maxUses: 1 })
   await host.nextOf("invite.created")
   guest.client.send(convite.resgate(guest.address))
   await host.nextOf("invite.request")
   // Redemption is a request, not a seat (INV-01): the seat comes from the
-  // directed Welcome from someone already there, which is what a member sends
+  // targeted Welcome from someone already there, which is what a member sends
   // when admitting.
   host.send({ t: "channel.send", channel, kind: "welcome", ciphertext: toBase64(crypto.getRandomValues(new Uint8Array(64))), recipient: guest.address })
   await guest.client.nextOf("channel.event")
@@ -224,8 +224,8 @@ describe("uma chamada de voz a QUATRO, pelo gateway", () => {
     }
 
     // The first three set up the entire call: they join, bring up both
-    // transports, and put the voice on the air. It's the state the owner described, three
-    // hearing each other, before the fourth arrives.
+    // transports, and put voice on the air. This is the state the owner described (three
+    // hearing each other) before the fourth arrives.
     const transportes = new Map<string, { envio: string; recepcao: string }>()
     const produtores = new Map<string, string>()
 
@@ -249,7 +249,7 @@ describe("uma chamada de voz a QUATRO, pelo gateway", () => {
       const produzido = await quem.client.nextOf("sfu.produced")
       produtores.set(quem.address, produzido.producer)
 
-      // And consumed by whoever was already there, which is what the `SFU` motor's `join`
+      // And it consumes whoever was already there, which is what `entrar` in `MotorSfu`
       // does with the list that `scope.joined` brought.
       for (const outro of entrada.producers) {
         quem.client.send({
@@ -289,7 +289,7 @@ describe("uma chamada de voz a QUATRO, pelo gateway", () => {
     const produzidoPeloQuarto = await quarto.client.nextOf("sfu.produced")
 
     // The three must receive the announcement, and must be able to consume it. This is
-    // where "connecting" is born or not: no consumer means no flow, and no flow means the
+    // where "connecting" starts or not: no consumer means no flow, and no flow means the
     // card keeps saying the person is connecting forever.
     for (const quem of gente.slice(0, 3)) {
       // The full log, not the queue: the announcements from the second and third
@@ -330,17 +330,17 @@ describe("uma chamada de voz a QUATRO, pelo gateway", () => {
    * Rejoin the same call, which is what `#join` in `call.ts` does on its own.
    *
    * Joining a call while already in one starts by leaving the previous one, and the
-   * exit does not wait for any response: `sfuSairDoAmbito` sends the frame and moves on.
-   * Both frames leave through the same socket with an instant between them, and the
+   * leave does not wait for any response: `sfuSairDoAmbito` sends the frame and moves on.
+   * Both frames leave through the same socket an instant apart, and the
    * gateway dispatches each frame with a `void this.#dispatch(...)`, with no queue
    * between them.
    *
-   * What this measures is the balance: after both, this connection MUST be in the
-   * call. Missing it is the costliest failure at this layer, because you cannot see it
-   * from either side, whoever is outside the scope still produces (the motor does not
-   * check that list), but their `sfu.producer.new` is not announced to anyone and no
-   * announcement from the others reaches them. They stay "connecting" for everyone and
-   * everyone stays "connecting" for them.
+   * What this measures is the end state: after both, this connection MUST be in the
+   * call. Missing it is the costliest failure at this layer, because nobody can see
+   * it: a connection outside the scope still produces (the engine does not
+   * check that list), but its `sfu.producer.new` is announced to nobody and no
+   * announcement from the others reaches it. It stays "connecting" for everyone and
+   * everyone stays "connecting" for it.
    */
   it("sair e voltar a entrar no mesmo âmbito, sem esperar pela saída, deixa a ligação DENTRO", async () => {
     const dono = await entrar()
@@ -359,14 +359,14 @@ describe("uma chamada de voz a QUATRO, pelo gateway", () => {
       await quem.client.nextOf("sfu.scope.joined")
     }
 
-    // The rejoin, as the client does it: exit and entry in a burst.
+    // The rejoin, as the client does it: the leave and the join in a burst.
     par.client.send({ t: "sfu.scope.leave", channel: canal, scope: escopo })
     par.client.send({ t: "sfu.scope.join", channel: canal, scope: escopo })
     await par.client.nextOf("sfu.scope.joined")
     await par.client.sync()
 
-    // And proof they are really in there: a transport only creates in a call they
-    // joined, and a flow from the other only reaches whoever is in it.
+    // And proof that it really is inside: a transport can only be created in a call
+    // it joined, and a flow from the other only reaches a connection that is in it.
     par.client.send({ t: "sfu.transport.create", channel: canal, scope: escopo, direction: "envio", ref: "r1" })
     const transporte = await par.client.nextOf("sfu.transport.created")
     expect(transporte.transport).toBeTruthy()

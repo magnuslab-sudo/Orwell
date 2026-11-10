@@ -32,9 +32,9 @@ import {
  *
  * **Refusal without exception.** `decodeDeviceCredential` returns `undefined` to
  * anything that is not exactly our credential, and `verifyDeviceChain` returns
- * `false`. Whoever calls them is deciding whether to admit a leaf; the promised
- * refusal is silence, and an exception there would be a different failure than
- * the one promised, bubbling up a path that does not always catch it.
+ * `false`. The caller is deciding whether to admit a leaf; the agreed refusal
+ * is silence, and a throw there would be a different failure from the agreed
+ * one, bubbling up a path that does not always catch it.
  */
 
 const SERVIDOR = parseServerName("orwell.pt")
@@ -125,8 +125,8 @@ describe("credencial de aparelho", () => {
     const credencial = credencialDeTeste(5)
     // Here it THROWS on purpose, and that is the right asymmetry: whoever writes
     // is producing their own credential and their error has to hurt where someone
-    // sees it; whoever reads is judging another's bytes and cannot go below for
-    // that. It is the same rule as `encodePayload` against `decodePayload`.
+    // sees it; whoever reads is judging someone else's bytes and must not crash
+    // over them. It is the same rule as `encodePayload` against `decodePayload`.
     expect(() => encodeDeviceCredential({ ...credencial, accountKey: new Uint8Array(31) })).toThrow()
     expect(() => encodeDeviceCredential({ ...credencial, deviceKey: new Uint8Array(33) })).toThrow()
     expect(() => encodeDeviceCredential({ ...credencial, signature: new Uint8Array(63) })).toThrow()
@@ -284,7 +284,7 @@ describe("identidade", () => {
 
 /**
  * The identity of a PAIRED device: certificate from outside, account private
- * key nowhere. This is the guard that makes the design decision in section 4
+ * key nowhere. This is the guard that makes the design decision in slice 4
  * (docs/PLANO_MULTIDISPOSITIVO.md §10) verifiable instead of promised.
  */
 describe("identidade por certificado (aparelho emparelhado)", () => {

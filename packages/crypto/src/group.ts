@@ -67,15 +67,15 @@ export interface GroupSession {
 }
 
 /**
- * The leaf credential: the entire chain, not just the address in text.
+ * The leaf credential: the whole chain, not the address as text.
  *
- * Before it held just the address, and whoever validated would recompute the digest
- * against the key that signed the leaf. Now it carries the chain, address, account key,
- * device key, account signature, because the leaf is now signed by the device and
- * the address must remain the digest of the account. It travels here, not in a separate
+ * It used to hold only the address, and the validator recomputed the digest
+ * against the key that signed the leaf. Now it carries the chain (address, account key,
+ * device key, account signature) because the leaf is now signed by the device and
+ * the address must stay the digest of the account key. It travels here, not in a separate
  * payload, because the leaf is the only state that all members already share and already
- * validate: whoever joins mid-way receives the entire tree and validates each leaf,
- * without needing to have seen anything happen.
+ * validate: a member who joins mid-way receives the whole tree and validates each leaf,
+ * without having seen anything happen.
  */
 function credentialFor(identity: Identity): Credential {
   return { credentialType: "basic", identity: encodeDeviceCredential(identity.credential) }
@@ -84,7 +84,7 @@ function credentialFor(identity: Identity): Credential {
 /**
  * MLS wants its own signature keypair per leaf. It is the DEVICE key that signs it:
  * a leaf is a machine, and it is the machine that gets revoked when it is lost. The
- * binding to the address is not lost for that, it goes in the credential, in
+ * binding to the address is not lost: it goes in the credential, in
  * `credentialFor`, and `addressBindingAuthService` verifies it link by link.
  */
 function signatureKeyPair(identity: Identity): { signKey: Uint8Array; publicKey: Uint8Array } {
@@ -167,7 +167,7 @@ export async function addMembers(
     the joiner decrypts (RFC 9420 §12.4.3.1). It does not go in the group context: there it would
     be state for everyone, and a 1.0.x client's `joinGroup` would reject a Welcome
     with a context extension that its leaf does not declare. In the `GroupInfo`,
-    it drops it without noticing.
+    that client silently discards it.
   */
   const groupInfoExtensions: Extension[] = opcoes.retrato ? [{ extensionType: EXTENSAO_RETRATO, extensionData: opcoes.retrato }] : []
   const result = await createCommit(
@@ -188,9 +188,9 @@ export interface RemoveMembersResult {
   /**
    * Broadcast ALL of these, in order.
    *
-   * A removal is today a single commit, but the shape remains a list: whoever
-   * broadcasts does not need to know how many there are, and a future operation that needs
-   * two does not force changes to whoever carries it.
+   * A removal is now a single commit, but the shape stays a list: the broadcaster
+   * does not need to know how many there are, and a future operation that needs
+   * two does not force changes to the code that carries it.
    */
   commits: Uint8Array[]
 }
@@ -204,24 +204,24 @@ export interface RemoveMembersResult {
  *
  * A single commit, and that is the whole point of this function.
  *
- * A commit that removes somebody MUST carry an UpdatePath, RFC 9420 §12.4, with
- * the table in §12.1 marking `remove` as *path required*. That path is what
- * denies the removed member the next epoch: the secrets are sealed to the tree
+ * A commit that removes somebody MUST carry an UpdatePath (RFC 9420 §12.4, with
+ * the table in §12.1 marking `remove` as *path required*). That path is what
+ * denies the removed member the next epoch: the secrets are encrypted to the tree
  * resolution, which no longer includes their leaf. Without a path, the commit secret is zero, the
- * secret of the new epoch derives from the old one, and the old one is precisely what the
+ * secret of the new epoch derives from the old one, and the old one is exactly what the
  * removed member has.
  *
- * `ts-mls` 1.6.2 only required a path from TWO removals onwards, an off-by-one error in
- * `clientState.js` (`Object.values(grouped.remove).length > 1`), and so a
- * single removal, which is all expulsion and all broken friendship, went out
- * without a path. It is fixed in `patches/ts-mls+1.6.2.patch`, where it says
+ * `ts-mls` 1.6.2 only required a path from TWO removals onwards (an off-by-one error in
+ * `clientState.js`: `Object.values(grouped.remove).length > 1`), so a
+ * single removal, which covers every kick and every unfriend, went out
+ * without a path. It is fixed in `patches/ts-mls+1.6.2.patch`, which explains
  * why the version was not bumped.
  *
- * The earlier fix, remove without a path and advance the epoch next, closed
+ * The earlier fix (remove without a path, then advance the epoch) closed
  * the end but left the middle open: the intermediate epoch derived from the previous one, which
- * the removed member has, so any third party encrypting there would deliver the
- * message to them. The server just had to deliver the first commit and hold the second, and
- * not even a symptom appeared: whoever was stuck decrypted perfectly. See the prefix
+ * the removed member has, so any third party encrypting there delivered the
+ * message to them. The server only had to deliver the first commit and hold back the second, and
+ * there was no symptom at all: the stuck members decrypted perfectly. See the prefix
  * test in `group.test.ts`.
  */
 export async function removeMembers(session: GroupSession, leafIndices: number[]): Promise<RemoveMembersResult> {
@@ -233,16 +233,16 @@ export async function removeMembers(session: GroupSession, leafIndices: number[]
   )
   if (!rotatedOwnLeafKey(session.state, result.newState)) {
     // The commit comes out encrypted, so the path is not readable from outside, but it
-    // leaves a mark in our own state: only whoever creates an UpdatePath swaps
-    // their leaf's private key. It is the available proof, and it acts as a brake on a
-    // patch lost in a badly run `npm install`: better for expulsion to fail
-    // in front of our eyes than to go out without a path and lie to whoever hit the button.
+    // leaves a mark in our own state: only a committer that creates an UpdatePath replaces
+    // its leaf's private key. It is the proof we have, and it guards against a
+    // patch lost in a botched `npm install`: better for the kick to fail
+    // visibly than to go out without a path and lie to whoever pressed the button.
     throw new Error("remoção sem UpdatePath: o remendo em patches/ts-mls+1.6.2.patch não está aplicado")
   }
   return { session: { ...session, state: result.newState }, commits: [encodeMlsMessage(result.commit)] }
 }
 
-/** If a commit renewed our leaf's private key, see `removeMembers`. */
+/** Whether a commit renewed our leaf's private key. See `removeMembers`. */
 function rotatedOwnLeafKey(before: ClientState, after: ClientState): boolean {
   const ownNode = after.privatePath.leafIndex * 2
   const antes = before.privatePath.privateKeys[ownNode]
@@ -264,8 +264,8 @@ export async function rotateEpoch(session: GroupSession): Promise<RemoveMembersR
     { state: session.state, cipherSuite: session.suite, pskIndex: makePskIndex(session.state, {}) },
     { ratchetTreeExtension: true },
   )
-  // A commit with no proposals always carries an UpdatePath, it is the only way the
-  // library guarantees it, and that is why `removeMembers` relies on it.
+  // A commit with no proposals always carries an UpdatePath. It is the only form the
+  // library guarantees, and that is why `removeMembers` relies on it.
   return { session: { ...session, state: result.newState }, commits: [encodeMlsMessage(result.commit)] }
 }
 
@@ -286,11 +286,11 @@ export interface EntradaPorWelcome {
 }
 
 /**
- * Join via Welcome and get the `GroupInfo` extensions, which carry the
+ * Join via Welcome and keep the `GroupInfo` extensions, which carry the
  * channel snapshot (phase 1 of 1.1).
  *
  * `joinGroupWithExtensions` is the same path as `joinGroup` (ts-mls 1.6.2's `joinGroup`
- * calls it and drops the second half): the same tree validation, with the patch from
+ * calls it and discards the second half): the same tree validation, with the patch from
  * `patches/ts-mls+1.6.2.patch` (RFC 9420 §12.4.3.1), the same credential, the same
  * `GroupInfo` signature and the same confirmation tag. Proved in `group.unmerged.test.ts`.
  */
@@ -320,7 +320,7 @@ export async function joinChannelComExtensoes(
   return { session: { channel, state, suite }, extensoes }
 }
 
-/** The bytes of the snapshot in the extensions of a Welcome, or `null` if there are none (Welcome from a 1.0.x client). */
+/** The snapshot bytes in the extensions of a Welcome, or `null` if there are none (Welcome from a 1.0.x client). */
 export function retratoDasExtensoes(extensoes: readonly Extension[]): Uint8Array | null {
   const retrato = extensoes.find((extensao) => extensao.extensionType === EXTENSAO_RETRATO)
   return retrato ? retrato.extensionData : null
@@ -339,27 +339,27 @@ export function declaraPermissoes(keyPackage: KeyPackage): boolean {
 /**
  * The entry card of a channel: whoever has it can join on their own.
  *
- * It is a `GroupInfo` with two things inside: the external initiation public key
- * (`external_pub`) and the entire tree. With them, whoever arrives builds a
- * commit that adds themselves and joins the group without being invited, without a Welcome,
+ * It is a `GroupInfo` with two things inside: the external init public key
+ * (`external_pub`) and the whole tree. With them, a newcomer builds a
+ * commit that adds itself and joins the group without an invite, without a Welcome,
  * and without waiting for anyone. It is the mechanism from RFC 9420 §12.4.3.2, and it
- * exists precisely for the case we had to solve here: a public room where whoever signs up
- * at midnight cannot be left out just because there is no one awake to open the door.
+ * exists for exactly the case we had to solve here: a public room where someone who signs up
+ * in the middle of the night cannot be left out just because no one is awake to open the door.
  *
- * **This is a door key, and we treat it as such.** Publishing the card of a private
- * channel would open it to anyone who got their hands on it: there is no invite to validate,
- * they join themselves. So the card is only published for the channel the server announces as public,
- * the server only keeps it and only delivers it for that one, and each of those guards is
- * written on its side.
+ * **This is a door key, and we treat it as one.** Publishing the card of a private
+ * channel would open it to anyone who got hold of it: there is no invite to validate,
+ * the newcomer adds itself. So the card is only published for the channel the server announces as public,
+ * the server only stores and delivers it for that channel, and each of those guards is
+ * written on its own side.
  *
- * What the card reveals to whoever reads it: who the members are and the public keys
- * of their leaves. On a channel open to any account on the server that is little more than what
+ * What the card reveals to a reader: who the members are and the public keys
+ * of their leaves. On a channel open to any account on the server, that is little more than what
  * subscriptions already say. What it does NOT reveal is a single word of what was said inside:
- * the application keys do not live in the `GroupInfo`, and whoever joins by this door
- * starts reading the moment they join, exactly like whoever joins via Welcome.
+ * the application keys do not live in the `GroupInfo`, and a member who joins by this door
+ * starts reading the moment they join, exactly like one who joins via Welcome.
  *
- * It is good for a single epoch only. As soon as the channel advances, this card stops working
- * and whoever enters with it is rejected, that is why whoever joins publishes the next one right away.
+ * It is valid for one epoch only. As soon as the channel advances, this card stops working
+ * and a join with it is rejected. That is why whoever joins publishes the next one right away.
  */
 export async function publishableGroupInfo(session: GroupSession): Promise<Uint8Array> {
   const info = await createGroupInfoWithExternalPubAndRatchetTree(session.state, [], session.suite)
@@ -371,17 +371,17 @@ export interface ExternalJoinResult {
   /**
    * Broadcast on the channel, like any other commit.
    *
-   * It goes in `mls_public_message` and not private, because whoever signs it is not
-   * yet a member: they have no epoch keys to encrypt it with. It is the only message
-   * of this product that goes in clear, and what it contains is what the
-   * tree is going to have in view of all members anyway.
+   * It goes as `mls_public_message`, not private, because its signer is not
+   * yet a member: it has no epoch keys to encrypt it with. It is the only message
+   * in this product that goes in the clear, and what it contains is what the
+   * tree will show to all members anyway.
    */
   commit: Uint8Array
   /**
-   * Whether this join led to removal of our old leaf. See `joinChannelExternally`.
+   * Whether this join also removed our old leaf. See `joinChannelExternally`.
    *
-   * Reported to the caller because it is diagnosis that matters: it means this
-   * device was already in the tree, so it left the room without exiting it.
+   * Reported to the caller because it is a useful diagnostic: it means this
+   * device was already in the tree, so it forgot the room without leaving it.
    */
   resync: boolean
 }
@@ -389,33 +389,33 @@ export interface ExternalJoinResult {
 /**
  * Join a channel by the front door, with no invite and no one on the other side.
  *
- * Two checks before anything, and neither is formality:
+ * Two checks before anything else, and neither is a formality:
  *
  * - the card must be a `GroupInfo`, and not some other frame that
- *   the server decided to deliver in its place;
+ *   the server chose to deliver in its place;
  * - the group it describes must be THIS channel. Without this, a hostile server
- *   would answer the public channel request with the card of another channel, and
- *   whoever arrived would join in good faith a place they never asked for, and end up
- *   inside in sight of everyone.
+ *   could answer the request for the public channel with the card of another channel, and
+ *   the newcomer would join, in good faith, a place they never asked for, and end up
+ *   inside in full view of everyone.
  *
- * The rest of the distrust is in the library and it does it: `joinGroupExternal`
- * validates the tree against the `tree_hash` in the context, validates the credential of whoever
- * signed the card via the `authService` (which here is what binds the address to
+ * The rest of the distrust lives in the library, and the library does it: `joinGroupExternal`
+ * validates the tree against the `tree_hash` in the context, validates the credential of the
+ * card's signer via the `authService` (which here is what binds the address to
  * the key, see `suite.ts`) and checks the card's own signature. A card
- * forged by someone who is not a member does not pass any of the three.
+ * forged by a non-member passes none of the three.
  *
- * **Whoever comes back with the same device carries the old leaf with them** (`resync`, RFC
+ * **Coming back on the same device means the old leaf is still there** (`resync`, RFC
  * 9420 §12.4.3.2). Forgetting the room on this device does not remove it from the tree, and the
- * library accepts a new leaf with a signature key that is already
- * elsewhere: it only compares leaves with each other when it validates an entire tree. A
- * tree with two identical leaves would then be rejected to EVERYONE after that
+ * library accepts a new leaf with a signature key that is already in
+ * another leaf: it only compares leaves with each other when it validates a whole tree. A
+ * tree with two identical leaves was then rejected for EVERYONE after that
  * ("signature keys not unique"): no card would open and no Add would pass. That is how
- * the public room closed on 12/9/2026.
+ * the public room got locked on 12/9/2026.
  *
- * The question is asked to the tree that the library built itself, not to our
- * own reading of the card: if there is another leaf there with this device's key,
- * we repeat with `resync`, which removes it in the same commit. It costs a second round
- * only for whoever returns. Another device on the same account has another key and keeps
+ * We ask the tree that the library itself built, not our
+ * own reading of the card: if it has another leaf with this device's key,
+ * we retry with `resync`, which removes it in the same commit. It costs a second round
+ * only for those who return. Another device on the same account has another key and keeps
  * its own leaf, as it always has.
  */
 export async function joinChannelExternally(
@@ -448,7 +448,7 @@ export async function joinChannelExternally(
   }
 }
 
-/** Is there, besides ours, a leaf signed by this key? */
+/** Is there a leaf signed by this key other than ours? */
 function outraFolhaComAChave(state: ClientState, chave: Uint8Array): boolean {
   const nossa = state.privatePath.leafIndex
   const arvore = state.ratchetTree
@@ -489,12 +489,12 @@ export type IncomingResult =
        * The leaf this came from, and the device key that signed it.
        *
        * `sender` is the PERSON and is what almost everything wants: who wrote it, who has
-       * role, who founded. These two say which MACHINE of theirs it came from, and they exist
-       * because of a payload that cannot be judged without them, the
+       * a role, who founded the channel. These two say which of their MACHINES it came from, and they exist
+       * because of a payload that cannot be judged without them: the
        * `device.revoke`, where the question "who is revoking whom" is between
        * devices of the same account and the address is the same on both sides.
        *
-       * They came already verified by MLS and were dropped here. See the
+       * MLS had already verified them, and this code used to drop them. See the
        * header of `openApplicationMessage`: the leaf travels signed inside the
        * `sender_data`, so this is protocol attribution and not a
        * declaration by the sender.
@@ -515,13 +515,14 @@ export type IncomingResult =
       /**
        * The epoch that the frame itself declares, when the frame gets read.
        *
-       * It is not decoration: it is what separates two refusals that look the same and are not
-       * the same thing. A frame from an EARLIER epoch than ours will never open,        * it is the history said before we joined, and forward secrecy
-       * makes sure it stays that way. A frame from a LATER epoch is the opposite:
-       * the channel moved on without us, and that is deafness.
+       * It is not decoration: it is what separates two refusals that look alike and are not
+       * the same thing. A frame from an EARLIER epoch than ours will never open:
+       * it is history sent before we joined, and forward secrecy
+       * keeps it that way. A frame from a LATER epoch is the opposite:
+       * the channel moved on without us, and that is real deafness.
        *
-       * `undefined` when we did not even read the header (garbage, wireformat we do not process):
-       * then we do not know, and we do not pretend we know.
+       * `undefined` when we could not even read the header (garbage, a wireformat we do not route):
+       * then we do not know, and we do not pretend to.
        */
       epochDoFrame?: bigint | undefined
     }
@@ -537,8 +538,8 @@ function epochDeclarada(message: MLSMessage): bigint | undefined {
 /**
  * The epoch that some MLS bytes declare in clear: private message, public message or card.
  *
- * It is what a server that cannot decrypt anything can read, and it is what the rule of
- * one commit per epoch uses. `undefined` for what does not even have a header.
+ * It is what a server that cannot decrypt anything can read, and it is what the
+ * one-commit-per-epoch rule uses. `undefined` for anything without a header.
  */
 export function declaredEpoch(bytes: Uint8Array): bigint | undefined {
   let decoded
@@ -583,7 +584,7 @@ export async function receive(session: GroupSession, ciphertext: Uint8Array): Pr
       const sender = addressAtLeaf(opened.senderTree, opened.senderLeafIndex)
       const senderDeviceKey = deviceKeyAtLeaf(opened.senderTree, opened.senderLeafIndex)
       // Both read the SAME chain from the same leaf: either both come out or neither does.
-      // The guard is double in the same place, because a payload whose device we could not
+      // The guard is still doubled, because a payload whose device we could not
       // name would become a `device.revoke` with no revoker.
       if (!sender || !senderDeviceKey) {
         return { kind: "ignored", session: next, reason: "sender leaf has no usable credential", epochDoFrame }
@@ -635,15 +636,15 @@ export async function receive(session: GroupSession, ciphertext: Uint8Array): Pr
 /**
  * Whether this commit, authenticated in our epoch, removes our leaf from the group.
  *
- * The ts-mls library should report it (`groupActiveState: removedFromGroup`), but it only gets
- * there after applying the UpdatePath of the commit, and the path comes encrypted for who
- * STAYS: whoever leaves does not open it, and processing crashes before ("Could not find
+ * ts-mls should report it (`groupActiveState: removedFromGroup`), but it only gets
+ * there after applying the commit's UpdatePath, and the path is encrypted for those who
+ * STAY: the removed member cannot open it, and processing throws first ("Could not find
  * common ancestor"). Measured on 20/10/2026 (F7 of the sync audit). The
- * result was a zombie channel: in the list, deaf, asking to rejoin whoever had just removed us.
+ * result was a zombie channel: still listed, deaf, asking to rejoin the very member who had just removed us.
  *
  * So we decide here, with the proofs that ts-mls requires of a member commit,
- * and no other trust: the encryption (or the member tag, in a clear commit) with the keys
- * of this epoch, which the server does not have, and the signature of the leaf of whoever committed
+ * and no other trust: the encryption (or the membership tag, in a plaintext commit) with the keys
+ * of this epoch, which the server does not have, and the leaf signature of the committer
  * (`unprotectPrivateMessage` and `unprotectPublicMessage` verify both). Only then
  * do we read the removal list, by value, looking for our leaf.
  */
@@ -690,7 +691,7 @@ async function tiraANossaFolha(session: GroupSession, mensagem: MLSMessage): Pro
  * The same group, marked as ts-mls would mark it if it had managed to finish.
  *
  * Only the activity state changes. Whoever reads `groupActiveState` (the core, when
- * deciding to drop the channel) gets one answer only, whether it comes from ts-mls or
+ * deciding to drop the channel) gets a single answer, whether it comes from ts-mls or
  * from here, and a group saved this way stays marked after reopening.
  */
 function marcadaComoRemovida(session: GroupSession): GroupSession {
@@ -698,20 +699,20 @@ function marcadaComoRemovida(session: GroupSession): GroupSession {
 }
 
 /**
- * An external commit can only remove the old leaf of whoever joins (RFC 9420 §12.4.3.2).
+ * An external commit may only remove the joiner's own old leaf (RFC 9420 §12.4.3.2).
  *
  * The library checks that there is at most one removal, and stops there: an external commit
  * that removed SOMEONE ELSE's leaf would pass and be applied by everyone.
- * Since an external commit is built with the card of the public room, which any account can fetch,
- * that was expelling whoever wanted, the founder included.
+ * Since an external commit is built from the public room's card, which any account can fetch,
+ * that let anyone kick anyone they wanted, the founder included.
  *
  * The rule: the removed leaf must have the same signature key as the new leaf in the
- * commit's path, which is the one of whoever joins and the one the commit signs. That is what
+ * commit's path, which is the joiner's leaf and the one that signs the commit. That is what
  * `joinChannelExternally` does in the `resync`. And nothing by reference: the RFC does not
- * let an external commit cite proposals that whoever joins could never validate.
+ * let an external commit reference proposals that the joiner could never have validated.
  *
- * Checked before the library processes the message, on the clear content. We do not accept
- * anything here, we only refuse, so reading before the signature is verified opens no door.
+ * Checked on the plaintext content before the library processes the message. Nothing is
+ * accepted here, only refused, so reading before the signature is verified opens no door.
  *
  * @returns the reason for refusal, or `undefined` if the commit can proceed.
  */
@@ -741,24 +742,24 @@ function remocaoIndevidaNumaEntrada(state: ClientState, mensagem: PublicMessage)
 /**
  * The signature public key sitting in a member's leaf of the ratchet tree.
  *
- * The key of the DEVICE that person is speaking from, it is what signs what comes out
- * of it. It serves to verify a particular device; it does not serve for safety numbers,
- * and that is why `memberAccountKey` exists alongside it.
+ * The key of the DEVICE that person is speaking from: it signs everything sent
+ * from it. Use it to verify a particular device, not for safety numbers;
+ * that is why `memberAccountKey` exists alongside it.
  */
 export function memberSigningKey(session: GroupSession, address: UserAddress): Uint8Array | null {
   return memberSigningKeys(session, address)[0] ?? null
 }
 
 /**
- * Device keys for all leaves of a person, in leaf order.
+ * Device keys for ALL leaves of a person, in leaf order.
  *
  * An account with three devices has three distinct leaf keys, and the question
  * "did this person sign this?" only has an honest answer against the set: with
- * the singular form alone, a payload signed by someone's second device would
+ * the singular function above, a payload signed by someone's second device would
  * appear not to be theirs.
  *
  * Empty list for anyone not in the tree, the same answer as the `null` from
- * the singular form, without forcing the caller to distinguish absence from single presence.
+ * the singular function, without forcing the caller to tell absence from a single leaf.
  */
 export function memberSigningKeys(session: GroupSession, address: UserAddress): Uint8Array[] {
   const tree = session.state.ratchetTree
@@ -774,10 +775,10 @@ export function memberSigningKeys(session: GroupSession, address: UserAddress): 
 /**
  * The leaves a person occupies in this group.
  *
- * The shortcut that removal needs: `removeMembers` takes leaf indices, and
- * removing a person means removing all their leaves in one commit. Call this and pass
- * the entire result, that is the difference between expelling someone and disconnecting
- * their computer.
+ * The shortcut a kick needs: `removeMembers` takes leaf indices, and
+ * removing a person means removing all their leaves in one commit. Calling this and passing
+ * the whole result is the difference between kicking someone and disconnecting
+ * one of their computers.
  */
 export function memberLeaves(session: GroupSession, address: UserAddress): number[] {
   return leavesOf(session.state.ratchetTree, address)
@@ -794,7 +795,7 @@ export function memberLeaves(session: GroupSession, address: UserAddress): numbe
  * any device and says what it always said: this is the person.
  *
  * Safe to read without revalidation: `addressBindingAuthService` refused any leaf whose
- * chain did not close, so this account key is the one with the address as its hash.
+ * chain did not close, so this account key is the one whose digest is the address.
  */
 export function memberAccountKey(session: GroupSession, address: UserAddress): Uint8Array | null {
   const tree = session.state.ratchetTree
@@ -891,18 +892,18 @@ export function decodeKeyPackage(bytes: Uint8Array): KeyPackage {
  *
  * **This runs BEFORE the package is spent, and that is its reason for existing.**
  * The same verification lives in `addressBindingAuthService` (`suite.ts`) and
- * ts-mls does it inside `createCommit`: a leaf with a broken chain makes the
- * commit fail. But by then the package has already been requested from the server, and
- * a requested package never goes back in the pool. The inviter needs to decide
- * package by package, before the commit, what goes in and what gets thrown out, and
- * to do that must read the chain here.
+ * ts-mls runs it inside `createCommit`: a leaf with a broken chain makes the
+ * commit fail. But by then the package has already been claimed from the server, and
+ * a claimed package never goes back to the pool. The inviter needs to decide
+ * package by package, before the commit, what goes in and what gets discarded, and
+ * for that it must read the chain here.
  *
  * All THREE links, not two. The first two are `verifyDeviceChain`: the address is
  * the hash of the account key, and the account signed the device key. The third is
  * what `suite.ts` does and must be repeated here: the device key of the credential
  * is the one that signs THIS leaf (`leafNode.signaturePublicKey`). Without it, a
  * credential copied from another device and pasted into a leaf signed by any key
- * would pass the first two and go spend the commit only to fail inside.
+ * would pass the first two and waste the commit, only to fail inside it.
  *
  * Never throws: an unreadable credential, of another type, or with a broken link
  * returns `undefined`, the same silent refusal as `verifyDeviceChain`.

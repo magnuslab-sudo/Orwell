@@ -4,12 +4,12 @@ import { TECTO_DA_CAMARA, TECTO_DO_ECRA } from "@enclave/protocol"
 import { INTERVALO_DA_CHAVE_DO_ECRA, MotorDeMedia } from "./media.js"
 
 /**
- * The periodic keyframe for the screen, requested by the server.
+ * The periodic screen keyframe, requested by the server.
  *
- * The cause of pixelated screen sharing (2 November 2026) was the VP8 header
- * encrypted (see `bytesEmClaroDoVp8` in `@enclave/crypto`): with it in the
+ * The cause of the pixelated screen sharing (2 November 2026) was the encrypted
+ * VP8 header (see `bytesEmClaroDoVp8` in `@enclave/crypto`): with it in the
  * clear, the receiver asks for a keyframe again when it loses one. This is the
- * safety net below: the server asks the sender for one every `INTERVALO_DA_CHAVE_DO_ECRA`,
+ * safety net underneath: the server asks the sender for one every `INTERVALO_DA_CHAVE_DO_ECRA`,
  * while someone is watching. It also serves a 1.0.5 sender in a call with new
  * clients, which still encrypts the header and whose receivers never ask.
  *
@@ -65,7 +65,7 @@ describe("o fotograma-chave periódico do ecrã", () => {
   it("pede um a cada intervalo enquanto alguém vê, e pára quando ninguém vê", async () => {
     const { produtor, outro, recepcao, consumido } = await montar("ecra")
 
-    // Paused (as it starts, and as it stays after "Stop watching"): nothing.
+    // Paused (as it is created, and as it stays after "Stop watching"): nothing.
     await esperar(INTERVALO * 4)
     expect(motor.chavesPedidasDoEcra(produtor)).toBe(0)
 

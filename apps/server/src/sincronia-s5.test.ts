@@ -132,7 +132,7 @@ describe("S5: o instantâneo a quem entra tarde", () => {
 
     /*
       Ana and Dora leave before Carla joins: so nothing from them reaches Carla
-      through resend (S1). What reaches Carla from them arrives via Bruno's
+      through their own resend (S1). What reaches Carla from them arrives via Bruno's
       report, and that is what gets ordered.
     */
     ana!.session.disconnect()
@@ -165,10 +165,10 @@ describe("S5: o instantâneo a quem entra tarde", () => {
     expect(posicoes.length).toBeGreaterThanOrEqual(1 + 20 + 40 + 20 + 5 + 1)
     expect(ordem[0]).toBe("fundador")
     expect(posicoes).toEqual([...posicoes].sort((a, b) => a - b))
-    // The conversation before the place never arrives, not even via report.
+    // The conversation before the seat never arrives, not even via report.
     expect(corpos(carla!, canal, "antes do lugar")).toHaveLength(0)
     expect(carla!.avisos).not.toContain("channel-deaf")
-    // The date of the place was saved, for the interface to mark.
+    // The seat date was saved, so the interface can mark it.
     const lugar = carla!.session.lugarEm(canal)
     expect(lugar).not.toBeNull()
     expect(lugar!.seq).toBe(carla!.vault.contents.seatSince?.[canal])
@@ -176,7 +176,7 @@ describe("S5: o instantâneo a quem entra tarde", () => {
     // The founder has no marker.
     expect(bruno!.session.lugarEm(canal)).not.toBeNull()
     expect(ana!.session.lugarEm(canal)).toBeNull()
-    // And the state that Diagnostic shows.
+    // And the state that Diagnostics shows.
     await ate(() => carla!.session.estadoDaSincronia().find((e) => e.channel === canal)?.estado === "igual", "a Carla igual", 20_000)
     expect(carla!.session.estadoDaSincronia().find((e) => e.channel === canal)?.ultimaComparacao).toBeTypeOf("number")
   }, 240_000)
@@ -206,7 +206,7 @@ describe("S5: a data do lugar", () => {
     const [ana, bruno] = await contas("Ana", "Bruno")
     const canal = await canalComTodos(servidor, ana!, [bruno!])
     expect(bruno!.session.lugarEm(canal)).not.toBeNull()
-    // Bruno as a member from before this version: the vault did not save the place.
+    // Bruno as a member from before this version: the vault did not save the seat.
     const cofre = bruno!.vault.contents as unknown as { sincronia?: { lugares?: Record<string, unknown> } }
     delete cofre.sincronia!.lugares![canal]
     const epocas = bruno!.session.groupFor(canal)?.state.groupContext.epoch ?? 0n
@@ -288,7 +288,7 @@ describe("S5: os anexos a pedido", () => {
     const chegada = carla!.session.history(canal).find((e) => e.payload["id"] === id)!
     expect((chegada.payload["media"] as Record<string, unknown>[])[0]).toMatchObject({ evicted: true, name: "foto.png" })
 
-    // A reporter who swaps bytes in flight: Bruno, on the way out, only this time.
+    // A reporter that swaps the bytes in transit: Bruno, on the way out, only this time.
     const enviar = bruno!.session.send.bind(bruno!.session)
     let trocar = true
     bruno!.session.send = (async (destino: string, payload: Record<string, unknown>) => {
@@ -306,8 +306,8 @@ describe("S5: os anexos a pedido", () => {
 
     /*
       Bruno sends the same attachment to this channel only once per `repeticaoMs`
-      (ten minutes). Here the first frame was swapped in flight and the second
-      comes from the same Bruno: with no other options, the test lowers the wait.
+      (ten minutes). Here the first frame was swapped in transit and the second
+      comes from the same Bruno: with no other live leaf, the test lowers the wait.
     */
     const repeticao = TECTOS_DOS_ANEXOS.repeticaoMs
     TECTOS_DOS_ANEXOS.repeticaoMs = 0

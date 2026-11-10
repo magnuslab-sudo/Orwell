@@ -11,32 +11,32 @@ import { accountIdFromSigningKey, parseAddress, type UserAddress } from "./ids.j
  * It's the new security piece of multi-device (docs/PLANO_MULTIDISPOSITIVO.md,
  * §2.2). The server stores it and serves the most recent one it has, but does
  * not sign it: it can't add a device, remove one, or invent one from scratch.
- * What it can do is serve an OLD one, before a revocation, to someone who never
- * saw the new one. That's why the version is monotonic and whoever reads stores
- * the highest one they've seen per address, in the vault, and refuses anything
- * that goes back. The rest of that weakness is laid out in
+ * What it can do is serve an OLD one, from before a revocation, to someone who never
+ * saw the new one. That's why the version is monotonic and each reader stores
+ * the highest one it has seen per address, in the vault, and rejects anything
+ * that goes backwards. The rest of that weakness is laid out in
  * docs/THREAT-MODEL.md, not here.
  *
  * **It works outside any group, on purpose.** Channel roles (`role.define`)
- * travel inside MLS, authenticated by the credential of whoever sends them; the
- * manifest is read by someone who doesn't yet share any group with the account,
- * when they're about to invite them and need to know which devices to admit. It
- * has to stand alone: account signature, and the address is the hash of that
- * key, like in `verifyDeviceChain`.
+ * travel inside MLS, authenticated by the sender's leaf; the
+ * manifest is read by someone who doesn't share any group with the account yet,
+ * when they're about to invite it and need to know which devices to admit. It
+ * has to stand on its own: the account's signature, and the address being the hash of that
+ * key, as in `verifyDeviceChain`.
  *
  * **It does not carry device certificates.** The manifest signature is the
  * account saying "these keys are mine", which is exactly what a per-device
  * certificate would say, with the same key. The certificate is still needed
  * where the device key appears alone, which is in the MLS leaf, and that's where
- * it gets verified: the key package brings the credential with the full chain
- * (`decodeDeviceCredential` + `verifyDeviceChain`), and whoever invites checks
- * that the `deviceKey` of that credential is in this manifest. Two signatures
- * from the same key over the same fact wouldn't give more guarantee than one.
+ * it gets verified: the KeyPackage carries the credential with the full chain
+ * (`decodeDeviceCredential` + `verifyDeviceChain`), and the inviter checks
+ * that the credential's `deviceKey` is in this manifest. Two signatures
+ * by the same key over the same fact would give no more assurance than one.
  *
  * **The wire form is JSON with bytes in base64url**, and the signature covers
  * the canonical form (`canonicalBytes`) of the unsigned fields, with a context
  * at the start so no other account signature can be replayed as a manifest.
- * It's the `signEnvelope` pattern, in the federation, plus the context from
+ * It's the `signEnvelope` pattern from federation, plus the context from
  * `deviceCertMessage`.
  */
 
@@ -47,25 +47,25 @@ const Assinatura = z.string().regex(/^[A-Za-z0-9_-]{86}$/, "expected a 64-byte s
 
 /**
  * The wire form: `manifest.publish`, `manifest.result`, and the row in the
- * `device_manifests` table. Zod, so the server and client refuse the malformed
- * BEFORE verifying it, and the refusal is the same both ways.
+ * `device_manifests` table. Zod, so the server and the client reject a malformed one
+ * BEFORE verifying it, and the rejection is the same on both sides.
  */
 /**
  * The highest version a manifest can have.
  *
  * Without a cap, `Number.MAX_SAFE_INTEGER` would be a valid version: once
- * published (the account can, it's signing), the server would never take another
- * and each reader who saw it would store it as an anchor and refuse everything
- * else forever. An account would lock itself for good. A million is a thousand
+ * published (the account can, it's the signer), the server would never accept another
+ * and each reader who saw it would store it as an anchor and reject everything
+ * else forever. An account would lock itself out for good. A million is a thousand
  * pairings and revocations a day for almost three years; a server or client that
- * receives more than this refuses on shape, before the signature, and both
- * refuse the same.
+ * receives more than this rejects it on shape, before the signature, and both
+ * reject the same thing.
  */
 export const VERSAO_MAXIMA = 1_000_000
 
 export const DeviceManifestWire = z.object({
   address: z.string().min(3).max(255),
-  /** Starts at 1, only goes up, never exceeds `VERSAO_MAXIMA`. */
+  /** Starts at 1, only goes up, and never exceeds `VERSAO_MAXIMA`. */
   version: z.number().int().positive().max(VERSAO_MAXIMA),
   devices: z
     .array(
@@ -77,11 +77,11 @@ export const DeviceManifestWire = z.object({
     )
     .min(1)
     .max(APARELHOS_POR_CONTA),
-  /** Unix seconds. Informational: order is by `version`, not the clock. */
+  /** Unix seconds. Informational: ordering is by `version`, not the clock. */
   signedAt: z.number().int().nonnegative(),
   /** The account key that signed, so the verifier doesn't have to fetch it. */
   accountKey: Chave,
-  /** Ed25519 from the account over `deviceManifestMessage` of the fields above, minus `accountKey`. */
+  /** The account's Ed25519 signature over `deviceManifestMessage` of the fields above, minus `accountKey`. */
   signature: Assinatura,
 })
 export type DeviceManifestWire = z.infer<typeof DeviceManifestWire>
@@ -106,11 +106,11 @@ interface SemAssinatura {
 /**
  * What the account signs to publish a manifest.
  *
- * Its own context, for the same reason as the certificate and revocation: a
+ * Its own context, for the same reason as the certificate and the revocation: a
  * certificate, a revocation, and a manifest are three different things that
- * the same key signs, and none can be read as another. Canonical JSON starts
+ * the same key signs, and none may be read as another. Canonical JSON starts
  * with `{` and the other two start with a 32-byte key, so they already don't
- * collide; context is what makes that a rule instead of luck.
+ * collide; the context is what makes that a rule instead of luck.
  */
 export function deviceManifestMessage(unsigned: SemAssinatura): Uint8Array {
   const context = new TextEncoder().encode("orwell:device-manifest:v1\0")
@@ -131,18 +131,18 @@ function semAssinatura(wire: Omit<DeviceManifestWire, "accountKey" | "signature"
 }
 
 /**
- * The next manifest's list: what was there, plus the new keys, capped at the
- * limit, **and this device itself never leaves the cap**.
+ * The next manifest's list: what was there, plus the new keys, trimmed to the
+ * cap, **and this device itself is never trimmed**.
  *
- * Publishing a manifest without the key of whoever signed it is the account
- * hiding from itself: the inviter stops admitting this device, it stops being
- * added to new channels, and on the next connection it gets added back and
- * kicks out another. If the kicked one is a paired device, it has no account
- * key to recover with and no revocation can bring it back: the account loses a
- * device by ordering mistake.
+ * Publishing a manifest without the signer's own key is the account
+ * hiding from itself: inviters stop admitting this device, it stops being
+ * added to new channels, and on the next connection it adds itself back and
+ * pushes out another. If the one pushed out is a paired device, it has no account
+ * key to restore itself with and no revocation can bring it back: the account loses a
+ * device through a sorting mistake.
  *
- * That's why the cap applies to OTHERS: this device steps aside, the others
- * order by oldest and the newest ones stay until the cap is hit. The final
+ * That's why the trim applies to the OTHERS: this device is set aside, the others
+ * are sorted oldest first and the newest ones stay until the cap is full. The final
  * order is always by `addedAt`, which is what the manifest shows.
  *
  * This is the last resort, not where the cap is enforced: whoever adds a device
@@ -164,15 +164,15 @@ export function aparelhosDoManifestoSeguinte(
   ]
   const meu = toBase64(proprio)
   const outros = todos.filter((device) => toBase64(device.deviceKey) !== meu)
-  // `slice(-0)` would return the whole list, not none: zero needs special handling.
+  // `slice(-0)` would return the whole list, not an empty one: zero is handled separately.
   const lugares = Math.max(0, APARELHOS_POR_CONTA - (todos.length - outros.length))
   const ficam = new Set(
     (lugares === 0 ? [] : [...outros].sort((a, b) => a.addedAt - b.addedAt).slice(-lugares)).map((device) =>
       toBase64(device.deviceKey),
     ),
   )
-  // Filter `todos` (don't concatenate two lists) so tied order stays the same:
-  // what was there before what comes now. Two devices added in the same second
+  // Filter `todos` (don't concatenate two lists) so the order of ties stays the same:
+  // the ones already there before the ones coming in now. Two devices added in the same second
   // have the same `addedAt`, and a stable sort on a different starting order
   // would give a different manifest.
   return todos
@@ -184,15 +184,15 @@ export function aparelhosDoManifestoSeguinte(
 }
 
 /**
- * The server refuses login, claim, and packet publishing from a device the
- * account removed from the manifest, and refuses a manifest that puts it back.
+ * The server rejects login, claim, and KeyPackage publishing from a device the
+ * account removed from the manifest, and rejects a manifest that puts it back.
  *
- * Absent is NO, like other capabilities: against a server that doesn't announce
+ * Absent means NO, like the other capabilities: against a server that doesn't announce
  * it, revocation takes the leaf out of channels and publishes the manifest
  * anyway, but the revoked device can still connect and add itself again (if it
  * has the account key). Whoever revokes must say so.
  *
- * Lives here, not in `wire.ts`, because it's the rule the manifest announces.
+ * It lives here, not in `wire.ts`, because the rule it announces is the manifest's.
  */
 export const CAPACIDADE_REVOGACAO = "device-revocation"
 
@@ -200,8 +200,8 @@ export const CAPACIDADE_REVOGACAO = "device-revocation"
  * The device keys that were in `anterior` and are not in `seguinte`.
  *
  * Leaving the manifest is NOT being revoked, and the difference is backward
- * compatibility: a 0.5.7 client with the account key and a full manifest cuts
- * the oldest device by the cap (`aparelhosDoManifestoSeguinte`), with no intent
+ * compatibility: a 0.5.7 client with the account key and a full manifest trims
+ * the oldest device to fit the cap (`aparelhosDoManifestoSeguinte`), with no intent
  * to revoke anyone. See `aparelhosRevogados`, which is what the server records.
  *
  * Without `anterior` (the account's first manifest), nothing leaves.
@@ -226,14 +226,14 @@ export const RevogadosNoManifesto = z.array(Chave).max(APARELHOS_POR_CONTA)
  * publisher says it revokes (`pedidos`, the `revoke` list of `manifest.publish`).
  *
  * Both halves count. Without the first, a request could revoke a device the new
- * manifest still lists. Without the second, a 0.5.7 client's cap cut would
- * become permanent revocation: the cut device would stay locked out of the
- * account, when before it only left the manifest and came back on the next
- * connection (revision of wave 1 of phase 5, I2).
+ * manifest still lists. Without the second, a 0.5.7 client's cap trim would
+ * become a permanent revocation: the trimmed device would stay locked out of the
+ * account, when before it only left the manifest and put itself back on the next
+ * connection (phase 5 wave 1 review, I2).
  *
- * `pedidos` doesn't go signed, and doesn't need to: it only reaches the server
- * in a frame with a new manifest signed by the account, which only whoever has
- * the account key does.
+ * `pedidos` isn't signed, and doesn't need to be: it only reaches the server
+ * in a frame with a new manifest signed by the account, which only a holder of
+ * the account key can produce.
  */
 export function aparelhosRevogados(
   anterior: Pick<DeviceManifestWire, "devices"> | null,
@@ -248,10 +248,10 @@ export function aparelhosRevogados(
 /**
  * The next manifest's list after revocation: what there was, without `revogado`.
  *
- * Throws, doesn't return empty, in both cases where revoking makes no sense:
- * `revogado` is the device itself that signs (a device doesn't remove itself:
+ * Throws, rather than returning empty, in the two cases where revoking makes no sense:
+ * `revogado` is the signing device itself (a device doesn't remove itself:
  * that leaves an account hiding from itself, see `aparelhosDoManifestoSeguinte`),
- * or `revogado` is not in the list (already left, or never was there). Error
+ * or `revogado` is not in the list (it already left, or was never there). Error
  * keys are stable and in English; the interface translates.
  */
 export function aparelhosSemORevogado(
@@ -272,8 +272,8 @@ export function aparelhosSemORevogado(
 /**
  * Sign a manifest with the ACCOUNT key.
  *
- * The caller already picked the version: they have the previous one in the
- * vault, and the rule is "the last I saw, plus one". Here we bind only what
+ * The caller already picked the version: it has the previous one in the
+ * vault, and the rule is "the last I saw, plus one". Here we enforce only what
  * doesn't depend on context: the list can't be empty (an account with no
  * devices publishes nothing), can't exceed the cap, and can't repeat keys.
  */
@@ -293,7 +293,7 @@ export function signDeviceManifest(
     devices: fields.devices.map((device) => ({ deviceKey: toBase64(device.deviceKey), addedAt: device.addedAt })),
     signedAt: fields.signedAt,
   })
-  // The shape is checked on the way out by the same template that checks it on
+  // The shape is checked on the way out by the same schema that checks it on
   // the way in: a manifest this side wouldn't accept shouldn't leave here signed.
   const conferido = DeviceManifestWire.omit({ accountKey: true, signature: true }).parse(unsigned)
   if (new Set(conferido.devices.map((device) => device.deviceKey)).size !== conferido.devices.length) {
@@ -304,16 +304,16 @@ export function signDeviceManifest(
 }
 
 /**
- * Why a manifest was refused. Each reason is a different gate, and whoever gets
- * the refusal (the client that published, a test) needs to know which.
+ * Why a manifest was rejected. Each reason is a different gate, and whoever gets
+ * the rejection (the client that published, a test) needs to know which.
  *
- * - `bad-shape`: not a manifest: field missing, device extra, version is zero.
- *   Refused before verifying anything.
+ * - `bad-shape`: not a manifest: a missing field, an extra device, a zero version.
+ *   Rejected before verifying anything.
  * - `duplicate-device`: the same device key twice.
  * - `key-mismatch`: the address is not the hash of the account key that signed.
  *   It's the gate of `verifyDeviceChain`, and it stops an account from
  *   publishing a manifest in another account's name.
- * - `bad-signature`: the signature doesn't close over the fields.
+ * - `bad-signature`: the signature doesn't verify over the fields.
  */
 export type ManifestoRecusado = {
   ok: false
@@ -325,13 +325,13 @@ export type ManifestoVerificado = { ok: true; manifest: DeviceManifest; wire: De
 /**
  * Verify a manifest from the wire: **returns, never throws**, by the
  * `verifyDeviceChain` rule. The caller is deciding whether to store or admit,
- * and the promised refusal is a reason, not an exception to bubble up.
+ * and the agreed refusal is a reason, not an exception bubbling up wherever.
  *
  * What's proven when it returns `ok`: the shape is ours; the address is an
  * account (`@`) and is the hash of `accountKey`; and `accountKey` signed
  * exactly these fields. What is NOT proven, and on purpose: that the version is
  * the latest. That depends on who asks (the server compares with what it stored;
- * the client with what it saw), and the comparison is theirs.
+ * the client with what it saw), and the comparison is up to them.
  */
 export function verifyDeviceManifest(raw: unknown): ManifestoVerificado {
   const parsed = DeviceManifestWire.safeParse(raw)
@@ -360,7 +360,7 @@ export function verifyDeviceManifest(raw: unknown): ManifestoVerificado {
   } catch {
     return { ok: false, reason: "bad-shape" }
   }
-  // The template already measures length in base64url; this is length in bytes,
+  // The schema already checks the length in base64url; this is the length in bytes,
   // which is what `verify` needs and what a tolerant `fromBase64` doesn't
   // guarantee.
   if (accountKey.length !== 32 || signature.length !== 64 || devices.some((device) => device.deviceKey.length !== 32)) {

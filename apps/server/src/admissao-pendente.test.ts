@@ -18,17 +18,17 @@ import { Gateway } from "./gateway.js"
  * gave a permanent seat on the server before MLS admission.
  *
  * `invite.redeem` did `connection.channels.add` and `store.subscribe` right after
- * spending the use, before any member accepted or sent the Welcome. Whoever had
- * the connection started receiving the cipher live, reading the history and writing
+ * consuming the use, before any member accepted or sent the Welcome. Whoever held
+ * the connection received the live ciphertext, could read the history and write
  * to the channel, even if no one admitted them. In the common room, `channel.groupinfo.take`
  * gave a seat in memory that the following `channel.subscribe` wrote to disk,
  * with no commit.
  *
- * Redemption now becomes a PENDING REQUEST: the server delivers it to members and
- * waits. The seat is born only from the admission proof: in the invite, the Welcome
- * directed at this account, sent by whoever has a seat in the channel (the proof
- * that `#isSeated` already accepted, and that the client uses on entry); in the
- * common room, the external commit of this accepted connection as the epoch commit.
+ * Redemption is now a PENDING REQUEST: the server delivers it to the members and
+ * waits. The seat comes only from proof of admission: for an invite, the Welcome
+ * addressed to this account, sent by someone with a seat in the channel (the proof
+ * that `#isSeated` already accepted, and that the client uses on join); in the
+ * common room, this connection's external commit, accepted as the epoch's commit.
  */
 
 let servidor: ServidorDeTeste
@@ -54,7 +54,7 @@ async function pacoteDe(identidade: ReturnType<typeof generateIdentity>): Promis
   return pacote
 }
 
-/** The debut of a private channel by `dono`, with a real MLS group and a frame inside. */
+/** The first publication of a private channel by `dono`, with a real MLS group and a frame inside. */
 async function canalPrivado(dono: Cliente, idDono: ReturnType<typeof generateIdentity>): Promise<{ canal: string; grupo: Awaited<ReturnType<typeof createChannel>> }> {
   const canal = moradaDeSala(servidor.casa)
   const grupo = await createChannel(idDono, canal)
@@ -64,7 +64,7 @@ async function canalPrivado(dono: Cliente, idDono: ReturnType<typeof generateIde
   return { canal, grupo }
 }
 
-/** Did this client receive a Welcome from this channel? Just the Welcome: the rest should not arrive. */
+/** Did this client get a Welcome for this channel? Only the Welcome: nothing else should reach it. */
 async function welcomeDe(cliente: Cliente, canal: string): Promise<boolean> {
   for (let i = 0; i < 10; i++) {
     const frame = await cliente.proximoDe("channel.event")
@@ -99,12 +99,12 @@ describe("INV-01: o resgate de um convite é um pedido, e não um lugar", () => 
     expect(paginas(doIntruso)).toEqual([])
     expect(doIntruso).toContainEqual(expect.objectContaining({ t: "channel.rejected", channel: canal, reason: "no-seat" }))
 
-    // The cipher the owner sends next does not reach them live.
+    // The ciphertext the owner sends next does not reach them live.
     dono.enviar({ t: "channel.send", channel: canal, kind: "application", ciphertext: cifra() })
     await dono.proximoDe("channel.event")
     expect((await intruso.ateAoPong()).filter((f) => f.t === "channel.event")).toEqual([])
 
-    // And on a new socket either: nothing stayed on disk.
+    // Nor on a new socket: nothing was written to disk.
     intruso.fechar()
     const outra = await Cliente.ligar(servidor.url, idIntruso)
     outra.enviar({ t: "channel.backfill", channel: canal, limit: 50 })
@@ -129,7 +129,7 @@ describe("INV-01: o resgate de um convite é um pedido, e não um lugar", () => 
     convidado.enviar(convite.resgate(idConvidado.address, toBase64(pacote.wire)))
     const pedido = await dono.proximoDe("invite.request")
 
-    // The owner admits with real MLS: the commit, and the Welcome directed.
+    // The owner admits with real MLS: the commit, and the addressed Welcome.
     const admissao = await addMembers(grupo, [pacote.publicPackage])
     expect(pedido.keyPackage).toBe(toBase64(pacote.wire))
     dono.enviar({ t: "channel.send", channel: canal, kind: "handshake", ciphertext: toBase64(admissao.commit) })
@@ -137,7 +137,7 @@ describe("INV-01: o resgate de um convite é um pedido, e não um lugar", () => 
     if (!admissao.welcome) throw new Error("sem Welcome")
     dono.enviar({ t: "channel.send", channel: canal, kind: "welcome", ciphertext: toBase64(admissao.welcome), recipient: idConvidado.address })
 
-    // The Welcome reaches them without subscription, and with it the seat.
+    // The Welcome reaches them without a subscription, and the seat comes with it.
     expect(await welcomeDe(convidado, canal)).toBe(true)
     convidado.enviar({ t: "channel.subscribe", channels: [canal] })
     convidado.enviar({ t: "channel.backfill", channel: canal, limit: 50 })
@@ -151,7 +151,7 @@ describe("INV-01: o resgate de um convite é um pedido, e não um lugar", () => 
 describe("INV-01: na sala comum, levantar o cartão não é entrar", () => {
   /**
    * A server just for the test, with the common room founded by a client with
-   * real MLS and the card set. The card is single use: each test gets its own.
+   * real MLS and the card posted. The card is single use: each test gets its own.
    */
   async function salaComCartao(): Promise<{ srv: ServidorDeTeste; fundador: Cliente }> {
     const srv = await levantarServidor()
@@ -234,7 +234,7 @@ describe("INV-01: na sala comum, levantar o cartão não é entrar", () => {
     quemChega.enviar({ t: "channel.backfill", channel: sala, limit: 50 })
     expect(paginas(await quemChega.ateAoPong())).toHaveLength(1)
     expect(srv.enclave.store.isSubscribed(sala, idQuemChega.address)).toBe(true)
-    // And sets the next card, which is what the clients do right after.
+    // And posts the next card, which is what clients do right after.
     quemChega.enviar({ t: "channel.groupinfo.put", channel: sala, info: toBase64(await publishableGroupInfo(externa.session)) })
     await quemChega.ateAoPong()
     expect(srv.enclave.store.hasGroupInfo(sala)).toBe(true)
@@ -254,8 +254,8 @@ describe("INV-01: os clientes de hoje continuam a entrar (sessões a sério)", (
   /*
     One server per test: sessions join the common room on their own when they
     connect, and those from one test left the next test's room waiting for
-    someone already gone.
-    */
+    someone who had already left.
+  */
   let real: ServidorDeTeste
   beforeEach(async () => {
     real = await levantarServidor()

@@ -16,11 +16,11 @@ import { Gateway } from "./gateway.js"
  * INV-02 (external audit on 1.1.0, addendum of 3/11/2026): redeeming invites
  * amplified traffic without a cap.
  *
- * `invite.redeem` had no rate limit (the `create`, `resolve` and seal did), the
+ * `invite.redeem` had no rate limit (`create`, `resolve` and the seal did), the
  * `keyPackage` had only the frame cap (12 MiB), and each redeem was broadcast
  * to all subscribers of the channel. With `max_uses NULL` you could redeem
- * without end: 12 MiB per frame, multiplied by connected members, and a `#send`
- * that did not check the queue of each connection.
+ * endlessly: 12 MiB per frame, times the connected members, and a `#send`
+ * that did not check each connection's queue.
  */
 
 let servidor: ServidorDeTeste
@@ -45,7 +45,7 @@ async function ligar(): Promise<{ cliente: Cliente; identidade: ReturnType<typeo
   return { cliente, identidade }
 }
 
-/** A channel of the `owner`, with one frame, and an invite with no use limit. */
+/** A channel owned by `dono`, with one frame, and an invite with no use limit. */
 async function canalComConvite(dono: Cliente): Promise<{ canal: string; convite: ConviteComProva }> {
   const canal = moradaDeSala(servidor.casa)
   dono.enviar({ t: "channel.subscribe", channels: [canal] })
@@ -75,7 +75,7 @@ describe("INV-02: o tamanho e a forma do keyPackage", () => {
       tamanhos.push(pacote?.wire.length ?? 0)
     }
     const maior = Math.max(...tamanhos)
-    // Measured on 4/11/2026: ~2.9 KB. The cap is close to triple.
+    // Measured on 4/11/2026: ~2.9 KB. The cap is close to three times that.
     expect(maior).toBeGreaterThan(2_000)
     expect(maior * 2).toBeLessThan(TAMANHO_MAXIMO_DO_KEY_PACKAGE)
   }, 60_000)
@@ -217,7 +217,7 @@ describe("INV-02: a fila de cada ligação tem tecto", () => {
       dono.enviar({ t: "channel.subscribe", channels: [canal] })
       await dono.ateAoPong()
 
-      // Two members, seated by the owner's direct welcome.
+      // Two members, seated by the owner's targeted Welcome.
       const membros = []
       for (let i = 0; i < 2; i++) {
         const { cliente, identidade } = await ligar()
@@ -232,9 +232,9 @@ describe("INV-02: a fila de cada ligação tem tecto", () => {
 
       /*
         64 frames of 1 MiB in a burst. Measured on 4/11/2026 on this machine: the
-        read queue reaches 1 to 9 MiB (the server writes faster than the socket
-        drains, even on loopback); the one that does not read gets what the
-        kernel did not take in (on loopback, on macOS, ~24 MiB of 48). The test
+        reader's queue reaches 1 to 9 MiB (the server writes faster than the socket
+        drains, even on loopback); the non-reader's queue holds what the
+        kernel did not absorb (on loopback, on macOS, ~24 MiB of 48). The test
         cap (16 MiB) sits between the two; the production cap is 64 MiB.
       */
       const fechou = lento.cliente.fechado()
@@ -244,7 +244,7 @@ describe("INV-02: a fila de cada ligação tem tecto", () => {
       }
       for (let i = 0; i < 64; i++) recebidas.push((await atento.cliente.proximoDe("channel.event")).seq)
       expect(recebidas).toHaveLength(64)
-      // Closed by the server, and counted. The client only knows when it reads again.
+      // Closed by the server, and counted. The client only finds out when it reads again.
       const metricas = servidor.enclave.gateway.metricasDosEnvios()
       expect([metricas.actual, ...metricas.anteriores].reduce((soma, m) => soma + m.lentas, 0)).toBeGreaterThanOrEqual(1)
       lento.cliente.retomarLeitura()

@@ -9,7 +9,7 @@ import { DatabaseSync } from "node:sqlite"
  * over, because that is what it is. Every column here is either opaque
  * ciphertext or the minimum routing state needed to deliver it. There is
  * deliberately no messages table with an author column, no display names, no
- * channel names, no reactions, no read receipts, no attachment filenames — all
+ * channel names, no reactions, no read receipts, no attachment filenames: all
  * of that exists only inside `ciphertext`.
  *
  * The one uncomfortable table is `subscriptions`: to deliver to an offline
@@ -30,7 +30,7 @@ export interface StoredEvent {
 /**
  * Uses Node's built-in SQLite rather than `better-sqlite3`.
  *
- * One fewer native dependency to compile, and — more to the point — one fewer
+ * One fewer native dependency to compile, and (more to the point) one fewer
  * third-party package with build scripts sitting underneath a server whose whole
  * value proposition is that you can audit what it does with your data.
  */
@@ -416,15 +416,15 @@ export function openDatabase(path: string): DatabaseSync {
 }
 
 /**
- * The `key_packages.device` column in a database that was born without it.
+ * The `key_packages.device` column in a database created without it.
  *
  * `CREATE TABLE IF NOT EXISTS` does not add columns to a table that already
- * exists, and production has existed since August 14, 2026. This is the first
- * migration step for this project, and the smallest one that stands alone: read
+ * exists, and the production one has existed since 14 August 2026. This is the first
+ * migration step for this project, and the smallest one that holds up: read
  * the columns and add the missing one. `ADD COLUMN` without DEFAULT does not
  * rewrite the table (SQLite only changes the schema; old rows read NULL), so it
- * runs in milliseconds no matter the pool size, and does not touch anything
- * there. Without `PRAGMA user_version` or an ordered list of steps, this is a
+ * runs in milliseconds whatever the pool size, and does not touch the existing
+ * rows. Without `PRAGMA user_version` or an ordered list of steps, this is a
  * debt documented in docs/PENDENTES.md: as long as a column can be detected by
  * its absence, it works; the day a step depends on another, it does not.
  *
@@ -442,14 +442,14 @@ function migrarKeyPackages(db: DatabaseSync): void {
 }
 
 /**
- * The `invites.short_code` column in a database that was born without it (from
- * 0.9).
+ * The `invites.short_code` column in a database created without it (a 0.9
+ * one).
  *
  * The same step as `migrarKeyPackages`, for the same reason: read the columns
  * and add the missing one, without DEFAULT to avoid rewriting the table. The
  * index is UNIQUE, and it ensures that two invites never share a short code
  * (the generator retries when it hits one, see `Store.createInvite`). In SQLite
- * a unique index accepts multiple NULLs, which lets old invites remain without a
+ * a unique index accepts multiple NULLs, which lets old invites stay without a
  * code. It comes after the column and outside the big `exec` for the same reason
  * as the `key_packages` index.
  *
@@ -461,11 +461,11 @@ function migrarInvites(db: DatabaseSync): void {
     db.exec("ALTER TABLE invites ADD COLUMN short_code TEXT")
   }
   // The public key of the code proof (1.0 "Arca", slice 2). NULL in old rows,
-  // which are rescued by hash up to the cutoff.
+  // which are redeemed by hash until the cutoff.
   if (!colunas.some((coluna) => coluna.name === "code_key")) {
     db.exec("ALTER TABLE invites ADD COLUMN code_key TEXT")
   }
-  // The seal of the channel name (1.0 "Arca", slice 5c). NULL in old rows.
+  // The channel name seal (1.0 "Arca", slice 5c). NULL in old rows.
   if (!colunas.some((coluna) => coluna.name === "selo")) {
     db.exec("ALTER TABLE invites ADD COLUMN selo TEXT")
   }

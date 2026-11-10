@@ -4,16 +4,16 @@ import { addMembers, createChannel, encryptPayload, generateKeyPackages, joinCha
 import { leavesOf } from "./sender.js"
 
 /**
- * Who wrote a message from an epoch that already left (3/11/2026, Orwell channel).
+ * Who wrote a message from an epoch we have already left (3/11/2026, Orwell channel).
  *
  * `receive` opens a message from an earlier epoch through the history window, using
- * that epoch's tree, and read the sender in today's tree. In `!984`, with
- * updates and additions every few minutes, the leaf of who wrote can be empty
- * (was removed) or already belong to someone else (MLS gives the empty leftmost
+ * THAT epoch's tree, but read the sender from the CURRENT tree. In `!984`, with
+ * re-seats and joins every few minutes, the writer's leaf can be blank
+ * (they were removed) or already belong to someone else (MLS gives the leftmost blank
  * leaf to whoever joins). In the first case the message was lost (opened,
- * but "without credential", and counted as `epoch-skipped`); in the second it was
- * assigned to the wrong person, and authority checks (`role.assign`,
- * `fixar`, overlays) judged the wrong person.
+ * but "without credential", and counted as `epoca-saltada`); in the second it was
+ * attributed to someone who did not write it, and the authority guards (`role.assign`,
+ * `fixar`, overrides) judged the wrong person.
  */
 const CASA = parseServerName("localhost:8448")
 const CANAL = "!984:localhost:8448"
@@ -70,7 +70,7 @@ describe("o remetente de uma mensagem de uma epoch anterior", () => {
     expect(depoisDaEntrada.kind).toBe("epoch")
 
     const lida = await receive(depoisDaEntrada.session, doBruno.ciphertext)
-    // Outside the history window it does not open, and that is persistent secrecy; once open, it is from Bruno.
+    // Outside the history window it does not open, and that is forward secrecy; once open, it is from Bruno.
     if (lida.kind === "payload") expect(lida.sender).toBe(bruno.address)
     else expect(lida.kind).toBe("payload")
   })

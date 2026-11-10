@@ -21,15 +21,15 @@ import { parseClientFrame, parseServerFrame } from "./wire.js"
 /**
  * The device manifest, signed by the account and verified by the reader.
  *
- * What lives here is what the server CANNOT do: add a device, remove one,
+ * What is pinned here is what the server CANNOT do: add a device, remove one,
  * change the version, or sign on behalf of another account. Each of those is a
- * field mutation after signing, and each one has to give a reason, not an
- * exception: whoever verifies is deciding whether to keep it or admit it, and
- * a contracted refusal is a reason.
+ * field mutation after signing, and each one has to return a reason, not throw:
+ * the verifier is deciding whether to store or admit, and the agreed refusal is
+ * a reason.
  *
- * And what the server CAN do, which is serve an old manifest, doesn't live here
- * because it's not the verifier who catches it: it's whoever stores the highest
- * version they've seen. That's in the vault and on the server, each with its
+ * And what the server CAN do, which is serve an old manifest, is not pinned here
+ * because the verifier is not what catches it: whoever stores the highest
+ * version seen does. That's in the vault and on the server, each with its
  * own test.
  */
 
@@ -203,7 +203,7 @@ describe("recusa sem excepção", () => {
     expect(() => signDeviceManifest(ANA.privada, { address: ANA.address, version: 1, devices: cinco, signedAt: 1 })).toThrow()
     const quatro = manifestoDaAna({ devices: cinco.slice(0, 4) })
     expect(verifyDeviceManifest(quatro).ok).toBe(true)
-    // And a server or client that receives it with five fields refuses it on shape,
+    // And a server or client that receives it with five refuses it on shape,
     // before spending a signature check.
     const forjado = { ...quatro, devices: [...quatro.devices, { deviceKey: toBase64(aparelho(5)), addedAt: 5 }] }
     expect(verifyDeviceManifest(forjado)).toEqual({ ok: false, reason: "bad-shape" })
@@ -215,17 +215,17 @@ describe("recusa sem excepção", () => {
  *
  * The cut was `[...existentes, ...novas].sort(addedAt).slice(-4)`, and with a
  * full account it threw away the oldest one, which is the computer, added the
- * day the account was born. Publishing a manifest without the key that signs
- * it is the account hiding from itself: it stops being admitted in new channels,
- * adds itself again on the next login, and kicks out another. If the kicked one
- * is a paired phone, it has no account key to restore with, and there's no
- * revocation.
+ * day the account was born. Publishing a manifest without the signer's own key
+ * is the account hiding from itself: it stops being admitted to new channels,
+ * adds itself again on the next login, and pushes out another. If the one pushed
+ * out is a paired phone, it has no account key to restore itself with, and there
+ * is no revocation.
  */
 describe("os aparelhos do manifesto seguinte", () => {
   const meu = aparelho(9)
 
   it("com o tecto cheio e o próprio entre eles, quem sai é o outro mais antigo, nunca o próprio", () => {
-    // The owner is the OLDEST, which is the real case: the computer that created
+    // Our own device is the OLDEST, which is the real case: the computer that created
     // the account. By the old rule, it would be the one to leave.
     const existentes = [
       { deviceKey: meu, addedAt: 100 },
@@ -277,8 +277,8 @@ describe("o tecto da versão", () => {
     expect(verifyDeviceManifest(manifestoDaAna({ version: VERSAO_MAXIMA })).ok).toBe(true)
     expect(() => manifestoDaAna({ version: VERSAO_MAXIMA + 1 })).toThrow()
 
-    // An account that signs by hand a version above the cap (it can: the key is
-    // theirs) would lock itself forever on every reader. The shape refuses it
+    // An account that hand-signs a version above the cap (it can: the key is
+    // its own) would lock itself out forever on every reader. The shape refuses it
     // before the signature.
     const unsigned = { address: ANA.address, version: VERSAO_MAXIMA + 1, devices: [{ deviceKey: toBase64(aparelho(1)), addedAt: 1 }], signedAt: 1 }
     const forjado = { ...unsigned, accountKey: toBase64(ANA.publica), signature: toBase64(ed25519.sign(deviceManifestMessage(unsigned), ANA.privada)) }

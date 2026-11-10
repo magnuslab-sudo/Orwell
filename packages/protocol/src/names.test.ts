@@ -17,12 +17,12 @@ import {
 /**
  * The Latin syllable replaces base32, and what changes is the clothes, not the
  * body: the same bits, written a different way. That's only true as long as the
- * writing is a bijection, if two different values gave the same word, the
- * address would lose the bits the threat model gives it and the count of 80
- * bits would become folklore.
+ * writing is a bijection: if two different values gave the same word, the
+ * address would lose the bits the threat model credits it with, and the count
+ * of 80 bits would become folklore.
  *
  * Hence the exhaustive scan of 2^20 words. It's not a sample test: it's proof,
- * done with an iron hand, that the table in the file encodes and decodes every
+ * done the hard way, that the table in the file encodes and decodes every
  * possible word without losing or mixing any of them.
  */
 
@@ -257,8 +257,7 @@ describe("identificador de sala", () => {
   /**
    * The room is not an account: the identifier doesn't hash any key and forging
    * it gives nobody power. What we ask here is that the name says what the room
-   * is, that's why the prefix is fixed by type, not drawn from a family of
-   * synonyms.
+   * is, and that is why the prefix is fixed by type, not drawn at random.
    */
   it("diz pelo prefixo se é de escrita ou de voz", () => {
     const bytes = Uint8Array.from([1, 2, 3, 4, 5])

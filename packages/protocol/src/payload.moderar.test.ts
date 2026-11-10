@@ -6,8 +6,8 @@ import { CRYPTOGRAPHIC_POWERS, decodePayload, encodePayload, IRREVERSIBLE_POWERS
 /**
  * The "moderate" power (phase 3 of 0.9).
  *
- * Delete other people's messages, close tickets and change nicknames.
- * Convention, like pinning: neither the cipher guarantees it nor is it reversible.
+ * Delete other people's messages, delete closed tickets and change nicknames.
+ * A convention, like `fixar`: the cipher does not enforce it, and it is not irreversible.
  */
 describe("moderar é uma responsabilidade como as outras", () => {
   it("está na lista, no fim dos oito antigos (os do modelo de 1.2 vêm depois)", () => {
@@ -53,10 +53,10 @@ describe("a lápide do ticket é um campo da marca, e não um `t` novo", () => {
 /**
  * Coexistence of the signed form with 0.9.3 (see `autoria.forma.test.ts`).
  *
- * `apelido` and `ticket.removed` are optional and have no value by default. A
+ * `apelido` and `ticket.removed` are optional and have no default value. A
  * message without them signs the same in both versions. One with them verifies
  * here, and does not verify in a version that doesn't know them: that is the
- * limit stated, and it only matters in a report (live, authorship is not read).
+ * stated limit, and it only matters in a relayed copy (live, authorship is not read).
  */
 describe("a forma assinada de uma mensagem, com e sem os campos da fase 3", () => {
   const semente = new Uint8Array(32).fill(9)

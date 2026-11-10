@@ -6,9 +6,9 @@ import { sha256 } from "@noble/hashes/sha2.js"
  * A real MLS key package, made once per test file.
  *
  * Since INV-02 the server checks that the redeem `keyPackage` is an MLS key
- * package (the header) and fits within the limit. Tests that only need to seat
+ * package (the header) and fits within the cap. Tests that only need to seat
  * someone sent eight zero bytes. The server does not read the credential inside
- * (that is for members), so a package from another account works.
+ * (that is for members), so a key package from another account works.
  */
 const [PACOTE] = await generateKeyPackages(generateIdentity(parseServerName("localhost")), 1)
 if (!PACOTE) throw new Error("sem key package para os testes")
@@ -17,8 +17,8 @@ export const PACOTE_DE_TESTE = toBase64(PACOTE.wire)
 /**
  * An invite as 1.0 creates it, for tests that build it by hand with raw clients.
  *
- * Since slice 6a an invite without `codeKey` does not redeem, and a redeem
- * without the code proof also does not: the `codeHash` is in the `invites` table,
+ * Since slice 6a an invite without `codeKey` cannot be redeemed, and neither can
+ * a redeem without the code proof: the `codeHash` is in the `invites` table,
  * and accepting it alone would let in anyone with a copy of the database. Tests
  * that only needed to seat a second account sent the hash alone; this helper
  * gives them what 1.0 sends, without each file repeating the derivation.

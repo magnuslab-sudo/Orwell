@@ -5,8 +5,8 @@ import { decodePayload, encodePayload, type Payload } from "./payload.js"
 
 /**
  * The secret of the wall on the profile (1.0 "Arca"). The profile is the payload
- * that costs most to lose: rejected, it takes the name, the portrait and ways to
- * support with it, and rejected profiles in a row declare the channel deaf. So
+ * that costs most to lose: rejected, it takes the name, the avatar and the support
+ * links with it, and rejected profiles in a row declare the channel deaf. So
  * what is proved here is mainly what the new field CANNOT do to the profile.
  */
 
@@ -26,7 +26,7 @@ describe("o segredo do mural no perfil", () => {
   })
 
   it("um perfil sem mural escreve os mesmos bytes que escrevia", () => {
-    // Optional field with no value by default: whoever lacks it doesn't get the key,
+    // Optional field with no default value: a profile without it doesn't gain the key,
     // not even as `undefined`, and a 0.9 profile decrypts the same.
     const bytes = encodePayload(perfil())
     expect(new TextDecoder().decode(bytes)).toBe(

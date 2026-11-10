@@ -14,9 +14,9 @@ import {
  *
  * This file exists because the cascade already cost history once and the
  * mechanism is always the same: a rejected payload is discarded silently, counts
- * as an ignored event, and ignored events in a row mark the channel deaf, see
- * `DEAF_FAILURES` in core, which needs a new place in the group and takes the
- * history with it for future secrecy. None of this gives an error anywhere: the
+ * as an ignored event, and ignored events in a row mark the channel deaf (see
+ * `DEAF_FAILURES` in core), which forces a new seat in the group and takes the
+ * history with it, for forward secrecy. None of this gives an error anywhere: the
  * symptom is conversation disappearing.
  *
  * There are exactly two ways a payload can be rejected when two client versions
@@ -27,7 +27,7 @@ import {
  *     that already exist. The `sfu` in `voice.join` is the fourth to do it, and
  *     `muted`, `screen` and `joinId` did it before for the same reason.
  *  2. **A `t` the receiver has STOPPED knowing.** It is the same failure the
- *     other way around, and it is what Phase 4 of the plan will have on hand:
+ *     other way around, and it is the one Phase 4 of the plan will run into:
  *     `voice.offer`, `voice.answer` and `voice.ice` stop being emitted and
  *     look like dead code. Deleting them makes a new client deafen the channel
  *     for those still on a mesh version.
@@ -141,8 +141,8 @@ describe("campos novos no voice.join", () => {
       The reason `TECTO_DO_AVER` is exported instead of written only in the
       schema. `encodePayload` does `Payload.parse`: a list over the cap does not
       give a truncated field, it gives an EXCEPTION from inside the presence
-      announcement, `#anunciar` crashes, no `voice.join` leaves, and at 160 s
-      everyone removes those from the roster who stopped beating.
+      announcement: `#anunciar` crashes, no `voice.join` goes out, and at 160 s
+      everyone drops from the roster whoever stopped sending heartbeats.
     */
     const nomes = Array.from({ length: TECTO_DO_AVER }, (_, i) => `@quem-${i}:orwell.pt`)
     expect(() => encodePayload({ ...ANUNCIO_BASE, aVer: nomes })).not.toThrow()

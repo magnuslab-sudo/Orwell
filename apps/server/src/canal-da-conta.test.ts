@@ -8,13 +8,13 @@ import { buildServer, type Enclave } from "./app.js"
 import type { ServerConfig } from "./config.js"
 
 /**
- * The account channel belongs to the account, and to no one else (review of slot 1 of phase 5,
+ * The account channel belongs to the account, and to no one else (review of wave 1 of phase 5,
  * B1).
  *
  * In phase 5 the channel was `!self-<id>`, and the gateway saw it as an opaque group channel:
  * whoever claimed it first got it. Eve created the group with the name of Ana's account channel,
- * invited her, and Ana's device joined and sent her the entire state (read messages, archive,
- * blocks, preferences, friends list). In 1.0 the address is opaque and the guard is the client's.
+ * invited her, and Ana's device joined and sent Eve the entire state (read markers, archive,
+ * blocks, preferences, friends list). In 1.0 the address is opaque and the client does the guarding.
  *
  * For real: the gateway, the MLS groups, two `Session` objects with their own vaults.
  */
@@ -102,11 +102,11 @@ describe("o canal da conta é só da conta", () => {
   /*
     1.0 "Arca", slice 3: the account channel is `moradaDaConta`, derived from
     Ana's private key. Eve cannot compute it, and the server no longer knows
-    whose it is (no name). Here Eve receives it as a gift (a leak), and
-    guardianship shifts to Ana's client (`#confiarNoCanalDaConta`): a Welcome
-    on an account channel with alien leaves does not open, and none of the
-    state flows to it.
-    */
+    whose it is (no name). Here Eve is handed it (a leak), and the guard
+    moves to Ana's client (`#confiarNoCanalDaConta`): a Welcome for an
+    account channel with foreign leaves is not opened, and none of the
+    state goes to Eve.
+  */
   it("a Eve cria o canal da conta da Ana (a morada fugiu) e convida-a: a Ana recusa o Welcome", async () => {
     const ana = await conta("Ana")
     const eve = await conta("Eve")
@@ -119,7 +119,7 @@ describe("o canal da conta é só da conta", () => {
     await ana.session.sincronizarAgora().catch(() => {})
     await esperar(1_000)
 
-    // Ana did not join: she does not have the group, and the alert is from the client's guard.
+    // Ana did not join: she does not have the group, and the warning comes from the client's guard.
     expect(ana.vault.contents.groups[alheio]).toBeUndefined()
     expect(ana.avisos).toContain("account-channel-foreign")
   }, 30_000)

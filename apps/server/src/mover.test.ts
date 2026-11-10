@@ -14,10 +14,10 @@ import {
  * Voice and role moderation (owner request, 2/11/2026), with real accounts and
  * server.
  *
- * Ana founds the channel and gives Bruno a role with only `move`. Carla has no
+ * Ana founds the channel and gives Bruno a role with only `mover`. Carla has no
  * role. We measure what each SESSION lets through to the call (the `voice` event),
- * not what left on the wire: it's in the receiver's session that the sender
- * comes authenticated, and that's where it decides whether he can send.
+ * not what left on the wire: the sender is authenticated in the receiver's
+ * session, and that is where we decide whether they have authority.
  */
 
 let servidor: ServidorDeTeste
@@ -69,9 +69,9 @@ describe("mover alguém de sala de voz, de ponta a ponta", () => {
   it("quem não tem «mover» não move ninguém: a sessão de quem recebe deita o pedido fora", async () => {
     const { canal, ana, bruno, carla } = await canalModerado()
     const doBruno = movimentos(bruno)
-    // A modified client sends it anyway, below the `moveVoice` guard.
+    // A modified client sends it anyway, bypassing the `moveVoice` guard.
     await carla.session.send(canal, { t: "voice.move", subject: bruno.address, room: "estudio", at: Date.now() })
-    // And right after a legitimate request from the founder, which serves as a mark: when
+    // And right after a legitimate request from the founder, which serves as a marker: when
     // this arrives, Carla's (sent before, on the same channel) has already been read.
     await ana.session.moveVoice(canal, bruno.address, "balcao")
     await ate(() => doBruno.length > 0, "o pedido da Ana chega ao Bruno")
@@ -120,11 +120,11 @@ describe("o nome do cargo de administrador", () => {
       expect(conta.session.rolesOf(canal).map((papel) => papel.role)).not.toContain("admin")
     }
 
-    // Whoever does not manage roles does not change its name, not in the sender's store either.
+    // Someone who does not manage roles cannot rename it, neither in the sender-side guard...
     await expect(carla.session.defineRole(canal, { role: "admin", name: "Eu", powers: [] })).rejects.toThrow(
       "only an administrator may manage roles",
     )
-    // Nor in the receiver's.
+    // ...nor in the receiver-side one.
     await carla.session.send(canal, {
       t: "role.define",
       role: "admin",
@@ -138,7 +138,7 @@ describe("o nome do cargo de administrador", () => {
     await ate(() => bruno.session.rolesOf(canal).some((papel) => papel.name === "Moderação 2"), "a marca chega ao Bruno")
     expect(bruno.session.adminRole(canal)?.name).toBe("Guardiões")
 
-    // And deletion still cannot happen.
+    // And it still cannot be deleted.
     await expect(ana.session.deleteRole(canal, "admin")).rejects.toThrow("the admin role is built in")
   }, 120_000)
 })

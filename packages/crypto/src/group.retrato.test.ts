@@ -17,7 +17,7 @@ import { encodeDeviceCredential } from "@enclave/protocol"
 
 /**
  * The channel snapshot in the Welcome (phase 1 of `docs/planos/estado-cifrado-plano.md`).
- * The extension goes in the Welcome's `GroupInfo`, both ways; and a Welcome with it
+ * The extension goes in the Welcome's `GroupInfo` and round-trips; and a Welcome with it
  * opens in the usual `joinGroup`, which is what a 1.0.x client does.
  */
 
@@ -98,7 +98,7 @@ describe("o retrato no Welcome", () => {
     const sala = await createChannel(ana, CANAL)
     const antigo = await pacoteAntigo(generateIdentity(HOME))
     const entrada = await addMembers(sala, [antigo])
-    // No extension in the group context: a `required_capabilities` here would have expelled the old ones.
+    // No extension in the group context: a `required_capabilities` here would kick out the old clients.
     expect(entrada.session.state.groupContext.extensions.filter((e) => e.extensionType === "required_capabilities")).toEqual([])
     expect(new Set(memberAddresses(entrada.session.state.ratchetTree).values()).size).toBe(2)
   })

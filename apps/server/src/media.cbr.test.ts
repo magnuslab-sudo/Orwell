@@ -7,21 +7,21 @@ import * as sdpTransform from "sdp-transform"
 import { MotorDeMedia } from "./media.js"
 
 /**
- * Constant bitrate in voice via SFU (3/11/2026), from the router to the fmtp
+ * Constant bitrate for SFU voice (3/11/2026), from the router to the fmtp
  * the browser reads.
  *
- * `mediasoup-client` does not have `opusCbr` in `codecOptions`. What gets
- * `cbr=1` to the Chrome encoder is the answer the client builds for its own
- * send transport: it starts from the Opus parameters of the ROUTER
+ * `mediasoup-client` does not have `opusCbr` in `codecOptions`. What carries
+ * `cbr=1` to Chrome's encoder is the answer the client builds for its own
+ * send transport: it starts from the ROUTER's Opus parameters
  * (`getSendingRemoteRtpParameters`, `RemoteAnswerMediaSection`) and only then
- * do `codecOptions` touch it. That answer is what Chrome applies as the remote
+ * do the `codecOptions` modify it. That answer is what Chrome applies as the remote
  * description, and it is through the fmtp of the remote description that it
  * configures the encoder.
  *
- * This test runs the same path as `mediasoup-client` (the `ortc` and the real
+ * This test runs the same path as `mediasoup-client` (the real `ortc` and
  * `RemoteSdp`) over the capabilities of a real router. An update to
  * `mediasoup-client` that stops copying the router parameters, or someone who
- * fixes the codec object, breaks this here and not silently on the network.
+ * tidies up the codec object, breaks this here and not silently on the network.
  */
 
 let motor: MotorDeMedia

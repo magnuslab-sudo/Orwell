@@ -34,9 +34,9 @@ import { PACOTE_DE_TESTE } from "../testes/convite-com-prova.js"
  * Short invite links, on the server side (1.0 "Arca", slice 4).
  *
  * Each invite gets an eight-character code, given to whoever creates it. An
- * authenticated account resolves it on the channel and on the invite's `codeHash`,
- * and uses that hash to request entry, as with the long link. Resolution respects
- * the deadline and uses, does not consume a use, and has a cap.
+ * authenticated account resolves it to the channel and the invite's `codeHash`,
+ * and uses that hash to ask to join, as with the long link. Resolution respects
+ * the expiry and the uses, does not consume a use, and has a cap.
  */
 
 let servidor: ServidorDeTeste
@@ -64,7 +64,7 @@ async function crua(): Promise<Cliente> {
 
 const hashDe = (codigo: string): string => toBase64(sha256(new TextEncoder().encode(codigo)))
 
-/** An opaque address room opened by this client, and an invite in it. */
+/** A room with an opaque address, first created by this client, and an invite in it. */
 async function salaComConvite(
   dono: Cliente,
   politica: { expiresAt?: number | null; maxUses?: number | null } = {},
@@ -72,7 +72,7 @@ async function salaComConvite(
   const canal = moradaDeSala(servidor.casa)
   dono.enviar({ t: "channel.claim", channel: canal })
   await dono.proximoDe("channel.claim.result")
-  // With `codeKey`, how 1.0 creates them: an invite without it can no longer be redeemed.
+  // With `codeKey`, as 1.0 creates them: an invite without it can no longer be redeemed.
   const codigo = crypto.randomUUID()
   const codeHash = hashDe(codigo)
   dono.enviar({
@@ -147,7 +147,7 @@ describe("o código curto", () => {
 
   it("um convite fora de prazo não se resolve", async () => {
     const dono = await crua()
-    // One second in the past: the template only accepts a positive integer.
+    // One second in the past: the schema only asks for a positive integer.
     const { codigoCurto } = await salaComConvite(dono, { expiresAt: Math.floor(Date.now() / 1000) - 1 })
     const resposta = await resolver(await crua(), codigoCurto)
     expect(resposta).toEqual({ t: "invite.unresolved", codigo: codigoCurto, reason: "expired" })
@@ -166,7 +166,7 @@ describe("o código curto", () => {
   it("a lista de convites de quem tem lugar traz o código curto de cada um", async () => {
     const dono = await crua()
     const { canal, codeHash, codigoCurto } = await salaComConvite(dono)
-    // The list only includes those who have a spot, and claiming the opening seats no one.
+    // The list only includes those with a seat, and claiming the first creation seats no one.
     dono.enviar({ t: "channel.subscribe", channels: [canal] })
     dono.enviar({ t: "invite.list", channel: canal })
     const lista = await dono.proximoDe("invite.list.result")
@@ -205,7 +205,7 @@ describe("o código curto", () => {
     const lida = parseInviteLink(ligacao)
     expect(lida?.channel).toBe(canal)
 
-    // The short code for this invite, how the app will show it: from the list.
+    // The short code for this invite, as the app will show it: from the list.
     const anaCrua = await Cliente.ligar(servidor.url, ana!.session.identity)
     crus.push(anaCrua)
     anaCrua.enviar({ t: "invite.list", channel: canal })
@@ -218,8 +218,8 @@ describe("o código curto", () => {
     const resposta = await resolver(brunoCru, codigoCurto as string)
     expect(resposta).toEqual({ t: "invite.resolved", codigo: codigoCurto, channel: canal, codeHash: hashDe(lida!.code) })
 
-    // The resolved hash is from the long link, and the gate is by hash: entering by
-    // one is entering by the other. Bruno's session enters, and Ana admits him.
+    // The resolved hash is the long link's, and the gate works by hash: joining by
+    // one is joining by the other. Bruno's session joins, and Ana admits him.
     await bruno!.session.redeemInvite(ligacao)
     await ate(() => bruno!.session.channels.includes(canal), "o Bruno entra na sala", 30_000)
   }, 120_000)
@@ -237,7 +237,7 @@ describe("a geração do código, na loja", () => {
         vistos.add(codigo as string)
       }
       expect(vistos.size).toBe(1000)
-      // All 31 symbols appear: the shuffle leaves none out.
+      // All 31 symbols appear: the random draw leaves none out.
       const usados = new Set([...vistos].join(""))
       expect([...ALFABETO_DO_CODIGO_CURTO].every((c) => usados.has(c))).toBe(true)
     } finally {

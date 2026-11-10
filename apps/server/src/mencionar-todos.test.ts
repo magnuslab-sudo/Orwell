@@ -11,11 +11,11 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * `@all` (item #10 of the parity plan): the `mentionall` permission, with
- * real accounts and real server, verified from both sides.
+ * `@all` (item #10 of the parity plan): the `mencionartodos` permission, with
+ * real accounts and a real server, checked on both sides.
  *
- * Ana founds. Bruno is administrator. Dario has the "Announcements" role, with
- * the permission, except in the "Notes" room, where an override removes it. Carla
+ * Ana founds. Bruno is an administrator. Dário has the "Anúncios" role, with
+ * the permission, except in the "Recados" room, where an override removes it. Carla
  * is a member with no role.
  */
 
@@ -112,7 +112,7 @@ describe("@all: a permissão mencionartodos, conferida por quem envia e por quem
     await ate(() => doBruno.length === 2, "o Bruno recebe as duas dos outros", 30_000)
     for (const vista of daCarla) expect(vista.mentions).toEqual([MENCAO_TODOS])
     for (const vista of doBruno) expect(vista.mentions).toEqual([MENCAO_TODOS])
-    // And the history, which is what the interface reads when opening again.
+    // And the history, which is what the interface counts from after reopening.
     const historia = carla.session.history(canal).filter((entrada) => entrada.payload.t === "message")
     expect(historia.map((entrada) => (entrada.payload as { mentions?: string[] }).mentions)).toEqual([
       [MENCAO_TODOS],
@@ -142,7 +142,7 @@ describe("@all: a permissão mencionartodos, conferida por quem envia e por quem
       await ate(() => lista.length === 1, `a conta ${indice} recebe a mensagem`, 30_000)
       expect(lista[0]).toEqual({ from: carla.address, body: "@all spam", mentions: [] })
     }
-    // The vault stores what arrived, signed, with the note: the delivery is what discards it.
+    // The vault keeps what arrived, signed, with the mention: it is the delivery that drops it.
     await ate(() => guardada(ana, canal, "@all spam") !== undefined, "a Ana guarda a mensagem")
     expect(guardada(ana, canal, "@all spam")?.mentions).toEqual([MENCAO_TODOS])
     expect(
@@ -155,7 +155,7 @@ describe("@all: a permissão mencionartodos, conferida por quem envia e por quem
 
   it("a sobreposição por sala: o Dário menciona todos na sala geral, e nos Recados não", async () => {
     const { canal, carla, dario } = await montar()
-    // Dario with a modified app, so the refusal comes from the receiver.
+    // Dário with a modified app, so the refusal comes from the receiver.
     ;(dario.session as unknown as { permissoesEm: () => string[] }).permissoesEm = () => [...POWERS]
     const daCarla = mensagens(carla, canal)
     await mensagem(dario, canal, "@all na geral")

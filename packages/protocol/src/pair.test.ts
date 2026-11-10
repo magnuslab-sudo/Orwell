@@ -95,7 +95,7 @@ describe("cifra da caixa", () => {
     const wire = cifrarPairPayload(chave, PAIR_ID, { t: "pronto" })
     const outraChave = chaveDeEmparelhamento(sha256(SEGREDO), PAIR_ID)
     expect(decifrarPairPayload(outraChave, PAIR_ID, wire)).toBeNull()
-    // Not even the right key in another box: the pairId is given paired with it.
+    // Not even the right key in another box: the pairId is bound as associated data.
     expect(decifrarPairPayload(chave, pairIdDe(sha256(SEGREDO)), wire)).toBeNull()
   })
 
@@ -112,7 +112,7 @@ describe("cifra da caixa", () => {
   })
 
   it("um JSON cifrado que não é um payload nosso é null", () => {
-    // Encrypted by hand with the same key: the tag closes, the shape does not.
+    // Encrypted by hand with the same key: the tag verifies, the shape does not.
     const cru = { t: "certificado", address: "@a:b", accountKey: "curto", deviceCert: "x" }
     const wire = cifrarPairPayload(chave, PAIR_ID, cru as never)
     expect(decifrarPairPayload(chave, PAIR_ID, wire)).toBeNull()

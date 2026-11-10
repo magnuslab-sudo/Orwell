@@ -12,14 +12,14 @@ import type { ServerConfig } from "./config.js"
 /**
  * Sync between two accounts, end to end (audit of 20/10/2026, phase 1).
  *
- * For real: the gateway, the MLS groups, two `Session` with their own vaults. Each
- * test is one of the findings that needed a real server to see: what happens to
- * someone who is disconnected (F5), someone who joins late on a direct (F4), someone
- * who lost their spot (F3), and someone who was expelled (F7).
+ * Everything is real: the gateway, the MLS groups, two `Session`s with their own vaults.
+ * Each test is one of the findings that needed a real server to show up: what happens
+ * to someone who is offline (F5), someone who joins a DM late (F4), someone
+ * who lost their seat (F3), and someone who was removed (F7).
  *
- * Like in `feed-delivery.test.ts`, the server starts on an ephemeral port and its
- * address carries the port, because it is from it that each `Session` gets the gateway
- * address.
+ * As in `feed-delivery.test.ts`, the server starts on an ephemeral port and its
+ * name carries the port, because each `Session` takes the gateway address from that
+ * name.
  */
 
 let PORT: number
@@ -81,7 +81,7 @@ function membros(quem: Conta, canal: string): string[] {
   return quem.session.membersOf(canal).map(String)
 }
 
-/** Two accounts really friends: request on direct, accepted, and each one in the other's feed. */
+/** Two accounts that are really friends: a request in the DM, accepted, and each one in the other's feed. */
 async function amigas(ana: Conta, bruno: Conta): Promise<string> {
   const dm = await ana.session.openDirect(bruno.address)
   await ate(() => bruno.session.channels.includes(dm), "o Bruno entra na directa")
@@ -130,9 +130,9 @@ afterAll(async () => {
 
 describe("sincronia entre contas", () => {
   /**
-   * F5. Undo with the other disconnected: whoever undid leaves the other's feed.
+   * F5. Unfriending while the other is offline: whoever unfriended leaves the other's feed.
    *
-   * `friend.remove` only cuts live. With Bruno disconnected, he would read it on
+   * `friend.remove` only takes effect live. With Bruno offline, he would read it on
    * recovery, which does not react to friendship events, and Ana would keep reading
    * the feed of someone who was no longer her friend.
    */
@@ -145,7 +145,7 @@ describe("sincronia entre contas", () => {
 
     bruno.session.disconnect()
     await ana.session.unfriend(bruno.address)
-    // On her end, already gone: she requested to leave and the server confirmed.
+    // On her side, dropped right away: she asked to leave and the server confirmed.
     expect(ana.session.channels, `avisos da Ana: ${ana.avisos.join(",")}`).not.toContain(feedBruno)
 
     await bruno.session.connect()
@@ -153,13 +153,13 @@ describe("sincronia entre contas", () => {
   }, 60_000)
 
   /**
-   * F4. Someone joining a direct chat late reads the friendship state.
+   * F4. Someone who joins a DM late reads the friendship state.
    *
-   * Via the main path (M6 of the revision): Bruno accepts for real, with Ana
-   * disconnected, and the acceptance is recorded in both places with the server's `seq`.
+   * Through the real path (M6 of the review): Bruno accepts for real, with Ana
+   * offline, and the acceptance is recorded in both places with the server's `seq`.
    * Then it gets lost on the way to Ana (deleted from the server's database before
-   * she returns), which is how an acceptance that left never arrives. The direct is
-   * remade for Bruno, and from then on each side repeats the last action that
+   * she returns), which is what an acceptance that was sent but never arrived looks
+   * like. The DM is rebuilt for Bruno, and from then on each side repeats the last action that
    * counts, with the ORIGINAL payload (I5): Ana sends the request, and Bruno sends the acceptance.
    */
   it("F4: o aceite perdido volta quando o Bruno é re-sentado, e as duas dobras dão «amigos»", async () => {
@@ -184,26 +184,26 @@ describe("sincronia entre contas", () => {
     await ate(() => ana.session.channels.includes(bruno.session.feedChannel), "a Ana entra no feed do Bruno")
     expect(ana.session.friendTies().get(bruno.address)?.link).toBe("pedido-enviado")
 
-    // Bruno requests a new position in the direct; Ana re-sends it to him.
+    // Bruno asks for a new seat in the DM; Ana reseats him.
     bruno.session.requestRejoin(dm)
 
     await ate(() => ana.session.friendTies().get(bruno.address)?.link === "amigos", "a Ana lê o aceite", 20_000)
     expect(bruno.session.friendTies().get(ana.address)?.link).toBe("amigos")
     await ate(() => membros(ana, ana.session.feedChannel).includes(bruno.address), "o Bruno no feed da Ana", 20_000)
     expect(membros(bruno, bruno.session.feedChannel)).toContain(ana.address)
-    // And all acceptances that reached Ana are the SAME action: the original timestamp.
+    // And all acceptances that reached Ana are the SAME act: the original timestamp.
     const aceitesNaAna = ana.session.history(dm).filter((entrada) => entrada.payload.t === "friend.accept" && entrada.sender === bruno.address)
     expect(aceitesNaAna.length).toBeGreaterThan(0)
     expect(aceitesNaAna.every((entrada) => entrada.payload["acceptedAt"] === carimbo)).toBe(true)
   }, 60_000)
 
   /**
-   * F3. Someone who lost their position requests another, and the other person grants it.
+   * F3. Someone who lost their seat asks for another, and the other person grants it.
    *
-   * Bruno returns with a vault missing the private keys from the key package that Ana
-   * used to add him to the direct: the Welcome won't open, and it stays marked dead. On
+   * Bruno returns with a vault missing the private keys of the key package that Ana
+   * spent to add him to the DM: the Welcome won't open, and it gets marked dead. On
    * Ana's side he is in the tree, so her repair doesn't touch him. This was where
-   * everything stopped, with a message saying the other person would invite again.
+   * everything stopped, with a notice saying the other person would invite again.
    */
   it("F3: com um Welcome morto para a directa e a Ana ligada, o Bruno lê a directa em menos de dois turnos", async () => {
     const ana = await conta("Ana")
@@ -239,16 +239,16 @@ describe("sincronia entre contas", () => {
 
     await ana.session.send(dm, { t: "message", id: crypto.randomUUID(), body: "estás aí?", sentAt: Date.now(), attachments: [] } as never)
     await ate(() => lidas.includes("estás aí?"), "o Bruno lê a directa")
-    // And the vault stops having a position to request.
+    // And the vault no longer has a seat to request.
     expect(bruno.vault.contents.lugaresPorPedir?.[dm]).toBeUndefined()
   }, 60_000)
 
   /**
-   * F7. Someone who is removed leaves the channel and stops requesting to return.
+   * F7. Someone who is removed drops the channel and stops asking to rejoin.
    *
-   * ts-mls says our leaf left (`removedFromGroup`) and nobody was reading it: the
-   * channel stayed in the list, deaf, and the deafness ended in a request to rejoin
-   * the person who had just removed him.
+   * ts-mls reports that our leaf was removed (`removedFromGroup`) and nobody read it: the
+   * channel stayed in the list, deaf, and the deafness ended in a rejoin request to
+   * the very person who had just removed him.
    */
   it("F7: a Ana expulsa o Bruno; o cliente dele larga o canal e não pede reentrada", async () => {
     const graca = Session.SAIDA_GRACA_MS
@@ -267,10 +267,10 @@ describe("sincronia entre contas", () => {
       await ate(() => !bruno.session.channels.includes(canal), "o Bruno larga o canal", 10_000)
       expect(bruno.avisos).toContain("channel-removed")
       expect(bruno.vault.contents.groups[canal]).toBeUndefined()
-      // Left but archived: the history remains (C1).
+      // Dropped but archived: the history remains (C1).
       expect(bruno.vault.contents.canaisArquivados?.[canal]).toBeDefined()
 
-      // Ana keeps talking in the channel; none of it reaches Bruno nor makes him request.
+      // Ana keeps talking in the channel; none of it reaches Bruno or makes him ask to rejoin.
       for (let i = 0; i < 6; i++) {
         await ana.session.send(canal, { t: "message", id: crypto.randomUUID(), body: `depois ${i}`, sentAt: Date.now(), attachments: [] } as never)
       }
@@ -299,10 +299,10 @@ describe("sincronia entre contas", () => {
     (quem.vault.contents.history[canal] ?? []).some((entrada) => entrada.payload["body"] === "para guardar")
 
   /**
-   * C1 of the revision. Being removed from a group doesn't erase the history: a
-   * reseat removes ALL leaves from an account, and a device without packages had no
-   * position and, after the grace period, nothing it had already received. Inside the
-   * grace period and outside it, what was read stays.
+   * C1 of the review. Being removed from a group doesn't erase the history: a
+   * reseat removes ALL leaves of an account, and a device without key packages lost
+   * its seat and, once the grace period passed, everything it had already received.
+   * Inside the grace period and outside it, what was read stays.
    */
   it("C1: reassentado dentro da graça, o Bruno guarda o histórico", async () => {
     const graca = Session.SAIDA_GRACA_MS
@@ -344,8 +344,8 @@ describe("sincronia entre contas", () => {
   }, 60_000)
 
   /**
-   * I2 of the revision. Grace is counted with a connection: someone who drops in the
-   * middle of it doesn't lose the channel when they return, and has the full grace
+   * I2 of the review. Grace is counted while connected: someone who drops in the
+   * middle of it doesn't lose the channel as soon as they return, and has the full grace
    * period for a reseat's Welcome to arrive.
    */
   it("I2: a graça recomeça ao religar", async () => {
@@ -360,7 +360,7 @@ describe("sincronia entre contas", () => {
       bruno.session.disconnect()
       await new Promise((resolve) => setTimeout(resolve, 1_200))
       await bruno.session.connect()
-      // Grace passed since removal, but not since the connection: the channel is still here.
+      // The grace period has passed since the removal, but not since the connection: the channel is still here.
       await new Promise((resolve) => setTimeout(resolve, 1_200))
       expect(bruno.session.channels).toContain(canal)
       await ate(() => !bruno.session.channels.includes(canal), "o Bruno larga o canal no fim da graça nova", 10_000)

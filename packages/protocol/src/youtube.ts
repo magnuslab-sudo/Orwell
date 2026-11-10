@@ -1,18 +1,18 @@
 /**
  * YouTube videos in a post or a message.
  *
- * **There is no embedded player.** Since the owner's request on November 2, 2026, a YouTube
+ * **There is no embedded player.** Since the owner's request on 2 November 2026, a YouTube
  * video renders as a thumbnail, and a click opens the video in a new browser tab, or in the
- * system browser on the desktop app. Nothing embeds, and so security policies went back to
+ * system browser in the desktop app. Nothing embeds, and so security policies went back to
  * `frame-src 'none'` and `podeSair` (in `@enclave/client-core`) lost its gate to Google.
  *
- * Before that there was an `iframe` from `youtube-nocookie.com`, which spawned on click. It
+ * Before that there was an `iframe` from `youtube-nocookie.com`, created on click. It
  * handed the page origin to Google (via `Referer` with `referrerpolicy="origin"`, and via
  * `location.ancestorOrigins`, which no policy closes). Opening outside has no such cost: the
  * new tab goes with `rel="noopener noreferrer"`, no `Referer` and no `window.opener`.
  *
  * **What stays: viewing a message asks nothing of Google.** The thumbnail and title come
- * from the side of WHO PUBLISHES (the main process of the desktop app, or the server on the
+ * from the POSTER's side (the desktop app's main process, or the server on the
  * web), once, and travel inside the encrypted message as bytes. The reader renders them
  * without talking to anyone. Only whoever clicks the thumbnail talks to YouTube, and talks
  * because they asked for the video.
@@ -22,8 +22,8 @@
  * Eleven characters from a known alphabet, or it is not an identifier.
  *
  * Validation is not hygiene: what comes out of here goes into a URL, and the address came
- * from the publisher. Without this, it would be enough to publish a link with the
- * "identifier" made to measure to write whatever you wanted into the address.
+ * from the poster. Without this, posting a link with a crafted
+ * "identifier" would be enough to write anything into the address.
  */
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
@@ -40,11 +40,11 @@ const HOSTS = new Set([
   "www.youtu.be",
 ])
 
-/** The paths that carry the identifier in the first segment after. */
+/** The paths that carry the identifier in the next segment. */
 const PATH_PREFIXES = ["embed", "shorts", "live", "v"]
 
 /**
- * The video identifier, or `null` when the address is not a YouTube video that we recognize
+ * The video identifier, or `null` when the address is not a YouTube video we can recognize
  * with certainty.
  */
 export function youtubeIdOf(url: string): string | null {
@@ -88,14 +88,14 @@ export function youtubeWatchUrl(id: string): string {
 }
 
 /**
- * The oEmbed, which is where the title comes from.
+ * The oEmbed endpoint, which is where the title comes from.
  *
  * The YouTube page declares Open Graph like any other, except at byte 691,000, far beyond
  * any sensible download cap (measured; the whole document is over 1.3 MB). Downloading 700
  * KB to read one `<meta>` tag is the wrong way, and raising the cap for all sites because
  * of this one is worse.
  *
- * The oEmbed is the same information in about 300 bytes, is a documented interface and not
+ * oEmbed gives the same information in about 300 bytes, is a documented interface rather than
  * scraping, and needs no HTML parser.
  */
 export function youtubeOembedUrl(id: string): string {
@@ -103,13 +103,13 @@ export function youtubeOembedUrl(id: string): string {
 }
 
 /**
- * The thumbnails, best to worst. The PUBLISHER fetches them, never the reader: see the
+ * The thumbnails, best to worst. The POSTER fetches them, never the reader: see the
  * start of this file.
  *
  * `maxresdefault` only exists for videos uploaded in high resolution and responds 404 on
  * others; `hqdefault` always exists. A list, not a single address, so whoever fetches can
- * try the next one instead of giving up, a blank frame is a gray box, which is exactly
- * what it came to avoid.
+ * try the next one instead of giving up: a facade without a thumbnail is a gray box, which
+ * is exactly what it was meant to avoid.
  */
 export function youtubeThumbnailUrls(id: string): string[] {
   return [

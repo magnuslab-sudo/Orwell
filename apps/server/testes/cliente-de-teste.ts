@@ -53,8 +53,8 @@ export class Cliente {
   /**
    * Connect, send `hello`, and authenticate.
    *
-   * `capacidades: null` is the `hello` from clients before 13/9/2026, which do
-   * not bring the field, exactly what the bundle `eabfd6c` sends.
+   * `capacidades: null` is the `hello` from clients before 13/9/2026, which does
+   * not carry the field: exactly what the bundle `eabfd6c` sends.
    */
   static async ligar(
     url: string,
@@ -112,8 +112,8 @@ export class Cliente {
    * Everything that arrived up to the `pong` of a `ping` just sent.
    *
    * The way to prove that something did NOT arrive without waiting for a timeout:
-   * the server processes in order, and receiving the pong proves it already
-   * passed through. See `common-room.test.ts`.
+   * the server processes in order, and receiving the pong proves the server has
+   * already got past it. See `common-room.test.ts`.
    */
   async ateAoPong(): Promise<ServerFrame[]> {
     this.enviar({ t: "ping" })
@@ -164,10 +164,10 @@ export interface ServidorDeTeste {
 }
 
 /**
- * A server on an ephemeral port, with the shared room `!orwell:<casa>`.
+ * A server on an ephemeral port, with the common room `!orwell:<casa>`.
  *
- * `extra` adds to the standard config whatever a test needs to connect (the
- * minimum client version, the port for opaque addresses). Without it, the server
+ * `extra` adds to the standard config whatever a test needs to turn on (the
+ * minimum client version, the opaque-address gate). Without it, the server
  * is the same as before, byte for byte.
  */
 export async function levantarServidor(extra: Partial<ServerConfig> = {}): Promise<ServidorDeTeste> {
@@ -213,8 +213,8 @@ export async function levantarServidor(extra: Partial<ServerConfig> = {}): Promi
 // N Sessions (phase S0 of absolute sync, 20/10/2026).
 //
 // Above: a raw socket, for the gateway tests. Below: real accounts, each with
-// `Session` and its own vault, all against the same `ServidorDeTeste`.
-// I only add: what is above did not change shape.
+// its own `Session` and vault, all against the same `ServidorDeTeste`.
+// Additions only: what is above has not changed shape.
 // ---------------------------------------------------------------------------
 
 /** An in-memory vault backend that counts writes. */
@@ -247,7 +247,7 @@ export interface ContaDeTeste {
 /**
  * N accounts connected to the same server, one per name, with published profile.
  *
- * The server from `levantarServidor` has the name with the port: each `Session`
+ * The server from `levantarServidor` has the port in its name: each `Session`
  * gets the gateway address from it. The caller disconnects them with
  * `desligarContas` at the end.
  */
@@ -284,7 +284,7 @@ export async function ate(predicado: () => boolean, rotulo: string, prazoMs = 15
   throw new Error(`esgotou-se o prazo à espera de: ${rotulo}`)
 }
 
-/** A new channel founded by `owner`, with the others joining one by one. */
+/** A new channel founded by `dono`, with the others seated one by one. */
 export async function canalComTodos(
   servidor: ServidorDeTeste,
   dono: ContaDeTeste,
@@ -301,7 +301,7 @@ export async function canalComTodos(
   return canal
 }
 
-/** The level-0 summary of an account, with its members and address. */
+/** The level-0 digest of an account, with its members and address. */
 export function resumoDe(conta: ContaDeTeste, canal: string, desde?: number): ResumoNivel0 {
   return resumoDoCanal(conta.vault.contents, canal, {
     membros: conta.session.membersOf(canal).map(String),
@@ -310,7 +310,7 @@ export function resumoDe(conta: ContaDeTeste, canal: string, desde?: number): Re
   })
 }
 
-/** The types in which accounts diverge from the first. Empty: summaries are the same. */
+/** The types in which accounts diverge from the first. Empty: matching digests. */
 export function divergencias(contas: readonly ContaDeTeste[], canal: string, desde?: number): TipoDoResumo[] {
   const [primeira, ...resto] = contas
   if (!primeira) return []
@@ -346,7 +346,7 @@ function esperarFaseDoPar(session: Session, fase: string, prazoMs = 20_000): Pro
   })
 }
 
-/** Pairs a new device with `account`, and returns it connected. The caller disconnects it. */
+/** Pairs a new device with `conta`, and returns it connected. The caller disconnects it. */
 export async function emparelharAparelho(conta: ContaDeTeste, nome = `${conta.nome} (telemóvel)`): Promise<ContaDeTeste> {
   const backend = new CofreEmMemoria()
   const vault = new Vault(backend)

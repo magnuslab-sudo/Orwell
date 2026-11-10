@@ -16,7 +16,7 @@ const SALA = "!lagar:orwell.pt"
 const AGORA = 1_700_000_000_000
 
 /**
- * The direct-message pair for these tests, as the vault provides it. The runtime
+ * The direct-message pair for these tests, as the vault provides it. The fold
  * no longer reads the `!dm-ela.eu` form (1.0 "Arca", slice 2): the caller always
  * supplies the pair.
  */
@@ -62,7 +62,7 @@ describe("um convite é uma coisa só, com duas entradas", () => {
     const meus = dobrar(eventos, EU, AGORA)
     expect(meus.get(inviteKey(SALA, ELA))?.state).toBe("aceite")
     expect(acceptedInvitesOf(meus).map((tie) => tie.peer)).toEqual([ELA])
-    // From the side of who accepted there is no debt: entry is not their action.
+    // On the accepter's side nothing is owed: adding them is not their action.
     expect(acceptedInvitesOf(dobrar(eventos, ELA, AGORA))).toEqual([])
   })
 
@@ -70,16 +70,16 @@ describe("um convite é uma coisa só, com duas entradas", () => {
     const meus = dobrar([convite(EU), resposta(ELA, false)], EU, AGORA)
     expect(meus.get(inviteKey(SALA, ELA))?.state).toBe("recusado")
     expect(acceptedInvitesOf(meus)).toEqual([])
-    // And from the side of who declined the invite leaves the pending responses.
+    // And on the decliner's side, the invite leaves the list awaiting a reply.
     expect(pendingInvitesOf(dobrar([convite(EU), resposta(ELA, false)], ELA, AGORA))).toEqual([])
   })
 })
 
 describe("o que não pode dar lugar", () => {
   it("uma aceitação que ninguém convidou não vale nada", () => {
-    // Without this check, a message in the thread would buy a place: you just had to
-    // say yes to an invite that never existed on the other side for the inviter to
-    // commit the addition.
+    // Without this guard, a line in the thread would buy a place: saying yes to an
+    // invite that never existed would be enough for the other side to commit the
+    // addition.
     const meus = dobrar([resposta(ELA, true)], EU, AGORA)
     expect(meus.size).toBe(0)
     expect(acceptedInvitesOf(meus)).toEqual([])
@@ -107,7 +107,7 @@ describe("o que não pode dar lugar", () => {
   })
 
   it("um convite mandado para uma SALA não é um convite a uma pessoa", () => {
-    // In a room our message has no single recipient, and assigning it to someone
+    // In a room, something we send has no single recipient, and assigning it to someone
     // would be the fold inventing who was invited.
     const naSala = convite(EU, AGORA, SALA)
     expect(dobrar([naSala], EU, AGORA).size).toBe(0)

@@ -14,7 +14,7 @@ import { NoncesVistos, verificarPedidoAssinado } from "./pedido-assinado.js"
 import { Store } from "./store.js"
 
 /**
- * The signed request: the header that authenticates report routes without
+ * The signed request: the header that authenticates the abuse report routes without
  * a gateway session. Real identities, signed by the client core.
  */
 
@@ -96,7 +96,7 @@ describe("verificarPedidoAssinado", () => {
     const chaveAlheia = { ...outroCertificado, cadeia: { ...outroCertificado.cadeia, k: toBase64(intrusa.signingPublicKey) } }
     expect(verificarPedidoAssinado(chaveAlheia, ROTAS_DA_DENUNCIA.enviar, deps)).toEqual({ ok: false, razao: "key-mismatch" })
 
-    // Device revoked.
+    // Revoked device.
     const db = openDatabase(":memory:")
     const storeRevogado = new Store(db)
     storeRevogado.registerOrVerifyAccount(identidade.address, identidade.signingPublicKey)
@@ -141,7 +141,7 @@ describe("verificarPedidoAssinado", () => {
       ok: false,
       razao: "malformed",
     })
-    // Arrives over the wire as JSON with a number like 1e400.
+    // As it arrives over the wire: JSON with 1e400.
     const doFio = JSON.parse(JSON.stringify(pedido).replace('"corpo":{}', '"corpo":1e400'))
     expect(doFio.corpo).toBe(Infinity)
     expect(verificarPedidoAssinado(doFio, ROTAS_DA_DENUNCIA.enviar, { store, serverName: SERVIDOR, nonces })).toEqual({

@@ -12,9 +12,9 @@ import {
 
 /**
  * The 1.2 permission model (§4 of the parity plan), with real accounts and
- * server: overlaps by room in `move`, delegation of roles with hierarchy and
- * no escalation (on the sender side and receiver side), the delegation gate,
- * and fusion with the old writer.
+ * server: per-room overrides for `mover`, role delegation with hierarchy and
+ * no escalation (on both the sender and the receiver side), the delegation gate,
+ * and the merge with the old writer.
  *
  * Ana founds. Bruno has roles. Carla and Dario are members.
  */
@@ -59,7 +59,7 @@ describe("mover por sala: um cargo com mover numa sala e sem mover noutra", () =
       await ate(() => conta.session.sobreposicoesDe(canal, { sala: "estudio" }).length === 1, `${conta.nome} tem a sobreposição do Estúdio`)
     }
 
-    // What each can do, read by all the same.
+    // What each one can do, read the same by everyone.
     for (const conta of [ana, bruno, carla, dario]) {
       expect(conta.session.permissoesEm(canal, bruno.address, "patio")).toContain("mover")
       expect(conta.session.permissoesEm(canal, bruno.address, "estudio")).not.toContain("mover")
@@ -69,18 +69,18 @@ describe("mover por sala: um cargo com mover numa sala e sem mover noutra", () =
     expect(bruno.session.mayMoveIn(canal, "arena", "estudio")).toBe(false)
     expect(bruno.session.mayMoveIn(canal, "estudio", "patio")).toBe(false)
 
-    // The sender: Bruno moves from Arena to Patio; for Studio his session refuses.
+    // Sender side: Bruno moves from Arena to Pátio; his session refuses a move to Estúdio.
     const daCarla = movimentos(carla)
     await bruno.session.moveVoice(canal, carla.address, "patio", "arena")
     await expect(bruno.session.moveVoice(canal, carla.address, "estudio", "patio")).rejects.toThrow("you may not move people in this channel")
     await expect(dario.session.moveVoice(canal, carla.address, "patio", "arena")).rejects.toThrow("you may not move people in this channel")
     await expect(dario.session.moveVoice(canal, carla.address, "estudio", "arena")).rejects.toThrow("you may not move people in this channel")
 
-    // The receiver: the same requests by hand (an altered client) fall in Carla's session.
+    // Receiver side: the same requests sent by hand (a modified client) are dropped in Carla's session.
     await bruno.session.send(canal, { t: "voice.move", subject: carla.address, room: "estudio", de: "patio", at: Date.now() })
     await bruno.session.send(canal, { t: "voice.move", subject: carla.address, room: "arena", de: "estudio", at: Date.now() })
     await dario.session.send(canal, { t: "voice.move", subject: carla.address, room: "patio", at: Date.now() })
-    // The mark: a legitimate request from the founder, sent later.
+    // The marker: a legitimate request from the founder, sent later.
     await ana.session.moveVoice(canal, carla.address, "estudio", "patio")
     await ate(() => daCarla.some((m) => m.from === ana.address), "o pedido da Ana chega à Carla", 30_000)
     expect(daCarla.map((m) => [m.from, m.payload["room"]])).toEqual([
@@ -133,7 +133,7 @@ describe("a delegação de cargos, com a hierarquia e sem escalada", () => {
     await expect(bruno.session.defineRole(canal, { role: "porteiro", name: "Porteiro", powers: ["convidar"], rank: 7 })).rejects.toThrow(recusa)
     await expect(bruno.session.defineRole(canal, { role: "admin", name: "Meu", powers: [] })).rejects.toThrow(recusa)
     await expect(bruno.session.deleteRole(canal, "cofre")).rejects.toThrow(recusa)
-    // What fits him passes: a new role below him, with only what he has.
+    // What is within his reach goes through: a new role below his, with only what he has.
     await bruno.session.defineRole(canal, { role: "guia", name: "Guia", powers: ["mover"], rank: 3 })
     await ate(() => ana.session.rolesOf(canal).some((papel) => papel.role === "guia"), "a Ana vê o cargo novo do Bruno")
   }, 180_000)
@@ -155,7 +155,7 @@ describe("a delegação de cargos, com a hierarquia e sem escalada", () => {
     })
     await bruno.session.send(canal, { t: "role.define", role: "alto", name: "Meu", powers: [], position: 0, rank: 1, removed: false, definedAt: agora + 60_000 })
     await bruno.session.send(canal, { t: "role.define", role: CARGO_TODOS, name: "todos", powers: ["expulsar"], position: 0, rank: 0, removed: false, definedAt: agora })
-    // The mark: a legitimate act by Bruno, sent later.
+    // The marker: a legitimate action by Bruno, sent later.
     await bruno.session.assignRoles(canal, carla.address, ["porteiro"])
     for (const conta of [ana, carla]) {
       await ate(() => conta.session.rolesFor(canal, carla.address).includes("porteiro"), `${conta.nome} recebe a marca`)
@@ -170,7 +170,7 @@ describe("a delegação de cargos, com a hierarquia e sem escalada", () => {
 
   it("o portão fechado: se uma folha não disse que lê o modelo, o Bruno não oferece nem envia", async () => {
     const { canal, bruno, carla } = await canalDelegado()
-    // Forget that Carla's device said it: it is what Bruno would see with a 1.1.0 on the channel.
+    // Forget that Carla's device said it: that is what Bruno would see with a 1.1.0 client in the channel.
     await bruno.vault.update((contents) => {
       const doCanal = { ...(contents.conhecemPermissoes?.[canal] ?? {}) }
       for (const chave of Object.keys(doCanal)) delete doCanal[chave]
@@ -194,7 +194,7 @@ describe("a migração dos cargos que já existem (§4.4)", () => {
     const papel = bruno.session.rolesOf(canal).find((p) => p.role === "arrumador")
     // The editor sees the same role, with the same permissions, and rank at zero.
     expect(papel).toMatchObject({ name: "Arrumador", powers: ["renomear", "mover", "moderar"], rank: 0 })
-    // And what it did still works: manage rooms, leave the call, nicknames.
+    // And it can still do what it did before: manage rooms, disconnect from calls, nicknames.
     expect(bruno.session.permissoesEm(canal, bruno.address)).toEqual(
       expect.arrayContaining(["renomear", "mover", "moderar", "gerirsalas", "desligar", "apelidos"]),
     )
@@ -231,9 +231,9 @@ describe("compatibilidade com o escritor antigo (1.0.x e 1.1.0)", () => {
     await ana.session.upsertRoom(canal, { room: "estudio", name: "Estúdio", kind: "voice" })
     await ana.session.setSobreposicoes(canal, { sala: "estudio" }, [{ role: CARGO_TODOS, allow: [], deny: ["ligar"] }])
     await ate(() => bruno.session.sobreposicoesDe(canal, { sala: "estudio" }).length === 1, "o Bruno tem a sobreposição")
-    // A 1.1.0 (or a room from before) renames the room: the field does not go.
+    // A 1.1.0 (or a room from before) renames the room: the field is not sent.
     await ana.session.upsertRoom(canal, { room: "estudio", name: "Estúdio 2", kind: "voice" })
-    // Carla (no role) tries to clean overlaps with a room by hand.
+    // Carla (no role) tries to clear the overrides with a hand-built room.
     await carla.session.send(canal, {
       t: "channel.meta",
       room: "estudio",

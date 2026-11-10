@@ -28,17 +28,17 @@ export const PROTOCOL_VERSION = 1
  * A constant, not the string `"sfu"` written on both sides, because this is a
  * contract between different processes: the server announces it in `hello.ok`
  * and the client decides from it which call engine to build. One typo on one
- * side gives no compile error, only a client stuck in mesh against an
+ * side gives no compile error, only a client stuck in mesh forever against an
  * SFU-ready server, or worse, the reverse.
  *
  * **Server first, client second, never reversed.** A new client against an old
  * server does not see the capability and behaves exactly as today: mesh,
  * end-to-end, not one line different. It is the same rule as device chain
- * restart, and it is what lets Phase 1 deploy without any client out there
+ * restart, and it is what lets Phase 1 go live without any client out there
  * noticing.
  *
  * And **announce what exists, never what is planned**: a server declaring this
- * without a media worker running sends everyone to negotiate with a closed gate.
+ * without a media worker running sends everyone to negotiate with a closed door.
  * See `declararSfu` in the gateway: the capability comes from real engine
  * state, not a constant or environment variable.
  */
@@ -49,13 +49,13 @@ export const CAPACIDADE_SFU = "sfu"
  * more than one device per account".
  *
  * A constant for the same reason as `CAPACIDADE_SFU`: it is a contract between
- * the server, announcing it in `hello.ok`, and the client, who sends
- * `manifest.publish` and `manifest.get` only to servers that announce it.
+ * the server, which announces it in `hello.ok`, and the client, which sends
+ * `manifest.publish` and `manifest.get` only to servers that announced it.
  * Against a server that does not announce it, the client sends neither and
- * behaves as before this existed: an unknown `t` is a rejected frame, not worth
- * learning at the cost of one.
+ * behaves as before this existed: an unknown `t` is a rejected frame, and it is
+ * not worth finding that out at the cost of one.
  *
- * **Server first, client second, always.** The reverse, an old client against
+ * **Server first, client second**, as always. The reverse, an old client against
  * this server, does not see the capability, does not understand it, and nothing
  * changes: no server path reads the device table or manifest to decide anything.
  * This is what makes this slice deployable without breaking 0.2.2 clients.
@@ -63,22 +63,22 @@ export const CAPACIDADE_SFU = "sfu"
 export const CAPACIDADE_APARELHOS = "devices"
 
 /**
- * The capability that says "this server serves key packages bundled, one per
- * device from the manifest, when the client asks".
+ * The capability that says "this server serves KeyPackages in a bundle, one per
+ * device in the manifest, when the client asks for it".
  *
  * A constant separate from `CAPACIDADE_APARELHOS`, and the reason is production:
  * `devices` is announced unconditionally by the 0.2.3 server, which stores
- * manifests but does not bundle. A client asking `bundle: true` to that server
- * got one packet with no `keyPackages`, and the difference between "does not
- * know" and "no more devices" was lost. With its own capability the client
+ * manifests but does not bundle. A client asking that server for `bundle: true`
+ * got a single KeyPackage with no `keyPackages`, and the difference between
+ * "does not know" and "no more devices" was lost. With its own capability the client
  * knows when the bundled reply is the complete reply.
  *
- * **The client REQUESTS the bundle, never offered.** A `keypackage.claim`
- * without `bundle: true` uses exactly one packet, against this server and any
- * other. If the server offered bundle to whoever did not ask, each invite made
- * by a 0.2.3 client would burn one packet per device of the invitee, and the
- * pool of twenty would drain four times faster, in silence, because that client
- * only knows how to read the single.
+ * **The client REQUESTS the bundle; the server never offers it.** A
+ * `keypackage.claim` without `bundle: true` consumes exactly one KeyPackage,
+ * against this server and any other. If the server sent the bundle unasked,
+ * each invite made by a 0.2.3 client would burn one KeyPackage per device of
+ * the invitee, and the pool of twenty would drain four times faster, in
+ * silence, because that client only reads the single-package reply.
  */
 export const CAPACIDADE_BUNDLE = "keypackage-bundle"
 
@@ -103,17 +103,20 @@ export const CAPACIDADE_EMPARELHAMENTO = "pairing"
  *
  * **Announced in both directions, and the client's announcement decides
  * delivery.** The server announces it in `hello.ok`; the client announces it in
- * `hello.capabilities`. The server only delivers `channel.sinal` to connections that announced it, and only accepts `channel.sinal` from them. A client 0.5.7 or 0.6.0 does not
- * announce it, and so never receives a frame it doesn't know about: for them, nothing
- * changes. It's the rule as always: server first, client second.
+ * `hello.capabilities`. The server only delivers `channel.sinal` to
+ * connections that announced it, and only accepts `channel.sinal` from them. A
+ * 0.5.7 or 0.6.0 client does not announce it, and so never receives a frame it
+ * does not know: for it, nothing changes. The usual rule: server first, client
+ * second.
  *
- * What it's for: digests and requests for sync between accounts
- * (`docs/planos/2026-10-20-sincronia-absoluta.md`, section 4.5). They're small, only valid while true,
- * and should not pass through the MLS ratchet or stay 30 dias on the server.
+ * What it is for: the digests and requests of sync between accounts
+ * (`docs/planos/2026-10-20-sincronia-absoluta.md`, section 4.5). They are
+ * small, only valid while they are true, and should not go through the MLS
+ * ratchet or stay 30 days on the server.
  *
  * **What the server sees:** the channel, who sends, when, and the size. Not the
- * content: it travels encrypted with a key exported from the MLS epoch, which the server
- * doesn't have. See `docs/THREAT-MODEL.md`, "Ephemeral channel signals".
+ * content: it travels encrypted with a key exported from the MLS epoch, which
+ * the server does not have. See `docs/THREAT-MODEL.md`, "Ephemeral channel signals".
  */
 export const CAPACIDADE_SINAL_EFEMERO = "sinal-efemero"
 
@@ -121,25 +124,25 @@ export const CAPACIDADE_SINAL_EFEMERO = "sinal-efemero"
  * The PROTOCOL limit for the content of a `channel.sinal`, in
  * base64url characters as it travels.
  *
- * It's the schema limit, and protects the parser: a frame larger than this is `bad-frame`. The
+ * It is the schema limit, and it protects the parser: a larger frame is `bad-frame`. The
  * limit the server actually applies is lower and comes from the operator
  * (`TECTOS_DO_SINAL.maxBytes` in `apps/server/src/config.ts`, 16 KiB by
  * default). The two exist separately on purpose: above the operator's limit,
  * the sender gets `channel.sinal.rejected` with `sinal-too-large` and knows what
  * happened; above this one, it only gets `bad-frame`.
  *
- * 64 KiB is enough for any signal on the plane: the largest is a list of keys of
- * 6 bytes from a bucket (section 4.2, level 2), and a thousand keys are 8 KiB in base64.
+ * 64 KiB is enough for any signal in the plan: the largest is a list of 6-byte
+ * keys from a bucket (section 4.2, level 2), and a thousand keys are 8 KiB in base64.
  */
 export const SINAL_MAX_CARACTERES = 64 * 1024
 
 /**
- * The room card entry limit (`channel.groupinfo.put`), in base64 characters.
+ * The limit for the common room's join card (`channel.groupinfo.put`), in base64 characters.
  *
  * The card is the `GroupInfo` with the whole tree, and the tree grows with who
- * is there: about 2.9 KB per leaf, measured from real sessions on 3/11/2026.
+ * is in it: about 2.9 KB per leaf, measured with real sessions on 3/11/2026.
  * The limit was 262 144 characters (196 KB, ~68 leaves), and the Orwell
- * channel broke it that day with 108 accounts: each member's `put` was rejected
+ * channel went past it that day with 108 accounts: each member's `put` was rejected
  * as `bad-frame`, the server lost the card, and each join depended on a member
  * being connected. 8 MiB is ~2 000 leaves, below the frame limit
  * (`MAX_FRAME_BYTES`, 12 MiB, on the server).
@@ -147,55 +150,55 @@ export const SINAL_MAX_CARACTERES = 64 * 1024
 export const CARTAO_MAX_CARACTERES = 8 * 1024 * 1024
 
 /**
- * The capability that says "this client understands rejection of a send for
+ * The capability that says "this client understands a send rejected for
  * rate limiting" (`channel.rejected` with `reason: "rate-limited"` and
  * `retryAfterMs`).
  *
  * The server has a limit on sends per account per minute
  * (`Gateway.ENVIOS_POR_MINUTO`). Until 21/10/2026 a send above the limit was
- * dropped IN SILENCE: the client held it as sent, nobody received it, and a
- * sync report that fell in the same minute was also lost (S6 of absolute sync:
- * 1.800 sends from one account in a row and 45% of likes and all votes never
- * arrived).
+ * dropped IN SILENCE: the client kept it as sent, nobody received it, and an
+ * anti-entropy report that landed in the same minute was also lost (S6 of
+ * absolute sync: 1,800 sends in a row from one account, and 45% of likes and
+ * all votes never arrived).
  *
- * Only those who announce this get the new `channel.rejected`: an old client
- * reading any `channel.rejected` it does not know reads it as "this room no
- * longer exists" and advises the person to leave. They get an `error` with
+ * Only clients that announce this get the new `channel.rejected`: an old client
+ * reads any `channel.rejected` it does not know as "this room no longer
+ * exists" and advises the person to leave. That client gets an `error` with
  * code `rate-limited`, which goes to diagnostics and changes nothing.
  */
 export const CAPACIDADE_ENVIO_RECUSADO = "envio-recusado"
 
 /**
- * The server arbitrates the start of a direct conversation (phase 1g, 28/10/2026).
+ * The server arbitrates the creation of a direct conversation (phase 1g, 28/10/2026).
  *
  * `channel.claim` on a `!dm-a.b` is only valid for one of the two accounts in
- * the name: the other account gets `mine: false` without claiming anything. A
- * client that hears this capability claims the start BEFORE creating the
+ * the name: any other account gets `mine: false` and gets nothing. A
+ * client that sees this capability claims the creation BEFORE creating the
  * direct group, and whoever loses waits for the Welcome from who won. Without
  * it, both sides opening the direct at the same moment created two MLS groups
  * with the same name.
  *
- * A client that does not hear it creates the direct as before, without
+ * A client that does not see it creates the direct as before, without
  * claiming: an earlier server let any account claim a `!dm-`, and whoever
  * claimed first left both sides waiting.
  *
- * The rule for the `!dm-a.b` form is server-only (`gateway.ts`, through slice 3
- * removal). The client knows a channel is a direct by the vault card
+ * The rule for the `!dm-a.b` form is server-only (`gateway.ts`, until slice 3
+ * removes it). The client knows a channel is a direct from the vault record
  * (`tipoDoCanal` in core, 1.0 slice 2), not by the form.
  */
 export const CAPACIDADE_ESTREIA_DA_DIRECTA = "estreia-da-directa"
 
 /**
  * The server accepts opaque addresses (`!<40 base32>:<servidor>`, see
- * `eMoradaOpaca`) and arbitrates their first use by whoever requests it first (1.0
- * "Arca", section 4).
+ * `eMoradaOpaca`) and arbitrates their first use: first come, first served (1.0
+ * "Arca", slice 4).
  *
  * An opaque address doesn't name anyone, so the server doesn't apply name
- * guards to it (`!dm-a.b` only for `a` or `b`, `!feed-x` only for `x`): its
- * `channel.claim` belongs to whoever requests it first, like in a room. Doesn't
- * need another guard because 200 bits can't be guessed. A client that
- * derives opaque addresses (section 3) only uses them on a server that announces this; on
- * an older server, an opaque one was treated the same way, but by accident
+ * guard to it (`!dm-a.b` only for `a` or `b`, `!feed-x` only for `x`): its
+ * `channel.claim` belongs to whoever asks first, as in a room. It needs no
+ * other guard because 200 bits cannot be guessed. A client that derives opaque
+ * addresses (slice 3) only uses them on a server that announces this; on an
+ * older server, an opaque address was treated the same way, but by chance,
  * not by promise.
  */
 export const CAPACIDADE_MORADAS_OPACAS = "moradas-opacas"
@@ -212,14 +215,14 @@ export const CAPACIDADE_MORADAS_OPACAS = "moradas-opacas"
 export const CAPACIDADE_LIGACOES_CURTAS = "ligacoes-curtas"
 
 /**
- * The server stores the invite seal and returns it (1.0 "Arca", section 5c; see
+ * The server stores the invite seal and returns it (1.0 "Arca", slice 5c; see
  * `selo-do-convite.ts`).
  *
- * With it, the `invite.create` stores the `selo`, the `invite.resolved` brings the invite
- * seal, and `invite.selo` (via `codeHash`, for the long connection) responds
- * with `invite.selo.result`. The client sends the seal always: a server that doesn't
- * know it drops it on read. Without it, the client doesn't ask, and the
- * invite request says "a channel".
+ * With it, `invite.create` stores the `selo`, `invite.resolved` brings the invite
+ * seal, and `invite.selo` (by `codeHash`, for the long link) replies with
+ * `invite.selo.result`. The client always sends the seal: a server that does not
+ * know it strips it when parsing. Without the capability, the client does not
+ * ask, and the invite prompt says "a channel".
  */
 export const CAPACIDADE_SELO_DO_CONVITE = "selo-do-convite"
 
@@ -227,11 +230,11 @@ export const CAPACIDADE_SELO_DO_CONVITE = "selo-do-convite"
  * The server verifies the proof of the code in `invite.redeem` (1.0 "Arca", slice 2;
  * see `prova-do-convite.ts`).
  *
- * An invite created with `codeKey` redeems only with a valid `proof`: the
- * `codeHash` alone, which is in the database, no longer suffices. An invite without
+ * An invite created with `codeKey` redeems only with a valid `prova`: the
+ * `codeHash` alone, which is in the database, is no longer enough. An invite without
  * `codeKey` (created by a 0.9.x client) continues to redeem by hash until
  * the cutoff; with `ENCLAVE_SO_MORADAS_OPACAS` that path closes. The client sends
- * `codeKey` and `proof` always: a server that does not know them strips them when reading.
+ * `codeKey` and `prova` always: a server that does not know them strips them when parsing.
  */
 export const CAPACIDADE_RESGATE_POR_PROVA = "resgate-por-prova"
 
@@ -239,9 +242,9 @@ export const CAPACIDADE_RESGATE_POR_PROVA = "resgate-por-prova"
  * The error code that rejects a client below the server's minimum version
  * (1.0 "Arca", slice 4).
  *
- * It comes in the fatal `error` that answers `hello`, and the connection closes after.
- * The app translates the code in its catalog; the server's message is for those who do not
- * know it (0.9 in cache), who show it as is. A stable code: it never changes meaning
+ * It comes in the fatal `error` that answers `hello`, and the connection closes after it.
+ * The app translates the code from its catalog; the server's message is for clients that
+ * do not know the code (a cached 0.9), which show it as it comes. A stable code: it never changes meaning
  * and is never reused.
  */
 export const CODIGO_VERSAO_ANTIGA = "versao-antiga"
@@ -254,7 +257,7 @@ export const CODIGO_VERSAO_ANTIGA = "versao-antiga"
  * - `sinal-not-announced`: the connection did not announce `CAPACIDADE_SINAL_EFEMERO`
  *   in `hello`. The sender must be able to receive.
  * - `sinal-no-seat`: the connection is not subscribed to this channel.
- * - `sinal-too-large`: the signal exceeds the operator's limit, or costs alone
+ * - `sinal-too-large`: the signal exceeds the operator's limit, or on its own costs
  *   more than the channel's outbound limit (a large signal in a channel with many
  *   members connected). Waiting does not help: a smaller signal is needed.
  * - `sinal-rate-limited`: this connection exceeded the signals-per-minute limit.
@@ -273,25 +276,25 @@ export type CodigoDeRecusaDoSinal = (typeof CODIGOS_DE_RECUSA_DO_SINAL)[number]
 /**
  * Where a stream comes from: the microphone, the camera, or the screen.
  *
- * **This is what replaces the reserved transceiver of the mesh.** In a peer-to-peer
- * connection, screen sharing is distinguished from the camera by PLACE: each pair is born
- * with an `m-line` only for the screen, and `replaceTrack` puts and removes the image
- * from there without renegotiating. With an SFU there are no places, there are producers,
+ * **This is what replaces the mesh's reserved transceiver.** In a peer-to-peer
+ * connection, screen sharing is told apart from the camera by SLOT: each pair starts
+ * with an `m-line` just for the screen, and `replaceTrack` puts the image there and
+ * takes it out without renegotiating. With an SFU there are no slots, only producers,
  * and two video producers from the same sender are indistinguishable by `kind`. Without
  * this field, the receiver does not know which of the two to put on stage and which to
- * put on the person's card, and what you see is someone's screen inside a 190 by 128
- * rectangle with the edges cut off, or their face at full screen.
+ * put on the person's tile, and what you see is someone's screen inside a 190 by 128
+ * rectangle with the edges cut off, or their face full screen.
  *
  * **Optional, and absence is read by `kind`:** audio is microphone, video is
- * camera. This is what a Phase 2 client writes, it only produces audio, and never
- * sent this field, and it is the house default for everything added to the wire:
- * a new field can never change the meaning of what is already there.
+ * camera. This is what a Phase 2 client writes (it only produces audio, and never
+ * sent this field), and it is the house rule for everything added to the wire:
+ * a new field can never change the meaning of what was already there.
  *
- * **What it protects against someone lying, spelled out:** nothing, and it does not need to.
+ * **What it is worth against a liar, spelled out:** nothing, and it does not need to be.
  * A client that declares `camara` while sharing the screen hits the camera bandwidth limit,
- * which is tighter, the lie costs them. One that declares `ecra` while sending their face
- * occupies the only screen slot for that call, and it is annoying for those already in the
- * channel, not a violation of anything. The limits that stand up to an adversarial client
+ * which is tighter: the lie costs the liar. One that declares `ecra` while sending their face
+ * takes the only screen slot in that call, which is a nuisance for those already admitted to
+ * the channel, not a breach of anything. The limits that stand up to an adversarial client
  * are the others: the transport's `setMaxIncomingBitrate` and the participant cap.
  */
 export const FonteDeMedia = z.enum(["microfone", "camara", "ecra", "musica"])
@@ -300,40 +303,40 @@ export type FonteDeMedia = z.infer<typeof FonteDeMedia>
 /**
  * How many people can be on the call and still fit on screen, with SFU.
  *
- * **The old number was six, and came from MESH.** Whoever shared sent the
- * image once PER PERSON: at six people that was five streams, 12,5 Mbps of home
- * uplink, and what happened when it did not fit was not a warning, the entire
+ * **The old number was six, and it came from the MESH.** There, whoever shared sent
+ * the image once PER PERSON: at six people that was five streams, 12.5 Mbps of home
+ * uplink, and when it did not fit the result was not a warning: the entire
  * call choked, voice included, because the output queue is shared. That physics
  * died with SFU: whoever shares sends ONE stream, whether there are two people
  * or twenty, and it fits on any home connection with room to spare.
  *
- * **The bottleneck moved: it became the SERVER OUTPUT**, and the count is
- * `saída = bitrate × número de espectadores`. Twenty is where it caps, since 3
- * of November 2026 (it was eleven, against an output of ~50 Mbit/s that had never
- * been measured). With the most expensive call the product lets run at twenty,
- * measured in load test (`docs/planos/limites-media-relatorio.md`):
+ * **The bottleneck moved: it is now the SERVER OUTPUT**, and the formula is
+ * `saída = bitrate × número de espectadores`. Twenty is where it adds up, since 3
+ * November 2026 (it was eleven, against an output of ~50 Mbit/s that had never
+ * been measured). With the most expensive call the product allows at twenty,
+ * measured in the load test (`docs/planos/limites-media-relatorio.md`):
  *
- *   2 ecrs with audio   2 × 19 espectadores × 2,56 Mbit/s  =  97 Mbit/s
- *   4 cs         4 × 19 × 1,2 Mbit/s                =  91 Mbit/s
- *   voice            20 × 19, 4 a active and 16 em DTX     =   4 Mbit/s
+ *   2 screens with audio  2 × 19 viewers × 2.56 Mbit/s     =  97 Mbit/s
+ *   4 cameras             4 × 19 × 1.2 Mbit/s              =  91 Mbit/s
+ *   voice                 20 × 19, 4 talking and 16 in DTX  =   4 Mbit/s
  *                                                         ---------
  *                     measured on the wire, with headers:       209 Mbit/s
  *
- * against a measured output of 300 a 745 Mbit/s (`docs/planos/depois-da-1-0.md`,
- * "VPS bandwidth"), shared with magnuslab.pt. The 25 a same call measures 265
- * Mbit/s, and the 30 mede 323: it passes the lowest measured output. Twenty leaves
- * headroom for the website and for broadcasts. The CPU handles it: ~61 % of
- * a VPS core, estimated.
+ * against a measured output of 300 to 745 Mbit/s (`docs/planos/depois-da-1-0.md`,
+ * "VPS bandwidth"), shared with magnuslab.pt. At 25 the same call measures 265
+ * Mbit/s, and at 30 it measures 323: above the lowest measured output. Twenty leaves
+ * headroom for the website and for broadcasts. The CPU copes: ~61 % of
+ * one VPS core, estimated.
  *
- * The cap is set when the screen starts, not when someone joins later. A call at
- * 20 com with both screens up that grows to 50 passa of 500
- * Mbit/s: that is the gap the report leaves written down, for the decision.
+ * The cap is checked when the screen starts, not when someone joins later. A call
+ * of 20 with both screens live that grows to 50 goes past 500
+ * Mbit/s: that is the gap the report leaves written down, for a decision.
  *
  * It lives in the protocol, not on the server, because BOTH sides need it and
- * need the same one: the server to refuse, and the client to draw the button
- * grayed out BEFORE anyone clicks it. An open selector already lit the OS
- * recording indicator, and closing it after is asking the screen from someone
- * to do nothing with it. Written in both places, they would diverge, and
+ * need the same value: the server to refuse, and the client to draw the button
+ * disabled BEFORE anyone clicks it. An open picker has already lit the OS
+ * recording indicator, and closing it right after is asking someone for their
+ * screen to do nothing with it. Written in both places, they would diverge, and
  * divergence here is the UI offering what the server refuses.
  */
 export const PESSOAS_COM_ECRA = 20
@@ -341,10 +344,11 @@ export const PESSOAS_COM_ECRA = 20
 /**
  * The encoding cap for a camera, in bits per second.
  *
- * **1,2 Mbps since 18 August, and the number was MEASURED.** It was 600 kbps, with the
- * note "600 kbps is 720p at a low frame rate or 480p at a normal frame rate",  * a note nobody had ever measured, while the settings screen offered "720p" to
- * whoever wanted it. What 600 kbps gives, measured in `scripts/sfu-prova-720p/` with a 1280×720 a 30 e
- * camera on the product path (VP8, an encoder, `maxBitrate`):
+ * **1.2 Mbps since 18 August, and the number was MEASURED.** It was 600 kbps, with the
+ * note "600 kbps is 720p at a low frame rate or 480p at a normal frame rate":
+ * a note nobody had ever measured, while the settings screen offered "720p" to
+ * whoever wanted it. What 600 kbps gives, measured in `scripts/sfu-prova-720p/` with a
+ * 1280×720 camera at 30 fps and the product path (VP8, one encoding, `maxBitrate`):
  *
  * | cap | still scene | moving scene |
  * |---|---|---|
@@ -353,30 +357,30 @@ export const PESSOAS_COM_ECRA = 20
  * | 1500 kbps | 1280×720, QP 33 | 960×540, QP 58 |
  * | 2000 kbps | 1280×720, QP 33 (and only 1,37 Mbps used) | 960×540, QP 57 |
  *
- * Two things come out of this. First: the 600 kbps "720p" on the settings
- * screen is a label, not a resolution, when the person moves, Chrome drops on
- * its own to 540p and tells no one. Second: above 1,2
- * Mbps the encoder stops asking for more (at the 2 Mbps cap it holds 1,37 e the QP
- * does not drop), so 1,2 is where the curve has already given almost all it had to give.
+ * Two things come out of this. First: at 600 kbps the "720p" on the settings
+ * screen is a label, not a resolution: when the person moves, Chrome drops on
+ * its own to 540p and tells no one. Second: above 1.2
+ * Mbps the encoder stops asking for more (with a 2 Mbps cap it uses 1.37 and the QP
+ * does not drop), so 1.2 is where the curve has already given almost all it had.
  *
  * **What this number did NOT do was grow the budget.** The server output is
  * `bitrate × quem consome × quantas câmaras`, and cameras per call dropped
- * from four to two in the same pass: 4 × 600 kbps and 2 × 1,2 Mbps are the same
+ * from four to two in the same change: 4 × 600 kbps and 2 × 1.2 Mbps are the same
  * budget, to the bit. See `CAMARAS_POR_AMBITO` in `apps/server/src/media.ts`,
  * where the whole math is and what it cost.
  *
  * It lives here for the same reason as `PESSOAS_COM_ECRA`, and the reason here is even more
  * direct: **the client declares this number and the server refuses it.** A cap of
- * 1,2 Mbps on the server and 1,3 no on the client gives a camera that never
- * connects, with a refusal that tells the truth about a disagreement no one sees.
+ * 1.2 Mbps on the server and 1.3 on the client gives a camera that never
+ * connects, with a refusal that is accurate about a mismatch no one sees.
  */
 export const TECTO_DA_CAMARA = 1_200_000
 
 /**
  * The encoding ceiling for a shared screen, in bits per second.
  *
- * The same 2.5 Mbps that the mesh already used, and there it was the ceiling for
- * whoever sent N copies, here it is the one for whoever sends one. Below around
+ * The same 2.5 Mbps the mesh already used; there it was the ceiling for
+ * whoever sent N copies, here it is the ceiling for whoever sends one. Below around
  * 300 kbps the text becomes unreadable, and an unreadable screen is not sharing.
  * Since 2 November 2026 the screen requests 30 frames per second (it was 15)
  * within this same ceiling: when it does not fit, the encoder sacrifices frame rate
@@ -392,8 +396,8 @@ export const TECTO_DO_ECRA = 2_500_000
  * Voice stays at 32 kbps mono as always.
  *
  * **Counts inside `TECTO_DO_ECRA`, not on top of it.** Whoever shares with audio
- * lowers the image by this number, and the entire screen (image and audio) still
- * fits within the ceiling that the server's outbound math already made.
+ * lowers the image by this number, and the whole screen (image and audio) still
+ * fits within the ceiling the server's output budget already assumed.
  */
 export const TECTO_DO_SOM_DO_ECRA = 64_000
 
@@ -403,18 +407,19 @@ export const TECTO_DO_SOM_DO_ECRA = 64_000
  * It lives here, next to the schema that validates its shape, because it is a
  * contract between processes that never speak directly: **two clients in the same
  * room must arrive at the same digest**, or they fall into different routers and
- * cannot hear each other, with the call saying it is connected on both sides,
- * which is the most expensive bug this layer can produce. A second copy of this
- * count in another file is a divergence waiting to happen.
+ * cannot hear each other, with the call showing as connected on both sides,
+ * which is the most expensive bug to diagnose this layer can produce. A second
+ * copy of this computation in another file is a divergence waiting to happen.
  *
- * **Why a digest and not the room name.** The channel the server already knows,  * it routes everything else by it. The ROOM inside the channel travels encrypted
+ * **Why a digest and not the room name.** The server already knows the channel:
+ * it routes everything else by it. The ROOM inside the channel travels encrypted
  * in MLS payloads (`voice.join.room`) and the server never sees it; but it needs to
  * separate two calls in the same channel, or people in two different voice rooms
  * hear each other. The digest separates without naming.
  *
  * **What it is NOT: a secret.** It is minimization, and we say so plainly because
- * appearances deceive: a normal room name, "general", "voice", has a digest
- * any curious server calculates in milliseconds. What it guarantees is that the
+ * appearances deceive: a common room name ("general", "voice") has a digest
+ * any curious server computes in milliseconds. What it guarantees is that the
  * name does not travel and does not end up stored in a server map by accident.
  *
  * **The length in front of the channel, not `canal|sala`.** With the separator
@@ -437,19 +442,19 @@ const Base64 = z.string().regex(/^[A-Za-z0-9_-]*$/, "expected unpadded base64url
 const SeloDoConvite = Base64.max(SELO_DO_CONVITE_MAX_CARACTERES)
 
 /**
- * The maximum size of an MLS key package, in bytes (INV-02, external audit
+ * The maximum size of an MLS KeyPackage, in bytes (INV-02, external audit
  * of 1.1.0).
  *
- * Measured 4/11/2026 with serious math (device with chain, suite
+ * Measured 4/11/2026 with real accounts (device with chain, suite
  * `MLS_256_XWING_CHACHA20POLY1305_SHA512_Ed25519`): 2,834 to 2,850 bytes. The bulk
  * is the two X-Wing keys (the init key and the leaf key, 1,216 bytes each). Eight KiB
- * is roughly triple, and a larger post-quantum suite fits without touching here.
+ * is roughly triple, and a larger post-quantum suite fits without changing this.
  * Until now the only ceiling was the frame's, 12 MiB, and each redemption
  * was broadcast to all connected members of the channel.
  */
 export const TAMANHO_MAXIMO_DO_KEY_PACKAGE = 8 * 1024
 
-/** A key package on the wire: base64url without padding, up to `TAMANHO_MAXIMO_DO_KEY_PACKAGE` bytes. */
+/** A KeyPackage on the wire: base64url without padding, up to `TAMANHO_MAXIMO_DO_KEY_PACKAGE` bytes. */
 const KeyPackageNoFio = Base64.max(Math.ceil((TAMANHO_MAXIMO_DO_KEY_PACKAGE * 4) / 3))
 const Address = z.string().min(3).max(255)
 
@@ -462,9 +467,9 @@ const PairId = z.string().regex(PAIR_ID_PATTERN, "expected a 22-char base64url p
  * become a tunnel. See `PAIR_PAYLOAD_MAX_CHARS`.
  *
  * **A string, not `unknown`.** It is always the base64 of the AEAD: `cifrarPairPayload`
- * produces nothing else and `decifrarPairPayload` refuses anything not a string.
+ * produces nothing else and `decifrarPairPayload` refuses anything that is not a string.
  * Measuring the size with `JSON.stringify` would force the server to serialize
- * what was sent BEFORE the authentication gate, and a twelve-MiB object
+ * whatever it was sent BEFORE the authentication gate, and a twelve-MiB object
  * would cost CPU before anyone proved who they are. `z.string().max()` measures what
  * is already there.
  */
@@ -483,13 +488,13 @@ export type EnvelopeKind = z.infer<typeof EnvelopeKind>
 
 // ---------------------------------------------------------------- client -> server
 
-// ------------------------------------------------ Phase M2: full frame on request
+// ------------------------------------------------ Phase M2: keyframe on request
 
 /**
  * The capability that says "this server accepts `sfu.keyframe`".
  *
- * Only with it announced does the client send the request: an earlier server
- * would refuse the frame with a `bad-frame`, and the request is not worth a refusal.
+ * The client sends the request only when this is announced: an earlier server
+ * would reject the frame with a `bad-frame`, and the request is not worth a rejection.
  * Announced with `CAPACIDADE_SFU`, never without it.
  */
 export const CAPACIDADE_SFU_FOTOGRAMA_CHAVE = "sfu-keyframe"
@@ -502,9 +507,9 @@ export const CAPACIDADE_SFU_FOTOGRAMA_CHAVE = "sfu-keyframe"
  * opened again). The server only forwards: `consumer.requestKeyFrame()`,
  * which mediasoup translates to a PLI for the sender. It reads nothing from the image.
  *
- * No response and no `ref`, on purpose: one extra request is silently ignored (the
+ * No response and no `ref`, on purpose: an extra request is silently ignored (the
  * limit per consumer is one per second, see `MotorDeMedia.pedirFotogramaChave`),
- * and a response per request was traffic doubling for something that needs no
+ * and a response per request would double the traffic for something that needs no
  * confirmation. The consumer must be OURS: the engine requires the owner's transport,
  * as in `sfu.pause`.
  */
@@ -512,7 +517,7 @@ export const SfuKeyframe = z.object({
   t: z.literal("sfu.keyframe"),
   transport: z.string().max(64),
   consumer: z.string().max(64),
-  /** Accepted by the common shape of requested `sfu.*` frames, and ignored: no response. */
+  /** Accepted by the common shape of `sfu.*` request frames, and ignored: there is no response. */
   ref: z.string().max(64).optional(),
 })
 
@@ -522,14 +527,14 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
     t: z.literal("hello"),
     version: z.literal(PROTOCOL_VERSION),
     /**
-     * What this client guarantees, said by itself.
+     * What this client guarantees, in its own words.
      *
-     * `commit-after-echo`: applies its commit only after the server accepts it.
-     * A client that applies before (earlier than 13/9/2026) ends up alone in a branch
+     * `commit-after-echo`: applies its own commit only after the server accepts it.
+     * A client that applies it first (those before 13/9/2026) ends up alone in a branch
      * when it loses the race, and if the server accepted its next commit
      * or card, it would make that branch official and lock the room for everyone.
      * Without this guarantee the server discards its commits, cards and Welcomes,
-     * IN SILENCE, and the card fetch gets the empty response: the old client would
+     * IN SILENCE, and its card fetch gets the empty response: the old client would
      * read any `channel.rejected` as "this room no longer exists" and would advise
      * the person to leave. Optional so old clients can keep connecting and talking.
      */
@@ -540,8 +545,8 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
      * It exists so the 1.0 cutoff server rejects beta clients with a message instead
      * of letting them speak a language it no longer understands (see
      * `CODIGO_VERSAO_ANTIGA`). Optional: an old client does not send it, and it only
-     * counts as old on a server that has a minimum version set. What it teaches the
-     * operator, and the threat model says so: what version of the app each connection
+     * counts as old on a server that has a minimum version set. What it reveals to the
+     * operator (the threat model says so): which app version each connection
      * runs. The server does not keep it; it reads it in `hello` and forgets it.
      */
     versao: z.string().max(32).optional(),
@@ -555,14 +560,14 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    * trust the key: it recomputes the account id from it and compares. A wrong
    * key simply fails to match the address the client asked for.
    *
-   * **`accountKey` and `deviceCert` are the chain, and optional.** With them,
-   * `signingKey` is the device key and the server validates one more link: the
+   * **`accountKey` and `deviceCert` are the chain, and they are optional.** With them,
+   * `signingKey` is the DEVICE key and the server validates one more link: the
    * address is the hash of `accountKey`, and `deviceCert` is that account's
    * signature over this device. Without them, `signingKey` is the account key
    * itself and verification is the usual direct check, still sufficient proof
    * because it requires the account key in hand.
    *
-   * Optional, not a new `t` by house rules: a field one side does not know is
+   * Optional fields, not a new `t`, by house rule: a field one side does not know is
    * ignored, a `t` one side does not know is a rejected frame. The two must come
    * together; a partial chain is rejected rather than silently treated as absent,
    * because treating it as absent would yield an error about the wrong key and
@@ -581,24 +586,24 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    * **`posse` and `assumirPosse`: which copy of a device speaks for it.**
    * Importing an account file makes a COPY of the device that exported it: the
    * same device key and the same MLS leaf in each channel. The server does not
-   * distinguish the two by key, and two linked copies consume the same ratchet
+   * distinguish the two by key, and two connected copies consume the same ratchet
    * and break channels (measured 27 October 2026 in
    * `scripts/e2e-exportar-importar.mjs`). So each device has a GENERATION of
    * possession on the server: the copy just imported asks for the next one
-   * (`assumirPosse`), and a copy presenting with a generation below the current
-   * one is rejected as revoked. That is what makes the interface statement true:
+   * (`assumirPosse`), and a copy that presents a generation below the current
+   * one is rejected as revoked. That is what makes the interface text true:
    * "the old device can no longer use it."
    *
    * Here and not in `auth.begin`: raising the generation takes possession from
    * the other copy, and only whoever already proved the key can do it. Optional
-   * by house rules: a client that does not know them presents with generation zero.
+   * by house rule: a client that does not know them presents generation zero.
    *
    * `assumirPosse` carries a random stamp, drawn at the moment of import. The
-   * same copy can open two connections at once (a `connect` that overrides
+   * same copy can open two connections at once (a `connect` that runs over
    * another, see `Session.connect`), and both ask for possession; with the same
    * stamp the server gives them the same generation instead of one closing the
    * other. Another import of the same file draws another stamp, and that one
-   * raises it.
+   * does raise it.
    */
   z.object({
     t: z.literal("auth.finish"),
@@ -653,34 +658,34 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
     packages: z.array(KeyPackageNoFio).min(1).max(100),
     replace: z.boolean().default(false),
     /**
-     * The public key of the DEVICE that signs the leaves of these packets.
+     * The public key of the DEVICE that signs the leaves of these KeyPackages.
      *
      * Optional because a 0.2.3 client does not send it. The server stores it
-     * alongside each packet to serve them by device (`claim` with `bundle`),
-     * and checks it against the key that did the login when the chain came: the
+     * alongside each KeyPackage to serve them by device (`claim` with `bundle`),
+     * and checks it against the key that logged in, when a chain was sent: the
      * two must be the same, because the same key signs the challenge and the
-     * leaves. When missing, the server uses the login key with chain, which
-     * proves the same fact; without chain, it ends up with no device (`NULL`).
+     * leaves. When it is missing, the server uses the login key if a chain was
+     * sent, which proves the same fact; without a chain, there is no device (`NULL`).
      */
     device: Base64.optional(),
   }),
   /**
    * Consume one KeyPackage for a user. Single-use: replay would break FS.
    *
-   * `bundle: true` asks for one packet per device from the account manifest, all
+   * `bundle: true` asks for one KeyPackage per device in the account manifest, all
    * in the same response (`keypackage.claimed.keyPackages`), with the manifest
-   * on the side so the inviter can check that each packet is from a device the
-   * account declared. Without `bundle`, one packet and nothing else: see
-   * `CAPACIDADE_BUNDLE` for why it is asked and never offered. Against an old
-   * server the field is discarded by its schema (no `z.object` in the flow is
-   * `.strict()`) and one packet comes, no error or delay.
+   * alongside so the inviter can check that each one is from a device the
+   * account declared. Without `bundle`, one KeyPackage and nothing else: see
+   * `CAPACIDADE_BUNDLE` for why it is requested and never offered. Against an old
+   * server the field is dropped by its schema (no `z.object` on the wire is
+   * `.strict()`) and a single KeyPackage comes back, with no error or wait.
    *
    * `devices`: only these devices from the manifest, in base64url. This is what
    * the inviter sends when the account already has leaves in the channel and
-   * only some are missing: asking for the full bundle would waste one packet
-   * from each device already present, and a claimed packet never goes back to
+   * only some are missing: asking for the full bundle would waste one KeyPackage
+   * from each device already present, and a claimed KeyPackage never goes back to
    * the pool. Devices outside the manifest are ignored. Without `devices`, all
-   * from the manifest.
+   * devices in the manifest.
    */
   z.object({
     t: z.literal("keypackage.claim"),
@@ -743,17 +748,17 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   /**
    * Resolve the short code of a link `orwell.pt/c#<código>`.
    *
-   * Responds with `invite.resolved` (the channel and the `codeHash`, which is what the
+   * Replies with `invite.resolved` (the channel and the `codeHash`, which is what
    * `invite.redeem` asks for next) or `invite.unresolved`. Does not spend a use:
-   * spending a use is up to `invite.redeem`, and whoever only looks at the link did not
-   * enter anywhere. Through the gateway not HTTP, so the code never lives in a
-   * URL path (which ends up in proxy logs) and the cap is on us.
+   * spending is up to `invite.redeem`, and whoever only looks at the link has not
+   * joined anything. Through the gateway, not HTTP, so the code never sits in a
+   * URL path (which ends up in proxy logs) and the limit is per account.
    */
   z.object({ t: z.literal("invite.resolve"), codigo: CodigoCurto }),
 
   /**
    * Request the seal of an invite by `codeHash`: this is the long-link path,
-   * which has no short code (1.0 "Arca", slice 5c). Responds with
+   * which has no short code (1.0 "Arca", slice 5c). Replies with
    * `invite.selo.result`. Does not consume a use. The seal only opens with the
    * code, and the `codeHash` (256 bits) is not guessable. See
    * `CAPACIDADE_SELO_DO_CONVITE`.
@@ -829,32 +834,33 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
 
   // ------------------------------------------------------------------ SFU
   //
-  // Media signaling lives on THIS plane, not in MLS payloads, and there is only
-  // one reason: with SFU you negotiate with the SERVER, and the server is not a
-  // group member, it cannot read an encrypted payload. It is the same plane where
+  // Media signaling lives on THIS plane, not in MLS payloads, and for one reason
+  // only: with SFU you negotiate with the SERVER, and the server is not a
+  // group member, so it cannot read an encrypted payload. It is the same plane where
   // `ice.servers` already lives, for the same reason.
   //
-  // The two tolerances, checked in code before writing this, because security of
-  // the deployment depends on them:
+  // The two tolerances, checked in code before this was written, because the
+  // safety of the deploy depends on them:
   //
   //  - **Old server, new client:** the gateway validates with Zod and responds
   //    with non-fatal `bad-frame` to an unknown `t`. In practice it does not
   //    happen, because the client only speaks SFU if `hello.ok` announces
-  //    `CAPACIDADE_SFU`, and an old server does not. Server first, client after.
+  //    `CAPACIDADE_SFU`, and an old server does not. Server first, client second.
   //  - **Old client, new server:** the client does NOT validate with Zod, it does
   //    `JSON.parse` with cast and dispatches by `frame.t`, and an unknown type
-  //    drops to the ground without counting for anything. And anyway these frames
+  //    is dropped and counts for nothing. And in any case these frames
   //    only go out in response to requests an old client never makes.
 
   /**
    * "Let me into the call in this room, and tell me what it speaks."
    *
    * The first frame of any SFU call. The server validates the CHANNEL with
-   * the `#mayReach` as always, the same key that holds history and live cipher,    * and returns the router's RTP capabilities and the streams already there.
+   * the usual `#mayReach`, the same gate that guards history and live encryption,
+   * and returns the router's RTP capabilities and the streams already there.
    *
-   * **`channel` in clear and `scope` in digest, and the asymmetry is the design.** The
-   * channel the server already knows: it routes everything else by it, and it
-   * knows how to decide who enters on it. The ROOM inside the channel travels
+   * **`channel` in clear and `scope` as a digest, and the asymmetry is the design.** The
+   * server already knows the channel: it routes everything else by it, and it is
+   * what the server knows how to decide entry on. The ROOM inside the channel travels
    * encrypted in MLS payloads (`voice.join.room`) and the server never sees it, but it
    * needs to separate two calls in the same channel, or people in two different
    * voice rooms hear each other. A digest solves both: it separates without naming.
@@ -867,9 +873,9 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    *
    * **What the digest is NOT: a secret.** It is minimization, and it is honest to
    * say so: a normal room name ("general", "voice") has a digest any curious
-   * server calculates in milliseconds. What it guarantees is that the name does
-   * not travel and does not end up anywhere by accident. If Phase 2 quiser wants
-   * it to be truly opaque, derive it from group material instead of digesting
+   * server computes in milliseconds. What it guarantees is that the name does
+   * not travel and does not end up anywhere by accident. If Phase 2 wants
+   * it to be truly opaque, it derives it from group material instead of digesting
    * the name, and then it must derive it from something STABLE across epochs,
    * never from the current epoch exporter: a scope that changed with each
    * person's entry would put the whole room in a new router each `commit`, and
@@ -881,7 +887,7 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
     /**
      * The digest of `canal|sala`, in base64url without padding.
      *
-     * Fixed length of 43 caracteres, that of a SHA-256, not a maximum. It is
+     * Fixed length of 43 characters (a SHA-256), not a maximum. It is
      * the only way the SCHEMA prevents the obvious slip: with a `max(64)`,
      * a client that sent the room name in clear would pass validation, and the
      * server would end up with the name stored in a map and no one would notice.
@@ -899,12 +905,14 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    *
    * Two per call, one each direction, because that is how `mediasoup-client`
    * works: one `RTCPeerConnection` to send and another to receive. A second
-   * request for the same direction is rejected rather than replacing the first,    * see `criarTransporte` in `media.ts`.
+   * request for the same direction is rejected rather than replacing the first:
+   * see `criarTransporte` in `media.ts`.
    *
    * `ref` is the tag the client picks to match the response to the request, on
    * the pattern of `ref` in `channel.send` and for the same reason: this gateway
    * has no request identifiers, and the alternative was to match by response
-   * shape. With two transports being born at once, matching by shape is a race,    * and it is the class of bug the switch to SFU exists to end, not to repeat
+   * shape. With two transports being created at once, matching by shape is a race,
+   * and that is the class of bug the switch to SFU exists to end, not to repeat
    * elsewhere.
    */
   z.object({
@@ -927,9 +935,9 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   /**
    * "I am going to put this stream in the call."
    *
-   * `rtpParameters` is opaque here and validated by mediasoup, who knows the
-   * shape, repeating it in Zod would maintain two schemas for the same object
-   * and guarantee they diverged. What this server READS in it is one thing alone:
+   * `rtpParameters` is opaque here and validated by mediasoup, which knows the
+   * shape: repeating it in Zod would mean two schemas for the same object,
+   * guaranteed to diverge. What this server READS in it is one thing alone:
    * the declared `maxaveragebitrate`, to compare it against the budget. See
    * `#orcamentoExcedido`.
    */
@@ -939,12 +947,12 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
     kind: z.enum(["audio", "video"]),
     rtpParameters: z.unknown(),
     /**
-     * Where this stream comes from. See `FonteDeMedia`, absent reads by `kind`.
+     * Where this stream comes from. See `FonteDeMedia`; when absent, it is read from `kind`.
      *
-     * The server READS this for two things, and neither is trust: pick the
+     * The server READS this for two things, and neither is trust: to pick the
      * bandwidth cap that applies to this stream, and tell other clients what to
      * do with it when it arrives. A screen and a camera are both `kind: "video"`,
-     * and without this word the second video from one person is indistinguishable
+     * and without this field the second video from one person is indistinguishable
      * from the first.
      */
     fonte: FonteDeMedia.optional(),
@@ -954,17 +962,17 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   /**
    * "This stream is done", a producer, without leaving the call.
    *
-   * The plan had a generic `sfu.close` and Phase 1 did not write it, with the
-   * right reason for the time: closing a transport is what `sfu.scope.leave`
-   * already does, and the path calls end for real is the socket falling. **Stopping
-   * screen share is the case that was missing**, and it is another kind: the call
-   * goes on, the transport goes on, the microphone goes on, what dies is one of
+   * The plan had a generic `sfu.close` and Phase 1 did not implement it, for the
+   * right reason at the time: closing a transport is what `sfu.scope.leave`
+   * already does, and the way calls really end is the socket dropping. **Stopping
+   * screen share is the missing case**, and it is of another kind: the call
+   * goes on, the transport goes on, the microphone goes on; what dies is one of
    * three producers.
    *
    * Without this, `producer.close()` on the client side deleted the image and the
    * server kept announcing to newcomers a stream that no longer exists, never
    * sending `sfu.producer.closed` to those watching. What was seen was the last
-   * frame frozen on everyone's screen, forever, no error anywhere, the same
+   * frame frozen on everyone's screen, forever, with no error anywhere: the same
    * failure the track's `onended` exists to prevent on our side.
    *
    * Closes OUR producer and only ours: the engine checks the owner, as with all
@@ -976,7 +984,7 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
     ref: z.string().max(64).optional(),
   }),
 
-  /** "I want to hear that stream." Born paused; see `sfu.resume`. */
+  /** "I want to hear that stream." Starts paused; see `sfu.resume`. */
   z.object({
     t: z.literal("sfu.consume"),
     transport: z.string().max(64),
@@ -986,10 +994,10 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   }),
 
   /**
-   * "I installed the decrypt: send."
+   * "Decryption is installed: send."
    *
    * Without this frame there is no call, and it is not a formality: the consumer
-   * is born paused because there is a gap between `consume` and installing the
+   * starts paused because there is a gap between `consume` and installing the
    * transform that decrypts, and anything in that gap arrives encrypted at the
    * decoder, which reads it as noise.
    */
@@ -1004,37 +1012,37 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    * "I can't see it anymore: stop sending it to me."
    *
    * The counterpart to `sfu.resume`, and the missing piece that makes "Stop watching"
-   * in screen sharing actually save bandwidth for real, which is the whole point.
+   * in screen sharing actually save bandwidth, which is the whole point of the feature.
    *
    * **What was missing and what it cost.** Closing the consumer on the client side
    * stops decryption and rendering, nothing more: the server kept forwarding the image
    * to a transport that no longer reads it. Each "Watch → Stop watching → Watch" cycle
    * left behind a consumer forwarding to no one, two `sfu.*` frames per cycle against
-   * a three-hundred-per-minute cap, which means nearly one hundred fifty orphaned consumers
-   * per minute, each at 2.5 Mbps of server outbound, charged to an authenticated member.
+   * a three-hundred-per-minute cap, which means nearly one hundred fifty leaked consumers
+   * per minute, each at 2.5 Mbps of server output, attributable to an authenticated member.
    *
-   * **Pause instead of close, and that difference is the entire reason to exist.** A paused
+   * **Pause instead of close, and that difference is the whole reason this exists.** A paused
    * consumer does not send RTP (that's what `consume({ paused: true })` already guarantees
    * between consumption and installing decryption), but it CONTINUES TO EXIST: the next
    * "Watch" is a `sfu.resume` on the same object, with decryption already installed and
-   * no `sfu.consume` roundtrip. Closing forced a re-consume, and the close is what leaked
-   * resources.
+   * no `sfu.consume` roundtrip. Closing forced a re-consume, and it was the close that
+   * caused the leak.
    *
-   * **Added to the wire, for the usual reason:** an old client never sends it, and a server
-   * that does not know it rejects it, the image keeps arriving, as it did before this change.
+   * **Additive on the wire, for the usual reason:** an old client never sends it, and a server
+   * that does not know it rejects it: the image keeps arriving, as it did before this slice.
    *
    * **And what that rejection costs, stated in full, because it is nothing.** An old server's
    * rejection is the generic `bad-frame`, which comes WITHOUT `ref`: nothing matches the request,
    * so `sfuPausar` hangs the full fifteen-second timeout, and the `aVer` that tells the sharer
-   * we stopped watching only goes out when it expires, the announcement is delayed on purpose,
-   * to not lie about our state while the image still arrives. The stage on this side closes
-   * instantly, which is the person's gesture; what delays is the message said to others, and
-   * against a server that cannot even pause bandwidth, it was already running anyway. Acceptable
-   * degradation, and written here instead of left for discovery when connecting a new client
-   * to an old server and measuring fifteen seconds.
+   * we stopped watching only goes out when it expires. The announcement waits on purpose,
+   * so as not to lie about our state while the image still arrives. The stage on this side closes
+   * instantly, which is the person's gesture; what is delayed is what we tell the others, and
+   * against a server that cannot even pause, the bandwidth was being spent anyway. Acceptable
+   * degradation, written here instead of left for whoever connects a new client to an old
+   * server and times the fifteen seconds.
    *
-   * Pauses a consumer that belongs to us and only us: the engine requires the transport of the
-   * owner, as with all frames that name an object instead of a channel.
+   * Pauses OUR consumer and only ours: the engine requires the owner's transport,
+   * as with all frames that name an object instead of a channel.
    */
   z.object({
     t: z.literal("sfu.pause"),
@@ -1051,9 +1059,9 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   z.object({ t: z.literal("channel.claim"), channel: z.string() }),
 
   /**
-   * Leave the common room entry card on the server.
+   * Leave the common room's join card on the server.
    *
-   * A `GroupInfo` with external initialization that lets anyone arriving enter on their own
+   * A `GroupInfo` with external init, which lets newcomers join on their own
    * (see `publishableGroupInfo` in the cryptographic core). Published by a member, and the
    * server only accepts it for the channel it itself announces as common: for any other channel
    * this would be a door key left under the mat, because whoever picks it up enters without
@@ -1062,12 +1070,12 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   z.object({ t: z.literal("channel.groupinfo.put"), channel: z.string(), info: z.string().max(CARTAO_MAX_CARACTERES) }),
 
   /**
-   * Retrieve that card, and remove it for good.
+   * Take that card, once and for good.
    *
    * `take` not `get`, on purpose: the server delivers it ONCE and deletes it. The card is valid
    * for the epoch it describes, and two people entering with the same one produce two commits
    * for the same epoch, of which the room only accepts one. Whoever lost that race would end up
-   * with a group with the right name and nobody else inside, with no warning at all. See
+   * with a group with the right name and nobody else inside, with no symptom at all. See
    * `channel.groupinfo`.
    */
   z.object({ t: z.literal("channel.groupinfo.take"), channel: z.string() }),
@@ -1076,31 +1084,32 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    * "Go read this page and tell me the title and image it declares."
    *
    * Requested over the authenticated channel, not over HTTP, for the same reason as
-   * `ice.servers`: an open route that fetches addresses of the requester's choosing is an
-   * open proxy with extra steps, and here we need to account for where the machine hits
-   * before it hits anywhere. This is also what makes it possible to rate-limit by account,
+   * `ice.servers`: an open route that fetches addresses of the caller's choosing is an
+   * open proxy with extra steps, and here an account is required before the machine
+   * fetches anything. This is also what makes it possible to rate-limit by account,
    * which is what stops this from being a traffic amplifier with our server's identity.
    *
-   * Only the publisher's device requests it, and only when the site refused to be read by it,    * the reader never gets here, and that is the part of the promise that stays intact. The cost,
+   * Only the publisher's device asks, and only when the site refused to be read by it:
+   * the reader never gets here, and that is the part of the promise that stays intact. The cost,
    * accepted: the server sees what links get published. It is not logged anywhere, and cannot be.
    */
   z.object({ t: z.literal("link.preview"), url: z.string().max(2048) }),
 
   /**
-   * Publish the device manifest for THIS ACCOUNT.
+   * Publish the device manifest of the caller's OWN account.
    *
-   * The server only keeps it if the signature closes, if the address is the one from the
+   * The server only keeps it if the signature verifies, if the address is the one from the
    * authenticated connection, and if the version is higher than what it already has; it responds
-   * with `manifest.published`. It is not a new `t` by accident: against an old server the client
+   * with `manifest.published`. Being a new `t` is safe: against an old server the client
    * never sends it, because the old server does not announce `CAPACIDADE_APARELHOS` (see the rule there).
    *
-   * What the server learns: the public keys of a account's devices, which it already learned
+   * What the server learns: the public keys of an account's devices, which it already learned
    * one by one at login (table `devices`), and now with the account's word instead of the
    * server's observation.
    *
-   * `revoke`: the devices that this manifest REVOKES, not just removes. Only counts what leaves
-   * the manifest itself (`aparelhosRevogados`). Without the field, what leaves can come back:
-   * it is the cap from a 0.5.7 client that does not send it. A server without
+   * `revoke`: the devices that this manifest REVOKES, not just removes. Only what actually
+   * leaves the manifest counts (`aparelhosRevogados`). Without the field, a removed device is
+   * only removed and can come back: that is the fallback for a 0.5.7 client, which does not send it. A server without
    * `CAPACIDADE_REVOGACAO` discards it by schema.
    */
   z.object({ t: z.literal("manifest.publish"), manifest: DeviceManifestWire, revoke: RevogadosNoManifesto.optional() }),
@@ -1111,18 +1120,18 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    *
    * Any account, not just your own, because that is what it exists for: whoever is about to
    * invite someone needs to know which devices to admit, and does not yet share a channel with
-   * that person. It is the same openness as `keypackage.claim`, and it is CHEAPER to abuse
-   * than it, and here is why: a claim spends a key package from the asked-for person, and the
+   * that person. It is the same openness as `keypackage.claim`, and it is CHEAPER to abuse,
+   * we admit it: a claim spends a KeyPackage of the person asked about, and the
    * victim sees invites that never arrive; a `manifest.get` consumes nothing, nobody notices it,
    * and it returns to the asker how many devices the account has and when it added them
    * (`addedAt`, `signedAt`). The server sees who asks about whom and does not log it. Restricting
-   * this to those who share a channel, or to those with a claimed key package, is being considered
+   * this to those who share a channel, or to those holding a claimed KeyPackage, is being considered
    * for the next slice (docs/PENDENTES.md).
    */
   z.object({ t: z.literal("manifest.get"), address: Address }),
 
   /**
-   * Open a pairing box. **Requires authenticated account**: it is the device that HAS the account
+   * Open a pairing box. **Requires an authenticated account**: it is the device that HAS the account
    * (the computer) that opens it, because it is the one that will sign the certificate. The
    * `pairId` is the digest of the secret (`pairIdDe`); the secret never comes on the wire.
    * Responds with `pair.opened`, or `pair.rejected` (`exists`: there is already a box with this
@@ -1136,7 +1145,7 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
   /**
    * Join a pairing box. **The only content frame that passes without authentication**, because
    * the phone does not have an account yet: it only has the secret, read from the QR code.
-   * Counted by connection not by account (there is no account), and a box only takes two
+   * Rate-limited per connection, not per account (there is no account), and a box only takes two
    * connections: the third gets `pair.rejected` `full`, and the box is notified with `pair.closed`
    * `intruder`, because someone else had the secret. A box that does not exist is `pair.rejected`
    * `unknown`.
@@ -1145,7 +1154,7 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
 
   /**
    * An encrypted payload for the other side of the box. The server forwards it and does not
-   * read it; it only measures it. Only to whoever is in the box: from another connection it is
+   * read it; it only measures it. Only from a connection in the box: from any other it is
    * `unauthenticated` fatal, like any frame out of place.
    */
   z.object({ t: z.literal("pair.send"), pairId: PairId, payload: PairPayloadOpaco }),
@@ -1159,13 +1168,13 @@ const TramasDoClienteSemCofre = z.discriminatedUnion("t", [
    *
    * `sinal`: bytes encrypted by the client, in base64url. The server does not read them:
    * it measures the size and forwards. It does not store, does not repeat to anyone offline,
-   * does not enter recovery or federation.
+   * and is not part of recovery or federation.
    *
    * `ref`: chosen by the client to match a rejection with the send. Never goes out to other
    * members. No response when all goes well.
    *
    * Only from a connection that announced the capability and is subscribed to the channel.
-   * A rejection is `channel.sinal.rejected`, never fatal on first try.
+   * A rejection is `channel.sinal.rejected`, never fatal on the first offence.
    */
   z.object({
     t: z.literal("channel.sinal"),
@@ -1186,10 +1195,10 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
     server: z.string(),
     capabilities: z.array(z.string()),
     /**
-     * Does the common room have an entry card waiting for someone to arrive?
+     * Does the common room have a join card waiting for someone to arrive?
      *
-     * It exists so a member can know if the door is set without having to publish theirs at every
-     * connection: the card carries the whole tree, and resending it habitually is traffic that
+     * It exists so a member can know whether the door is in place without republishing the card on
+     * every connection: the card carries the whole tree, and resending it out of habit is traffic that
      * grows with the number of people inside. False signals that someone needs to put it back,
      * and the first member to connect replaces it.
      */
@@ -1197,14 +1206,14 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
     /**
      * Minute when this server's storage was last restarted, if ever.
      *
-     * A client holds group state that the server has no way to know about, the keys live in
+     * A client holds group state that the server has no way to know about: the keys live in
      * its vault. If the storage is wiped, that state becomes orphaned: the client thinks it is
      * a member of channels whose history and peers have vanished, and from then on nothing
      * decrypts, neither messages nor call signaling, which travels inside the group.
      *
      * Declaring the marker here lets the client understand on its own that the world has changed,
-     * instead of relying on someone pushing a button, and a button always available would be a
-     * trivial way to erase someone else's history with brief device access.
+     * instead of relying on someone pressing a button; such a button, always available, would be
+     * a trivial way to erase someone else's history with brief access to the device.
      */
     resetAtMinute: z.number().int().nonnegative().optional(),
     /**
@@ -1223,8 +1232,8 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
      * is informational; what will read it is epoch key sharing across devices
      * (docs/PLANO_MULTIDISPOSITIVO.md, §3.4), which keeps keys for `min(30, isto)` days:
      * keeping keys for ciphertext the server has already deleted pays the full
-     * price of weakening forward secrecy and buys nothing. Absent in a server
-     * before this.
+     * price of weakening forward secrecy and buys nothing. Absent on servers
+     * older than this.
      */
     retentionDays: z.number().int().nonnegative().optional(),
     /**
@@ -1272,27 +1281,28 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   }),
 
   /**
-   * The response to a `keypackage.claim`. Always responds, with `null` when there is no package.
+   * The response to a `keypackage.claim`. There is ALWAYS a response, with `null` when there is
+   * no KeyPackage.
    *
-   * `keyPackage` is the standard singular: the most recent one claimed. A 0.2.3 client reads
+   * `keyPackage` is the usual singular: the most recent one claimed. A 0.2.3 client reads
    * this and nothing else.
    *
-   * `keyPackages` and `manifest` only come when the request brought `bundle: true`: one package
-   * per device in the manifest (from the requests in `devices`, if they came) that had a package
+   * `keyPackages` and `manifest` only come when the request carried `bundle: true`: one KeyPackage
+   * per device in the manifest (among those requested in `devices`, if sent) that had one left
    * to claim, each with the key of the device the server assigned it to, and the manifest as the
    * server stores it, for the inviter to verify (signature, and anti-rollback against the version
    * it already saw). Absence of a device from the list is not an error: it is the partial-failure
-   * policy (those with packages enter, the rest repair via `seat`). When the bundle comes empty
-   * and `keyPackage` does not, the singular is a package from an unknown device (published before
-   * the server kept devices), and the inviter decides for it what it decides for the others:
+   * policy (devices with a KeyPackage join, the rest are repaired through `seat`). When the bundle
+   * comes empty and `keyPackage` does not, the singular is a KeyPackage from an unknown device
+   * (published before the server tracked devices), and the inviter decides for it what it decides for the others:
    * the credential chain and the manifest. `manifest: null` means the account never published one.
    */
   z.object({
     t: z.literal("keypackage.claimed"),
     address: Address,
     keyPackage: Base64.nullable(),
-    // No more than devices per account: a server sending more is trying to waste commits with
-    // packages the manifest does not cover.
+    // Never more than the devices of one account: a server sending more is trying to waste commits on
+    // KeyPackages the manifest does not cover.
     keyPackages: z.array(z.object({ deviceKey: Base64, keyPackage: Base64 })).max(APARELHOS_POR_CONTA).optional(),
     manifest: DeviceManifestWire.nullable().optional(),
   }),
@@ -1327,7 +1337,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    *
    * `codeHash` is echoed back so a member can check it against the codes it
    * personally minted. Without it, the server's word is the only evidence the
-   * invite was legitimate — and the server accepts `invite.create` from anyone,
+   * invite was legitimate, and the server accepts `invite.create` from anyone,
    * so its word is worth nothing here. A member must never commit a stranger
    * into a group on the strength of a request it cannot trace to its own act.
    */
@@ -1340,8 +1350,8 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   }),
   /**
    * `rate-limited` (INV-02): above the redemption caps (per account, per invite, per channel,
-   * server-wide). No usage was spent. A 1.2.0 or older client does not know it and says "that
-   * invite no longer exists"; it does not enter, as it would not anyway, and that phrase is the
+   * server-wide). No use was spent. A 1.2.0 or older client does not know it and says "that
+   * invite no longer exists"; it does not join, as it would not anyway, and that message is the
    * only thing wrong.
    */
   z.object({ t: z.literal("invite.rejected"), reason: z.enum(["unknown", "expired", "exhausted", "rate-limited"]) }),
@@ -1349,7 +1359,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   /**
    * The short code resolved: the invite's channel and the `codeHash` you use to request entry
    * (`invite.redeem`). The server never had the invite code itself, and will not get it: the
-   * `codeHash` is what the door asks.
+   * `codeHash` is what the door asks for.
    */
   z.object({
     t: z.literal("invite.resolved"),
@@ -1361,11 +1371,11 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   }),
   /**
    * The response to `invite.selo`. No `selo` when the invite does not exist, is no longer
-   * valid, or was created without a seal: for that question, all three give "a channel".
+   * valid, or was created without a seal: for the prompt, all three give "a channel".
    */
   z.object({ t: z.literal("invite.selo.result"), codeHash: Base64, selo: SeloDoConvite.optional() }),
   /**
-   * The short code opens nothing. `rate-limited` is the cap (per account or server-wide):
+   * The short code opens nothing. `rate-limited` is the rate limit (per account or server-wide):
    * waiting a minute fixes it. The other three are from `invite.rejected`, for the same reason.
    */
   z.object({
@@ -1379,8 +1389,8 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   /**
    * Live presence: this address connected or disconnected.
    *
-   * Sent only to people who share at least one channel with the subject —
-   * never broadcast — and never persisted: the server relays the fact and
+   * Sent only to people who share at least one channel with the subject
+   * (never broadcast) and never persisted: the server relays the fact and
    * keeps no record of it. This is a deliberate, user-chosen widening of the
    * metadata the server handles (see docs/THREAT-MODEL.md): who is online is
    * now something the server tells your channel-mates, while you are online.
@@ -1409,8 +1419,8 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * `empty` says whether the channel is truly brand new. Without it, `mine` alone would tell
    * whoever has the claim recorded to create the group, including someone who meanwhile lost
    * their group state and therefore would create a SECOND MLS group with the same identifier,
-   * leaving everyone inside deaf. It is the silent collision this room exists to solve, repeated
-   * from the other side. Missing on a server older than this, and the client treats absence as
+   * leaving everyone inside deaf. It is the silent collision this arbitration exists to solve,
+   * repeated from the other side. Missing on a server older than this, and the client treats absence as
    * "I do not know, I do not create".
    */
   z.object({
@@ -1426,15 +1436,15 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    *
    * The request was a frame with no response: it went out, and whoever sent it never knew if it
    * reached anyone or no one. A request broadcast to zero connections was indistinguishable from
-   * a request handled, and that indistinction made all the failure of this path silent, the
-   * person saw "request sent" and stayed out with no hint anywhere.
+   * a request handled, and that is what made every failure on this path silent: the
+   * person saw "request sent" and stayed out, with no other sign anywhere.
    */
   z.object({ t: z.literal("channel.rejoin.sent"), channel: z.string(), ouviram: z.number().int().nonnegative() }),
 
   /**
-   * The common room's entry card, or nothing if there is none.
+   * The common room's join card, or nothing if there is none.
    *
-   * `info` absent is the honest answer to three situations the requester cannot tell apart and
+   * `info` absent is the honest answer to three situations the caller cannot tell apart and
    * does not need to: the room does not exist yet, the card was already taken by someone else,
    * or it was never placed there. In all cases the path is the same, and it is the old one:
    * ask members for entry and try again.
@@ -1445,10 +1455,10 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * The server refused to forward what was sent to this channel.
    *
    * It exists because the refusal was silent. A client whose place the server no longer
-   * recognizes, because storage was wiped, because the group diverged, because it never got
-   * admitted, kept writing to the void, with everything looking fine on its side: the message
-   * entered local history, the screen said yes, and nothing went out. Someone took control of
-   * such a channel and spent ten minutes not knowing nobody had heard them.
+   * recognizes (because storage was wiped, because the group diverged, because it was never
+   * admitted) kept writing into the void, with everything looking fine on its side: the message
+   * entered local history, the screen said yes, and nothing went out. Someone took over as admin
+   * of such a channel and spent ten minutes not knowing that nobody had heard.
    */
   z.object({
     t: z.literal("channel.rejected"),
@@ -1456,18 +1466,18 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
     /**
      * `stale-epoch`: a commit for an epoch the channel has already left behind. The server
      * accepts ONE commit per epoch, the first to arrive, and refuses the others, because two
-     * commits for the same epoch split the group in two branches that never read each other
+     * stored commits for the same epoch split the group into two branches that never read each other
      * (common room, 12/9/2026: epochs 12, 16 and 17 at the same time). The epoch travels in
      * clear in the MLS header; the server does not decrypt anything to read it.
      *
-     * `stale-groupinfo`: an entry card from an epoch earlier than the channel's. Publishing it
+     * `stale-groupinfo`: a join card from an epoch earlier than the channel's. Publishing it
      * would open another branch for the next arrival.
      *
-     * `update-required`: reserved, and today the server does NOT send it, connections without
+     * `update-required`: reserved, and today the server does NOT send it: connections without
      * `commit-after-echo` are handled silently. See `hello.capabilities`.
      *
      * `rate-limited`: the account exceeded the send cap per minute. The send was NOT stored or
-     * delivered; `retryAfterMs` says when there is room. Only to those who announced
+     * delivered; `retryAfterMs` says when there is room. Sent only to clients that announced
      * `CAPACIDADE_ENVIO_RECUSADO`.
      */
     reason: z.enum(["no-seat", "stale-epoch", "stale-groupinfo", "update-required", "rate-limited"]),
@@ -1496,13 +1506,13 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * What the page declared about itself.
    *
    * `url` is the one that was requested, not the final one, because it is how the client
-   * recognizes the response to the request it made, a redirect would change the key in the
-   * middle. `ok: false` brings `reason` and nothing else: the refusal does not say whether the
+   * recognizes the response to the request it made: a redirect would change the key
+   * midway. `ok: false` brings `reason` and nothing else: the refusal does not say whether the
    * address was private, did not resolve, or took too long, because the difference between those
    * responses is a map of the internal network drawn from outside.
    *
    * The image comes as bytes, not as an address. Sending the address would force the client to
-   * fetch it from the site, which is exactly what this path exists to avoid, and what sets this
+   * fetch it from the site, which is exactly what this path exists to avoid, and is what sets this
    * apart from a normal preview.
    */
   z.object({
@@ -1521,10 +1531,10 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   // ------------------------------------------------------------------ SFU
 
   /**
-   * You entered the call: what is it speaking with, and who is already speaking.
+   * You joined the call: what it speaks, and who is already speaking.
    *
    * `producers` brings the streams that already existed. Without them, late arrivals would only
-   * hear whoever spoke AFTER they did, the classic failure of joining a room and finding it
+   * hear whoever spoke AFTER they arrived: the classic failure of joining a room and finding it
    * empty while everyone is talking.
    */
   z.object({
@@ -1540,10 +1550,10 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
         /**
          * Who owns this stream.
          *
-         * We send the ADDRESS, not the MLS sheet index, because the server does not
+         * We send the ADDRESS, not the MLS leaf index, because the server does not
          * read the tree and will never know the index. The client already knows the
-         * addresses of everyone on the call, they come in the encrypted roster from
-         * `voice.join`, and it is the client's job to match address to sheet, which
+         * addresses of everyone on the call (they come in the encrypted roster from
+         * `voice.join`), and it is the client's job to match address to leaf, which
          * is where the information lives.
          *
          * And we add nothing to what the server already knows: who is on a call with
@@ -1556,7 +1566,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
          *
          * Echoed, not invented: the server does not look inside anything and has no
          * way to know if a video is a face or a monitor. Absent is what a Phase 2
-         * producer had, there was only audio, and we read it from `kind`.
+         * producer sends (there was only audio), and it is read from `kind`.
          */
         fonte: FonteDeMedia.optional(),
       }),
@@ -1576,7 +1586,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
 
   z.object({ t: z.literal("sfu.transport.connected"), transport: z.string(), ref: z.string().optional() }),
   z.object({ t: z.literal("sfu.produced"), producer: z.string(), ref: z.string().optional() }),
-  /** O produtor fechou. Ver `sfu.produce.close`. */
+  /** The producer closed. See `sfu.produce.close`. */
   z.object({ t: z.literal("sfu.produce.closed"), producer: z.string(), ref: z.string().optional() }),
 
   z.object({
@@ -1605,7 +1615,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
     fonte: FonteDeMedia.optional(),
   }),
 
-  /** That stream ended, the person left, muted the mic, or the network dropped. */
+  /** That stream ended: the person left, muted the mic, or the network dropped. */
   z.object({
     t: z.literal("sfu.producer.closed"),
     channel: z.string(),
@@ -1617,14 +1627,15 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * A rejection from the media engine, with the physical reason spelled out.
    *
    * Its own frame, not the generic `error`, for two reasons that add up: the
-   * `error` fatal closes the connection, and nothing here deserves closing one,    * a full call is no reason to tear down someone's chat; and the `ref` lets the
+   * fatal `error` closes the connection, and nothing here deserves closing one
+   * (a full call is no reason to tear down someone's chat); and the `ref` lets the
    * client link the rejection to the exact request that caused it, instead of
    * showing it loose on the screen.
    *
-   * `message` is for reading, and states the PHYSICAL reason, "this call already
-   * has sixteen people, which is what the server connection can handle", in the
-   * same format that `LIMITE_DE_PARTILHA` already uses on the client. A rejection
-   * that does not explain the physics is indistinguishable from a crash, and sends
+   * `message` is for reading, and states the PHYSICAL reason ("this call already
+   * has sixteen people, which is what the server connection can handle"), in the
+   * same style `LIMITE_DE_PARTILHA` already uses on the client. A rejection
+   * that does not explain the physics is indistinguishable from a crash, and leaves
    * the person retrying forever.
    */
   z.object({
@@ -1638,7 +1649,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * The device manifest for an account, or `null` if it never published one.
    *
    * As the server has it: it stores what the signature and version let it store,
-   * and does not rewrite it. The receiver verifies it the same way
+   * and does not rewrite it. The receiver verifies it anyway
    * (`verifyDeviceManifest`) and compares the version with the last one it saw
    * from this account, because a server may serve an old manifest, before a
    * revocation, to someone who never saw the new one. It cannot serve one the
@@ -1649,7 +1660,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   /**
    * The verdict of a `manifest.publish`. One frame only, with `ok`, following the
    * pattern of `link.preview.result`: the client waits for one kind of response,
-   * and two possible frames would be two waits where one hung.
+   * and two possible frames would be two waits, one of them left hanging.
    *
    * The reasons: those from `verifyDeviceManifest` (format, duplicate key, address
    * that is not the key digest, signature), plus two from the server. `not-yours`:
@@ -1660,7 +1671,7 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
    * two devices of the same account has one winner, not two. `revoked-device`: the
    * manifest lists a device that an earlier manifest from the account already
    * removed; revoking is forever (see `CAPACIDADE_REVOGACAO`). A 0.5.7 client does
-   * not validate server frames against the pattern, so the new value does not break it.
+   * not validate server frames against the schema, so the new value does not break it.
    */
   z.object({
     t: z.literal("manifest.published"),
@@ -1672,17 +1683,17 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
       .optional(),
   }),
 
-  /** The vault is open and waiting for the second device. */
+  /** The box is open and waiting for the second device. */
   z.object({ t: z.literal("pair.opened"), pairId: PairId }),
-  /** The vault has both connections. It goes to both sides: the signal to exchange device keys. */
+  /** The box has both connections. Sent to both sides: the signal to exchange device keys. */
   z.object({ t: z.literal("pair.joined"), pairId: PairId }),
   /** A payload from the other side, exactly as is: the server did not open it. */
   z.object({ t: z.literal("pair.message"), pairId: PairId, payload: PairPayloadOpaco }),
   /**
-   * The vault ended. `closed`: the other side closed it; `peer-left`: the other
+   * The box is gone. `closed`: the other side closed it; `peer-left`: the other
    * side's connection dropped; `expired`: ten minutes passed; `intruder`: a third
    * connection tried to join, and because that means someone else has the secret,
-   * the vault is burned for both.
+   * the box is burned for both.
    */
   z.object({
     t: z.literal("pair.closed"),
@@ -1712,13 +1723,13 @@ const TramasDoServidorSemCofre = z.discriminatedUnion("t", [
   }),
 
   /**
-   * A `channel.sinal` the server did not forward. Only to the sender, and it is the
+   * A `channel.sinal` the server did not forward. Sent only to the sender, and it is the
    * only response a signal gets.
    *
    * `code`: one of the keys from `CODIGOS_DE_RECUSA_DO_SINAL`. `message` states the
    * physical reason in English, for logs. `retryAfterMs`: with
    * `sinal-rate-limited` and `sinal-channel-busy`, how long until the bucket has
-   * space. Without it, waiting does not help.
+   * room. Without it, waiting does not help.
    *
    * Does not close the connection. Whoever keeps sending after repeated rejections
    * gets `error` `sinal-abuse`, fatal (see `TECTOS_DO_SINAL.recusasAteFechar`).
@@ -1755,15 +1766,16 @@ export function parseServerFrame(raw: unknown): ServerFrame {
  * The capability that says "this server holds the encrypted vault" (`cofre.*`).
  *
  * Both directions, like `CAPACIDADE_SINAL_EFEMERO`: the server announces it in
- * `hello.ok`, and the client using it announces it in `hello`. Only a connection
- * that announced it receives frames `cofre.*` and only it can send them. A client
- * 1.0.x does not announce it, and never sees a frame it does not know (its schema would reject it).
+ * `hello.ok`, and the client that wants to use it announces it in `hello`. Only a
+ * connection that announced it receives `cofre.*` frames, and only it can send them.
+ * A 1.0.x client does not announce it, and never sees a frame it does not know (its
+ * schema would reject it).
  *
  * **What the server holds is ciphertext.** Each entry comes encrypted by the client
- * with a key the server does not have (K_canal or K_conta, phase 3b and 5), under
+ * with a key the server does not have (K_canal or K_conta, phases 3b and 5), under
  * an opaque logical key (HMAC under the same key), and padded to multiples of
- * `COFRE_BALDE_BYTES`. The server stores, versions, applies caps and serves to
- * whoever has access. It makes no authority decisions: that is for the clients.
+ * `COFRE_BALDE_BYTES`. The server stores, versions, applies caps and serves
+ * whoever has a seat. It makes no authority decisions: that is for the clients.
  */
 export const CAPACIDADE_COFRE_CIFRADO = "cofre-cifrado"
 
@@ -1771,9 +1783,9 @@ export const CAPACIDADE_COFRE_CIFRADO = "cofre-cifrado"
 export const COFRE_BALDE_BYTES = 1024
 
 /**
- * The cap of the PROTOCOL for entry contents, in bytes already decrypted from
- * base64. The operator can lower it (`TECTOS_DO_COFRE` on the server), never
- * raise it: the pattern refuses first.
+ * The PROTOCOL limit for an entry's contents, in bytes after base64 decoding.
+ * The operator can lower it (`TECTOS_DO_COFRE` on the server), never
+ * raise it: the schema rejects first.
  */
 export const COFRE_ENTRADA_MAX_BYTES = 64 * 1024
 
@@ -1786,14 +1798,14 @@ export const COFRE_ENTRADAS_POR_TRAMA = 64
 /**
  * The key of an entry: 22 base64url characters (16 bytes of an HMAC under the
  * vault key). Opaque on purpose: a logical name (`sala:geral`) never goes on the
- * wire. The pattern does not let any other form through.
+ * wire. The schema lets no other shape through.
  */
 export const COFRE_CHAVE_PATTERN = /^[A-Za-z0-9_-]{22}$/
 
 /**
  * A vault scope: `canal:<morada>` or `conta:<endereço>`. The server
  * stores and counts by scope, and by scope decides who reads and writes:
- * `canal:` whoever has access to the channel, `conta:` the account itself only.
+ * `canal:` whoever has a seat in the channel, `conta:` only the account itself.
  */
 export const COFRE_ESCOPO_PATTERN = /^(canal|conta):[^\s]{1,255}$/
 
@@ -1803,16 +1815,16 @@ export const COFRE_ESCOPO_PATTERN = /^(canal|conta):[^\s]{1,255}$/
  *
  * - `cofre-nao-anunciado`: the connection did not announce `CAPACIDADE_COFRE_CIFRADO`.
  * - `cofre-sem-lugar`: scope `canal:` of a channel where this account has no
- *   space, or scope `conta:` of a different account.
- * - `cofre-ritmo`: this account passed the cap for writes or reads per minute.
- *   `retryAfterMs` says when there is space.
+ *   seat, or scope `conta:` of a different account.
+ * - `cofre-ritmo`: this account exceeded the cap for writes or reads per minute.
+ *   `retryAfterMs` says when there is room.
  *
  * Whoever insists after repeated rejections gets `error` `cofre-abuso`, fatal.
  */
 export const CODIGOS_DE_RECUSA_DO_COFRE = ["cofre-nao-anunciado", "cofre-sem-lugar", "cofre-ritmo"] as const
 export type CodigoDeRecusaDoCofre = (typeof CODIGOS_DE_RECUSA_DO_COFRE)[number]
 
-/** The code of the `error` fatal that closes whoever does not stop being rejected on the vault. */
+/** The code of the fatal `error` that disconnects a client that keeps getting rejected on the vault. */
 export const CODIGO_COFRE_ABUSO = "cofre-abuso"
 
 /**
@@ -1821,7 +1833,7 @@ export const CODIGO_COFRE_ABUSO = "cofre-abuso"
  *
  * - `versao`: the `versaoEsperada` is not the current version (the CAS failed).
  *   Comes with `versao`, the current one (0 when the key does not exist).
- * - `tecto`: the entry passes the cap per entry, or does not fit in the scope
+ * - `tecto`: the entry exceeds the per-entry cap, or does not fit in the scope
  *   (entries or bytes).
  * - `acolchoamento`: the contents do not measure a multiple of `COFRE_BALDE_BYTES`.
  * - `inexistente`: a `cofre.del` of a key that does not exist or is already a tombstone.
@@ -1869,8 +1881,8 @@ const TramasDoCofreDoCliente = [
   z.object({ t: z.literal("cofre.get"), escopo: EscopoDoCofre, desdeVersao: VersaoDoCofre, ref: RefDoCofre }),
 
   /**
-   * Delete an entry. It becomes a tombstone with a version, so the reader by delta
-   * knows it left. `versaoEsperada` as in `cofre.put`.
+   * Delete an entry. It becomes a tombstone with a version, so a delta reader
+   * knows it was removed. `versaoEsperada` as in `cofre.put`.
    * Response: `cofre.del.result`.
    */
   z.object({
@@ -1900,8 +1912,8 @@ const TramasDoCofreDoServidor = [
    * A page of what changed in a vault.
    *
    * `completo`: this read is the entire vault, not a delta (asked for since 0, or
-   * since a version before tombstones the server already pruned). The receiver
-   * joins the pages and replaces what it had: what does not come no longer exists.
+   * since a version older than tombstones the server already pruned). The receiver
+   * joins the pages and replaces what it had: whatever does not come no longer exists.
    * `ate`: the highest version this page covers; with `mais`, the next page asks
    * with `desdeVersao: ate`. Without `mais`, `ate` is the `versaoGlobal`.
    */
@@ -1933,15 +1945,15 @@ const TramasDoCofreDoServidor = [
    * (the one for the account itself), after each `channel.subscribe` (those for
    * subscribed channels), and when another connection writes to one of them. Only
    * the scopes that have a vault; a missing scope is at version 0. The client asks
-   * `cofre.get` only when the version went up: the read aligns with what the
-   * server already knows and does not teach it an extra request.
+   * `cofre.get` only when the version went up: the read follows what the
+   * server already knows and reveals no extra request to it.
    */
   z.object({
     t: z.literal("cofre.versoes"),
     cofres: z.array(z.object({ escopo: z.string(), versaoGlobal: VersaoDoCofre })),
   }),
 
-  /** An entire `cofre.*` frame rejected. Never fatal on first. See `CODIGOS_DE_RECUSA_DO_COFRE`. */
+  /** An entire `cofre.*` frame rejected. Never fatal on the first one. See `CODIGOS_DE_RECUSA_DO_COFRE`. */
   z.object({
     t: z.literal("cofre.rejected"),
     escopo: z.string(),

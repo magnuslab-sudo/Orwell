@@ -12,8 +12,8 @@ import { parseServerName } from "@enclave/protocol"
  *
  * Everything here is real: a real gateway, real MLS groups, two real
  * `Session` objects with their own vaults. The scenario is exactly the one
- * people reported broken on orwell.pt — A seats B in A's feed, A publishes,
- * and B has to actually see it — so a regression here is a regression there.
+ * people reported broken on orwell.pt (A seats B in A's feed, A publishes,
+ * and B has to actually see it), so a regression here is a regression there.
  */
 
 /**
@@ -22,7 +22,7 @@ import { parseServerName } from "@enclave/protocol"
  * entire suite dying on startup with EADDRINUSE.
  *
  * Here the server name matters more than elsewhere: these clients are
- * `Session` for real, and a `Session` marks the number from its own address
+ * real `Session` objects, and a `Session` builds the URL it dials from its own address
  * (see `gatewayUrl` in `session.ts`). The name must carry the assigned port,
  * and that is only known after `listen`.
  */
@@ -50,7 +50,7 @@ interface Peer {
   session: Session
   address: string
   seen: { channel: string; sender: string; payload: Record<string, unknown> }[]
-  /** Every rekey this peer lived through — the thing that costs it history. */
+  /** Every rekey this peer lived through: the thing that costs it history. */
   epochs: string[]
 }
 
@@ -71,14 +71,14 @@ async function peer(nome: string): Promise<Peer> {
   session.on("epoch", (event) => epochs.push(`${event.channel}@${event.epoch}`))
   await session.connect()
   // Real accounts have a name, and the name is what a silent feed reader
-  // republishes into the channel on every epoch — the evidence `seat` reads
+  // republishes into the channel on every epoch: the evidence `seat` reads
   // to tell a live member from a dead one. A nameless peer would be testing a
   // person who does not exist on orwell.pt.
   await session.updateProfile({ displayName: nome, donations: [] })
   return { session, address: identity.address, seen, epochs }
 }
 
-/** Poll until the predicate holds, or give up — delivery is asynchronous. */
+/** Poll until the predicate holds, or give up: delivery is asynchronous. */
 async function until(predicate: () => boolean, label: string, timeoutMs = 8000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -93,8 +93,8 @@ function postsIn(reader: Peer, channel: string): Record<string, unknown>[] {
 }
 
 /**
- * The feed as the screen shows it: what is stored on this device, with
- * tombstones honored.
+ * The wall as the screen shows it: what is stored on this device, with
+ * tombstones applied.
  *
  * Counted from the vault and not from the list of what came over the wire,
  * because they are not the same: the wire says what arrived, the vault says
@@ -164,7 +164,7 @@ describe("entrega do feed entre duas contas", () => {
     expect(chegou.caption).toBe("olá do autor #teste")
     expect(chegou.tags).toEqual(["teste"])
 
-    // And the author sees their own — the half that was never broken, kept
+    // And the author sees their own: the half that was never broken, kept
     // here so the test tells the two apart if one of them regresses.
     expect(postsIn(autor, feed).length).toBeGreaterThan(0)
 
@@ -229,15 +229,15 @@ describe("entrega do feed entre duas contas", () => {
   }, 40000)
 
   /**
-   * Deleting deletes for the reader, and does not come back.
+   * Deleting deletes for readers, and is not undone.
    *
    * Reported by the owner in production: *"when I delete them it only deletes
-   * for me, it does not delete for the others"*. Here it is whole, with the
-   * real server, because the two halves of the fault live in different places
-   * and one without the other gives green: the request has to arrive, and the
-   * feed that gets rebroadcast to whoever comes next must respect it. Without
-   * the second, delete was a postponement, the post came back on everyone's
-   * screen in the next friendship, and whoever hit the button never knew.
+   * for the author, it does not delete for the others"*. It is here in full, with
+   * the real server, because the two halves of the fault live in different places
+   * and either one alone gives green: the request has to ARRIVE, and the wall
+   * resent to whoever joins next must RESPECT it. Without the second, deleting
+   * was only a postponement: the post came back on everyone's screen with the
+   * next friendship, and whoever pressed the button never knew.
    */
   it("uma publicação apagada sai do mural de quem lê, e não volta com quem chega", async () => {
     const autor = await peer("Autor")
@@ -261,15 +261,15 @@ describe("entrega do feed entre duas contas", () => {
     expect(muralDe(leitor, feed)).toEqual(["fica"])
     expect(muralDe(autor, feed)).toEqual(["fica"])
 
-    // And whoever comes next gets the feed that exists. This step was broken:
-    // the feed was rebroadcast from history, tombstones aside, and the deleted
-    // post rose again for anyone who never heard it deleted.
+    // And whoever joins next gets the wall that EXISTS. This step was broken:
+    // the wall was resent from history, ignoring tombstones, and the deleted
+    // post came back for anyone who never heard the delete.
     await autor.session.acceptFollower(terceiro.address)
     await until(() => muralDe(terceiro, feed).length > 0, "o terceiro recebe o mural")
     expect(muralDe(terceiro, feed)).toEqual(["fica"])
 
-    // And no one got the same post twice because it was said twice, which was
-    // the other complaint, and comes from the same mechanism.
+    // And no one got the same post twice because it was sent twice, which was
+    // the other complaint and comes from the same mechanism.
     expect(muralDe(leitor, feed)).toEqual(["fica"])
     expect(muralDe(autor, feed)).toEqual(["fica"])
 

@@ -1,13 +1,13 @@
 /**
- * What a page says about itself, Open Graph and classic meta tags.
+ * What a page says about itself: Open Graph and the classic meta tags.
  *
- * It lives here, not in the screen that uses it, because two things now read it:
- * the device of whoever publishes, when the site can be read, and the server, when
- * it cannot. A second extraction written by hand would eventually disagree with
+ * It lives here, not in the screen that uses it, because two parties now read it:
+ * the poster's device, when the site allows it, and the server, when
+ * it doesn't. A second extraction written by hand would eventually disagree with
  * this one, and the difference would show up as a card that changes its title
  * depending on the path it came from.
  *
- * Everything here is pure and offline: you give it text, it returns fields. That is
+ * Everything here is pure and offline: it takes text and returns fields. That is
  * what makes it testable with no socket in sight, from both sides.
  */
 
@@ -31,10 +31,10 @@ function attribute(tag: string, name: string): string | undefined {
 /**
  * The entities that appear even in page titles.
  *
- * A short list, not a general decoder: this runs on HTML from third parties and
- * the temptation to hand it to an interpreter is precisely the door the rest of
- * the product spends its time closing. Text comes out of here as text and is
- * drawn as text, never markup.
+ * A short list, not a general decoder: this runs on third-party HTML, and
+ * handing it to an interpreter would open exactly the door the rest of
+ * the product works to keep shut. Text comes out of here as text and is
+ * drawn as text, never as markup.
  */
 export function decodeEntities(text: string): string {
   return text
@@ -58,13 +58,13 @@ function maybe<K extends string>(key: K, value: string | undefined): Partial<Rec
   return value === undefined ? {} : ({ [key]: value } as Record<K, string>)
 }
 
-/** An image declared in a relative path still belongs to the same page. */
+/** An image declared with a relative path still belongs to the same page. */
 function absolute(url: string | undefined, base: string): string | undefined {
   if (!url) return undefined
   try {
     const resolved = new URL(decodeEntities(url), base)
     // Only http(s): a giant `data:` on another page is not a thumbnail, and any
-    // other scheme is not something you go fetch.
+    // other scheme is not something to fetch.
     return resolved.protocol === "http:" || resolved.protocol === "https:" ? resolved.href : undefined
   } catch {
     return undefined
@@ -82,7 +82,7 @@ export function parsePreviewHtml(html: string, pageUrl: string): ParsedPreview {
     const key = attribute(tag, "property") ?? attribute(tag, "name")
     const content = attribute(tag, "content")
     if (!key || content === undefined) continue
-    // The first wins: pages repeat og:image with variants, and the first is the one
+    // The first one wins: pages repeat og:image with variants, and the first is the one
     // the author put first.
     if (!meta.has(key.toLowerCase())) meta.set(key.toLowerCase(), content)
   }
@@ -98,7 +98,7 @@ export function parsePreviewHtml(html: string, pageUrl: string): ParsedPreview {
   }
 }
 
-/** An address scrawled in haste is still an address. */
+/** An address typed in haste is still an address. */
 export function normaliseUrl(url: string): string {
   const trimmed = url.trim()
   if (!trimmed) return ""

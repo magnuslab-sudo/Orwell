@@ -23,7 +23,7 @@ import { Cliente, levantarServidor, type ServidorDeTeste } from "../testes/clien
  *
  * The server stores the seal that comes in `invite.create` (column `invites.selo`),
  * returns it in `invite.resolved` and `invite.selo.result`, and rejects a seal
- * above the limit. It does not read it: it has no code.
+ * above the limit. It does not read it: it does not have the code.
  */
 
 let servidor: ServidorDeTeste

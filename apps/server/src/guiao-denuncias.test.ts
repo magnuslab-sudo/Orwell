@@ -14,14 +14,14 @@ import { Store } from "./store.js"
  * The reports VPS script (`scripts/denuncias.mjs`), run for real
  * against a local `denuncias/` folder and database.
  *
- * None of these tests reach production: each run makes `ORWELL_BASE`
- * and `ORWELL_DENUNCIAS` point to temp, and a fake `ssh` at the front
- * of the PATH exits with error and does nothing. If the script tried the server,
- * the output said "fake ssh" and the test failed.
+ * **None of these tests reach production**: each run points `ORWELL_BASE`
+ * and `ORWELL_DENUNCIAS` at the temp dir, and a fake `ssh` first in the
+ * PATH exits with an error and does nothing. If the script tried the server,
+ * the output would say "ssh falso" and the test would fail.
  *
  * The script does not import the server's TypeScript: it writes the same formats
- * by hand. The defense against drift is this: everything the script writes reads
- * back here using the server's own classes (`ArquivoDeDenuncias.ler` and
+ * by hand. The defense against drift is this: everything the script writes is read
+ * back here with the server's own classes (`ArquivoDeDenuncias.ler` and
  * `lerAviso`, `CaixaDeEntrega.levantar`, `AvisoDeSuspensao`, `Store`).
  */
 
@@ -209,14 +209,14 @@ describe("denuncias.mjs: fechar", () => {
 
     const esperado: ItemDaCaixa = { tipo: "decisao", id: "d-1", denuncia: 1, decisao: "sem-accao", canal: CANAL, dia: "2026-11-03" }
     expect(await caixa.lerItem(CARLA, "d-1")).toEqual(esperado)
-    // `entregarEm = agora`: the decision comes out already at the next poll, and only to whoever reported it.
+    // `entregarEm = agora`: the decision goes out at the very next pickup, and only to the reporter.
     expect(await caixa.levantar(CARLA, [])).toEqual([esperado])
     expect(await caixa.levantar(BRUNO, [])).toEqual([])
     const ficheiro = join(pasta, "caixa", enderecoCurto(CARLA), "d-1.json")
     expect(JSON.parse(readFileSync(ficheiro, "utf8")).endereco).toBe(CARLA)
     expect(modo(ficheiro)).toBe(0o600)
 
-    // The queue no longer holds the closed one, only it.
+    // The queue drops the closed one, and only that one.
     const fila = lerFila()
     expect(fila.abertas.map((aberta) => aberta.numero)).toEqual([2])
     expect(fila.abertas[0]).toEqual({ numero: 2, motivo: 1, prioridade: "alta", art18: true, recebida: "2026-11-03T22:15:00.000Z" })
@@ -263,7 +263,7 @@ describe("denuncias.mjs: fechar", () => {
     expect((await arquivo.ler(1))?.estado).toBe("aberta")
     expect(readFileSync(join(pasta, "fila.json"), "utf8")).toBe(filaAntes)
 
-    // A suspension whose end already passed does not count either.
+    // A suspension whose end has passed does not count either.
     expect(correr([...SUSPENDER_BRUNO, "--ate", hoje()]).codigo).toBe(0)
     const db = openDatabase(base)
     db.prepare("UPDATE suspensoes SET ate_second = ? WHERE address = ?").run(Math.floor(Date.now() / 1000) - 1, BRUNO)
@@ -330,14 +330,14 @@ describe("denuncias.mjs: suspender, levantar e manter", () => {
     expect(fimDaSuspensao(BRUNO)).toBe(Date.parse(`${amanha}T23:59:59Z`) / 1000)
     expect(comStore((store) => store.estaSuspensa(BRUNO))).toBe(true)
 
-    // The end passed (the line as it sits two days later): the server lets it through.
+    // The end has passed (the row as it stands two days later): the server lets it in.
     const db = openDatabase(base)
     db.prepare("UPDATE suspensoes SET ate_second = ? WHERE address = ?").run(Math.floor(Date.now() / 1000) - 86_400, BRUNO)
     db.close()
     expect(comStore((store) => store.estaSuspensa(BRUNO))).toBe(false)
     expect(comStore((store) => store.suspensas())).toEqual([])
     expect(linhaDaSuspensao(BRUNO)?.activa).toBe(1)
-    // And the script agrees: keep the refusal, revisions says not suspended.
+    // And the script agrees: `manter` refuses, and `revisoes` says not suspended.
     expect(correr(["manter", BRUNO, "--nota", "x"]).codigo).not.toBe(0)
   })
 
@@ -350,7 +350,7 @@ describe("denuncias.mjs: suspender, levantar e manter", () => {
       expect(codigo, falta).not.toBe(0)
       expect(saida, falta).toContain(falta)
     }
-    // And empty ones don't work either.
+    // And empty ones are not accepted either.
     const vazios = SUSPENDER_BRUNO.map((valor, i) => (SUSPENDER_BRUNO[i - 1] === "--factos" ? "  " : valor))
     expect(correr(vazios).codigo).not.toBe(0)
     expect(correr([...SUSPENDER_BRUNO, "--ate", "amanhã"]).codigo).not.toBe(0)
@@ -391,7 +391,7 @@ describe("denuncias.mjs: suspender, levantar e manter", () => {
     expect(codigo).not.toBe(0)
     expect(existsSync(caminhoDoAviso(BRUNO))).toBe(false)
 
-    // And with a prior notice, the prior one stays.
+    // And with an earlier notice, the earlier one stays.
     openDatabase(base).close()
     expect(correr(SUSPENDER_BRUNO).codigo).toBe(0)
     const antes = readFileSync(caminhoDoAviso(BRUNO), "utf8")
@@ -479,7 +479,7 @@ describe("denuncias.mjs: suspender, levantar e manter", () => {
     expect(depois.saida).not.toContain("peço que revejam")
     expect(depois.saida).toMatch(/revisões pendentes: 0/)
     expect(lerFila().revisoesPendentes).toBe(0)
-    // The person's request is not erased.
+    // The user's request is not deleted.
     expect(readdirSync(join(pasta, "revisoes"))).toHaveLength(1)
 
     // A new request after the decision is pending again, and the server still reads it.
@@ -559,7 +559,7 @@ describe("denuncias.mjs: o ambiente", () => {
       ["levantar", BRUNO],
     ]
     for (const argumentos of corridas) {
-      // `run` already fails if the output says "fake ssh".
+      // `correr` already fails if the output says "ssh falso".
       expect(correr(argumentos).codigo, argumentos.join(" ")).toBe(0)
     }
     // Never deletes reports.

@@ -6,7 +6,7 @@ import { abrirSinal, derivarChaveDoSinal, epocaDoSinal, selarSinal } from "./sin
 
 /**
  * The signal key comes from the MLS epoch exporter, like the SFrame key (phase S4).
- * Tested against real MLS: two members derive the same key, whoever joins later
+ * Tested against real MLS: two members derive the same key, a later joiner
  * cannot open a signal from the earlier epoch, and the channel and epoch are
  * bound to the bytes.
  */
@@ -61,7 +61,7 @@ describe("a chave do sinal", () => {
     const trocado = selado.slice()
     trocado[trocado.length - 1] = (trocado[trocado.length - 1] ?? 0) ^ 1
     expect(abrirSinal(chave, CANAL, trocado)).toBeNull()
-    // The declared epoch too: lying about it does not open with another epoch's key.
+    // The declared epoch too: lying about it does not make it open with another epoch's key.
     const outraEpoca = selado.slice()
     outraEpoca[8] = (outraEpoca[8] ?? 0) ^ 1
     expect(abrirSinal(chave, CANAL, outraEpoca)).toBeNull()

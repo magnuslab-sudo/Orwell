@@ -33,18 +33,18 @@ import { conviteComProva, PACOTE_DE_TESTE } from "../testes/convite-com-prova.js
 /**
  * This server's name and the port it listens on, decided at startup.
  *
- * Ephemeral port, not a hardcoded number. Each server suite had its own, 8449
- * here, 8453 in the common room, and the test scripts adopted the same: a
+ * Ephemeral port, not a hardcoded number. Each server suite had its own (8449
+ * here, 8453 in the common room), and the test scripts adopted the same: a
  * forgotten server sleeping on one of those ports would break the entire suite
  * with EADDRINUSE, and because `npm test` runs packages in sequence, what you
  * saw at the end was "server issue" with hundreds of tests that never ran at
  * all. It happened. With `port: 0` the system assigns a free port and the
- * problem class disappears.
+ * whole class of problem goes away.
  *
  * The server name has to carry the assigned port because that is where the
  * account addresses come from, and the real client connects to what is there.
- * That is why it is assigned AFTER `listen`, the `ServerConfig` is read on
- * request, never at startup, and nothing connects before this point.
+ * That is why it is assigned AFTER `listen`: the `ServerConfig` is read on
+ * demand, never at startup, and nothing connects before this point.
  */
 let HOME: ReturnType<typeof parseServerName>
 
@@ -127,7 +127,7 @@ class TestClient {
 beforeAll(async () => {
   dataDir = mkdtempSync(join(tmpdir(), "enclave-test-"))
   const config: ServerConfig = {
-    // A startup name with no port, replaced as soon as we know what it is.
+    // A startup name with no port, replaced as soon as the port is known.
     serverName: parseServerName("localhost"),
     bindHost: "127.0.0.1",
     bindPort: 0,
@@ -161,7 +161,7 @@ afterAll(async () => {
 })
 
 async function login(client: TestClient, identity: ReturnType<typeof generateIdentity>): Promise<ServerFrame> {
-  // A real client. Without `commit-after-echo` the server does not save or
+  // A current client. Without `commit-after-echo` the server does not save or
   // deliver the Welcomes for this connection, and the tests for directed invites,
   // which is what we measure here, would have nothing to measure.
   client.send({ t: "hello", version: PROTOCOL_VERSION, capabilities: ["commit-after-echo"] })
@@ -180,7 +180,7 @@ async function login(client: TestClient, identity: ReturnType<typeof generateIde
  *
  * These tests had both accounts subscribe to the same fresh channel, and that
  * passed only because fresh channel tolerance was not anchored to anyone: any
- * account could sit in any unused channel. With tolerance anchored, the second
+ * account could take a seat in any unused channel. With tolerance anchored, the second
  * account has to join the way it does for real, and the server, which does
  * not read the MLS tree, only recognizes two paths: a redeemed invite, or a
  * directed Welcome.
@@ -192,7 +192,7 @@ async function login(client: TestClient, identity: ReturnType<typeof generateIde
  * `invite.request` that reaches the host is consumed right here.
  */
 async function sentarPorConvite(host: TestClient, guest: TestClient, channel: string): Promise<void> {
-  // With the code proof, like 1.0 redeems (slice 6a): the hash alone does not work.
+  // With the code proof, as 1.0 redeems (slice 6a): the hash alone is not accepted.
   const convite = conviteComProva()
   host.send({ t: "invite.create", channel, ...convite.criar, expiresAt: null, maxUses: 1 })
   await host.nextOf("invite.created")
@@ -211,7 +211,7 @@ async function sentarPorConvite(host: TestClient, guest: TestClient, channel: st
  * The other path: the directed Welcome from someone already inside.
  *
  * It costs the channel one `seq`, it is an event like any other, and in
- * return it tells nothing to those already there, because a directed frame goes
+ * return it tells those already there nothing, because a directed frame goes
  * only to its recipient.
  */
 async function sentarPorWelcome(
@@ -323,7 +323,7 @@ describe("gateway", () => {
   it("carries a post with a real photo in it, instead of severing the connection", async () => {
     /**
      * The regression this exists for: the socket accepted 12 MiB while the
-     * gateway dropped anything over 1 MiB — as a *fatal* error, closing the
+     * gateway dropped anything over 1 MiB, as a *fatal* error, closing the
      * connection. One ordinary photo in a post was enough to hit it. The
      * sender saw their post in their own timeline, because the client records
      * it before the frame leaves; nobody else ever received it, and the only
@@ -472,14 +472,14 @@ describe("gateway", () => {
     host.send({ t: "channel.subscribe", channels: [channel] })
     await host.sync()
 
-    // The forger is a MEMBER of the channel, admitted by the host. Has to be: a
-    // stranger cannot forge codes for a channel where they have no seat, and they
-    // used to, not because the guard failed, but because fresh channel tolerance
+    // The forger is a MEMBER of the channel, admitted by the host. It has to be: a
+    // stranger can no longer mint codes for a channel where they have no seat, and
+    // once could, not because the guard was missing, but because fresh channel tolerance
     // was not anchored to anyone.
     //
-    // And this is the risk that remains, that cryptography does not close: the
+    // And this is the risk that remains, which cryptography does not close: the
     // server does not read the group, so it cannot tell an invite a member issued
-    // in good faith from one another member forged for themselves.
+    // in good faith from one another member minted on their own.
     await sentarPorWelcome(host, attacker, channel, attackerId.address)
 
     const cunhado = conviteComProva()
@@ -488,7 +488,7 @@ describe("gateway", () => {
     await attacker.nextOf("invite.created")
     attacker.send(cunhado.resgate(attacker.address))
 
-    // The request still reaches members — but it carries the hash, which is what
+    // The request still reaches members, but it carries the hash, which is what
     // lets a member check it against the codes it actually issued and refuse.
     // Without this field the member has only the server's word, which is worth
     // nothing here.
@@ -543,8 +543,8 @@ describe("gateway", () => {
     // letting people in long after the sender expected it to stop.
     //
     // Someone else with the same link: the same account repeating a request that
-    // already reached members is not forwarded again (INV-02), and never spends or
-    // sees the limit.
+    // already reached members is not forwarded again (INV-02), and never uses up a
+    // use or hits the limit.
     const second = await TestClient.connect(gatewayUrl)
     expect((await login(second, generateIdentity(HOME))).t).toBe("auth.ok")
     second.send(convite.resgate(second.address))
@@ -585,7 +585,7 @@ describe("gateway", () => {
     speaker.send({ t: "channel.subscribe", channels: [channel] })
     await speaker.sync()
 
-    // The absent member has to have been IN the channel, that is what the name
+    // The absent member has to have been IN the channel: that is what the name
     // of this test says and what makes the catch-up its own. It subscribes, then
     // goes away; the subscription lives on the server, per account, so it is
     // still there when the account reconnects on any device.
@@ -598,8 +598,8 @@ describe("gateway", () => {
     //
     // And joins via invite: subscribing to the same fresh channel the speaker
     // just created was the second half of the same hole. The Welcome that seats
-    // him is event 0 (see `sentarPorConvite`), directed to him, so it also comes
-    // in his page; the three messages are what comes after.
+    // him is event 0 (see `sentarPorConvite`), directed to him, so it also lands
+    // on his page; the three messages are what comes after.
     const memberId = generateIdentity(HOME)
     const first = await TestClient.connect(gatewayUrl)
     expect((await login(first, memberId)).t).toBe("auth.ok")
@@ -609,7 +609,7 @@ describe("gateway", () => {
     first.close()
 
     // Three events land while the other member is away. In a real channel one of
-    // these would be a membership commit — and missing it strands the absent
+    // these would be a membership commit, and missing it strands the absent
     // member on an old epoch, after which nothing decrypts. Ever.
     const sent = ["um", "dois", "tres"].map((word) => toBase64(new TextEncoder().encode(word)))
     for (const ciphertext of sent) {
@@ -650,7 +650,7 @@ describe("gateway", () => {
     const first = await client.nextOf("channel.backfill.page")
     expect(first.events.map((event) => event.seq)).toEqual([0, 1])
     // Without this flag a client stops at the first page and silently stays
-    // behind — the exact failure the catch-up path exists to prevent.
+    // behind: the exact failure the catch-up path exists to prevent.
     expect(first.more).toBe(true)
 
     client.send({ t: "channel.backfill", channel, afterSeq: 1, limit: 2 })
@@ -744,9 +744,9 @@ describe("presença", () => {
     await stranger.sync()
 
     // Bob subscribes to the shared channel: Alice is notified he is online, and
-    // Bob gets the snapshot with Alice. Seated via invite first, sharing a
-    // channel with someone assumes having a seat there, and the shortcut of
-    // subscribing to someone else's fresh channel no longer exists.
+    // Bob gets the snapshot with Alice. Seated via invite first: sharing a
+    // channel with someone requires a seat there, and the shortcut of
+    // subscribing to someone else's fresh channel is gone.
     await sentarPorConvite(alice, bob, channel)
     bob.send({ t: "channel.subscribe", channels: [channel] })
     const bobSnapshot = await bob.nextOf("presence")
@@ -779,18 +779,18 @@ describe("presença", () => {
 })
 
 /**
- * The `sfu` capability, which is the gate to the entire SFU passage.
+ * The `sfu` capability, which gates the whole move to the SFU.
  *
  * The order is server first, client after: the server gains the SFU in its own
  * phase, with no client using it, and only then do clients start choosing the
- * engine by this. As long as that gap lasts, and it lasts days, the
+ * engine based on it. As long as that gap lasts, and it lasts days, the
  * `hello.ok` has to tell the truth about what exists on this side, because a
- * client that hears the capability STOPS building the mesh.
+ * client that sees the capability STOPS building the mesh.
  *
  * That is why the two tests are symmetric and both necessary. The first is what
  * protects those already here: no engine, no promise. The second is what
  * guarantees the promise comes when the engine exists, instead of staying
- * forgotten in a predicate no one wires.
+ * forgotten in a predicate no one calls.
  */
 describe("a capacidade sfu sai do estado do motor de media", () => {
   it("sem motor de media, o hello.ok não promete SFU nenhum", async () => {
@@ -817,7 +817,7 @@ describe("a capacidade sfu sai do estado do motor de media", () => {
       comMotor.close()
 
       // The worker dies. The capability is read at each `hello` and not saved at
-      // startup, so the next connection already hears the truth, that is what
+      // startup, so the next connection already hears the truth: that is what
       // separates a predicate from a boolean read once.
       enclave.gateway.declararSfu(() => false)
       const semMotor = await TestClient.connect(gatewayUrl)
@@ -848,7 +848,7 @@ describe("keypackage.claim responde sempre", () => {
     await login(client, generateIdentity(HOME))
     const ghost = generateIdentity(HOME)
 
-    // Three claims fired without waiting, the pattern the real client now
+    // Three claims fired without waiting: the pattern the real client now
     // produces (friendship repair + user invite at once).
     client.send({ t: "keypackage.claim", address: ghost.address })
     client.send({ t: "keypackage.claim", address: ghost.address })
@@ -886,7 +886,7 @@ describe("welcomes para destinatários offline", () => {
     const auth = await login(late, invitee)
     expect(auth.t).toBe("auth.ok")
 
-    // The client asks once its vault is restored — pushing at auth time
+    // The client asks once its vault is restored: pushing at auth time
     // handed welcomes to a client with no keys to open them.
     late.send({ t: "welcome.resync" })
     const delivered = await late.nextOf("channel.event")
@@ -894,8 +894,8 @@ describe("welcomes para destinatários offline", () => {
     expect(delivered.channel).toBe(channel)
     expect(delivered.ciphertext).toBe("Y2lmcmFkbw")
 
-    // And comes back on the next login, the server does not guess consumption;
-    // the client ignores welcomes for channels it already has.
+    // And it comes back on the next login: the server does not guess what was
+    // consumed; the client is the one that ignores welcomes for channels it already has.
     late.close()
     const again = await TestClient.connect(gatewayUrl)
     await login(again, invitee)
@@ -909,13 +909,13 @@ describe("welcomes para destinatários offline", () => {
 })
 
 /**
- * Accumulated invites are all delivered, and the reason changed its mind.
+ * Accumulated invites are all delivered, and the reasoning behind it changed.
  *
  * It used to deliver only the newest, on the grounds that only that one can
- * open: a legitimate re-invite demands a new key package and builds the
- * welcome against it, so the old one is trash. The argument holds between
- * honest invites and fails against a forged one, which does not demand any key
- * package, it does not invalidate the legit one, just buries it by having a
+ * open: a legitimate re-invite claims a new key package and builds the
+ * welcome against it, so the old one is garbage. The argument holds between
+ * honest invites and fails against a forged one, which claims no key
+ * package: it does not invalidate the legitimate one, it just buries it by having a
  * higher `seq`. That alone, coming from a channel member, would keep someone
  * out forever, with no signal anywhere.
  *
@@ -932,7 +932,7 @@ describe("welcomes zombie", () => {
 
     host.send({ t: "channel.subscribe", channels: [channel] })
     // Three invites for the same pair, exactly what unthrottled repair produced.
-    // Only the latest can open; the others are eternal trash.
+    // Only the latest can open; the others are permanent garbage.
     for (const bytes of ["dmVsaG8x", "dmVsaG8y", "bm92bw"]) {
       host.send({ t: "channel.send", channel, kind: "welcome", ciphertext: bytes, recipient: invitee.address })
     }
@@ -975,7 +975,7 @@ describe("invisibilidade", () => {
     await login(ghost, ghostIdentity)
     // Invisible BEFORE everything else: that is how the client avoids flicker, and
     // here it also stops the seat itself from announcing a departure to the
-    // observer, with no shared channels there is no one to tell.
+    // observer: with no shared channels there is no one to tell.
     ghost.send({ t: "presence.set", visible: false })
     await ghost.sync()
     await sentarPorConvite(watcher, ghost, channel)
@@ -1004,11 +1004,11 @@ describe("invisibilidade", () => {
   }, 20_000)
 
   it("uma ligação que sai deixa a conta offline se a que fica for invisível", async () => {
-    // Two connections from the same account, two tabs, or one half-open connection
-    // that the server hasn't noticed yet. The exit is only announced when no
+    // Two connections from the same account (two tabs, or a half-open connection
+    // that the server has not noticed yet). The exit is only announced when no
     // connection from that account remains, and this counted invisible ones too:
     // someone who went invisible on one and closed the other stayed green forever
-    // to channel members. A presence point that lies is worse than having no point
+    // to channel members. A presence dot that lies is worse than having no dot
     // at all.
     const channel = moradaDeSala(HOME)
     const identity = generateIdentity(HOME)
@@ -1077,11 +1077,11 @@ describe("invisibilidade", () => {
  * administer any channel it could name.
  *
  * Each of these fails if the corresponding guard in the gateway is removed. That
- * is the point — the defences they cover used to be absent, and the whole suite
+ * is the point: the defences they cover used to be absent, and the whole suite
  * stayed green.
  */
 describe("gateway authorisation", () => {
-  // Drawn in `beforeAll`: `HOME` is only known after `listen`.
+  // Picked at random in `beforeAll`: `HOME` is only known after `listen`.
   let channel: string
   beforeAll(() => {
     channel = moradaDeSala(HOME)
@@ -1183,11 +1183,11 @@ describe("gateway authorisation", () => {
    *
    * Removing someone is a cryptographic fact: the leaf leaves the MLS tree, the
    * epoch advances, and the removed person stops reading what follows. This
-   * server sees none of that, it does not read the group, by design, so the
+   * server sees none of that (it does not read the group, by design), so the
    * subscription of the removed person survives, and they can still write frames
    * to the channel that no one else can decipher. Three such frames make each
-   * member declare the channel deaf, which triggers re-entries, which re-seat
-   * people, which erase history for future secrecy.
+   * member declare the channel deaf, which triggers rejoins, which reseat
+   * people, which wipe history under forward secrecy.
    *
    * The obvious fix, a frame telling the server to stop serving an account in
    * a channel, is the one that cannot be done, and this test exists to force
@@ -1197,8 +1197,8 @@ describe("gateway authorisation", () => {
    * all, to cover a risk that cryptography has already limited to noise.
    */
   it("não existe forma de mandar o servidor expulsar alguém, e a subscrição de quem sai sobrevive", async () => {
-    // Own channel: here you need a member actually seated, and the tolerance for
-    // newborn-channel only serves the first to arrive.
+    // A dedicated channel: this needs a member who is really seated, and fresh
+    // channel tolerance only serves whoever gets there first.
     const sala = moradaDeSala(HOME)
     const member = await TestClient.connect(gatewayUrl)
     expect((await login(member, generateIdentity(HOME))).t).toBe("auth.ok")
@@ -1206,12 +1206,12 @@ describe("gateway authorisation", () => {
     await member.sync()
 
     const outsider = await stranger()
-    // Does not exist in `ClientFrame`, the template is part of the defense, not just the code.
+    // Not in `ClientFrame`: the schema is part of the defense, not just the code.
     outsider.send({ t: "channel.evict", channel: sala, address: `@quemquerqueseja:${HOME}` } as unknown as ClientFrame)
     const recusa = await outsider.nextOf("error")
     expect(recusa.code).toBe("bad-frame")
 
-    // And the server remains exactly as ignorant as before: who was seated stays
+    // And the server remains exactly as ignorant as before: whoever was seated stays
     // seated, whatever happens inside the group.
     member.send({
       t: "channel.send",
@@ -1232,21 +1232,21 @@ describe("gateway authorisation", () => {
  *
  * In 0.9 a feed was called `!feed-<id>` and a private conversation `!dm-<a>.<b>`:
  * both derived from public addresses, so any account could calculate them. In
- * 1.0 those forms do not open (`moradas-opacas.test.ts`), and the proofs for
- * them left here with them (slice 6a); what remains is the opaque channel proof.
- * The tolerance that lets you touch a channel not yet opened exists for the
+ * 1.0 those forms do not open (`moradas-opacas.test.ts`), and their tests
+ * left this file with them (slice 6a); what remains is the opaque channel proof.
+ * The tolerance that lets you touch a channel not yet used exists for the
  * instant between creating a room and talking in it for the first time, but
  * it was not anchored to anyone, so it granted that instant to EVERYONE: you
  * just had to arrive before the victim and the subscription was recorded,
  * forever.
  *
  * Measured with real requests against this same server, before the fix:
- * reading the cipher live, backfilling what passed, presence, and frames forged
+ * reading the ciphertext live, backfilling what passed, presence, and frames forged
  * inside another's channel, which is what triggers the deafness detector for
- * each member and moves history forward for future secrecy.
+ * each member and wipes history under forward secrecy.
  *
- * It is the same shape as the hole that `#isSeated` closed, entry through
- * another door. Nothing exercised reach to a virgin channel by someone who is
+ * It is the same shape as the hole that `#isSeated` closed, entering through
+ * another door. Nothing tested access to a fresh channel by someone who is
  * not its owner, and that is why it went unnoticed.
  */
 describe("o assento antecipado num canal por estrear", () => {
@@ -1265,8 +1265,8 @@ describe("o assento antecipado num canal por estrear", () => {
    *
    * A `channel.event` broadcast during the previous frame is already written to
    * the socket when the ping goes out, so it comes before the pong: if the
-   * first frame to arrive is the pong, there was no delivery. Better than
-   * waiting for a timeout, it is deterministic and immediate.
+   * first frame to arrive is the pong, there was no delivery. This beats
+   * waiting for a timeout: it is deterministic and immediate.
    */
   async function nadaAntesDoPong(client: TestClient): Promise<void> {
     client.send({ t: "ping" })
@@ -1281,7 +1281,7 @@ describe("o assento antecipado num canal por estrear", () => {
     criador.client.send({ t: "channel.subscribe", channels: [sala] })
     await criador.client.sync()
 
-    // Latecomer to the same virgin identifier: no longer anyone's creation, it is
+    // Latecomer to the same fresh identifier: this is no longer a creation, it is
     // a free ride on someone else's tolerance.
     eve.client.send({ t: "channel.subscribe", channels: [sala] })
     await eve.client.sync()
@@ -1351,8 +1351,8 @@ describe("a tolerância do canal por estrear continua a servir quem cria", () =>
     const eco = await criador.client.nextOf("channel.event")
     expect(eco.channel).toBe(sala)
 
-    // And whoever lost the report does not enter here, they exit through the
-    // entry request, which is what the common room script does next.
+    // And whoever lost the claim does not get in this way: they go through the
+    // join request, which is what the common room script does next.
     const tardio = await conta()
     tardio.client.send({ t: "channel.claim", channel: sala })
     const perdida = await tardio.client.nextOf("channel.claim.result")
@@ -1369,7 +1369,7 @@ describe("a tolerância do canal por estrear continua a servir quem cria", () =>
  * `Store.expireInvites()` existed and never ran: `Federation.sweep()` only
  * called `expireNonces` and `expireEvents`. An audit found three thousand
  * expired invites, all still in the database, each with its hash and its
- * channel. Dead code that no one calls is worse than missing code, anyone
+ * channel. Dead code that no one calls is worse than missing code: anyone
  * reading the function assumes it runs.
  */
 describe("a manutenção periódica", () => {
@@ -1405,7 +1405,7 @@ describe("a manutenção periódica", () => {
  * Each frame counted here leaves a permanent mark in the database at the
  * request of whoever sends it, and none had a limit: an audit filled the tables
  * from a single account without effort. Tested because a cap that does not bite
- * is the same as the `expireInvites` that never ran, it looks like it is there.
+ * is the same as the `expireInvites` that never ran: it looks like it is there.
  */
 describe("os tectos por conta", () => {
   it("estrear canais virgens pára no tecto, e as estreias de mais não deixam rasto", async () => {
@@ -1414,8 +1414,8 @@ describe("os tectos por conta", () => {
     expect((await login(client, identity)).t).toBe("auth.ok")
     await client.sync()
 
-    // A hundred virgin identifiers at once. Without a cap, those are a hundred
-    // subscriptions and a hundred reports recorded by an account that still has no
+    // A hundred fresh identifiers at once. Without a cap, those are a hundred
+    // subscriptions and a hundred claims recorded by an account that still has no
     // seat anywhere, as fast as the network allows.
     const canais = Array.from({ length: 100 }, () => moradaDeSala(HOME))
     client.send({ t: "channel.subscribe", channels: canais })
@@ -1423,7 +1423,7 @@ describe("os tectos por conta", () => {
 
     const gravados = canais.filter((canal) => enclave.store.isSubscribed(canal, identity.address))
     expect(gravados).toHaveLength(Gateway.ESTREIAS_POR_MINUTO)
-    // And they are the first: the cap cuts the tail, does not choose at random.
+    // And they are the first: the cap cuts the tail, it does not pick at random.
     expect(gravados[0]).toBe(canais[0])
 
     client.close()
@@ -1471,14 +1471,14 @@ describe("os tectos por conta", () => {
 
     const lote = (): string[] =>
       Array.from({ length: 100 }, () => toBase64(crypto.getRandomValues(new Uint8Array(16))))
-    // Six batches of a hundred: the sixth does not fit, because the limit is five hundred.
+    // Six batches of a hundred: the sixth does not fit, because the cap is five hundred.
     for (let i = 0; i < 6; i++) client.send({ t: "keypackage.publish", packages: lote(), replace: false })
     await client.sync()
     expect(enclave.store.availableKeyPackages(identity.address)).toBe(Gateway.KEYPACKAGES_EM_ESPERA)
 
-    // `replace` deletes the pending ones before writing, so it never adds, and
-    // that is why it always passes. Whoever filled the vault by accident recovers
-    // it on their own on the next connection.
+    // `replace` deletes the unclaimed ones before writing, so it never adds, and
+    // that is why it always passes. Whoever filled the vault by mistake recovers
+    // on their own on the next connection.
     client.send({ t: "keypackage.publish", packages: lote(), replace: true })
     await client.sync()
     expect(enclave.store.availableKeyPackages(identity.address)).toBe(100)
@@ -1491,7 +1491,7 @@ describe("os tectos por conta", () => {
    *
    * `sync()` does not work here: it skips ten frames and gives up, and these
    * tests send hundreds. The `ping` goes behind the whole batch, so the `pong`
-   * only arrives after the server has processed the last one, that is the proof
+   * only arrives after the server has processed the last one: that is the proof
    * that what did not come was not slowness, it was refusal.
    */
   async function escoarAteAoPong(client: TestClient, maximo: number): Promise<ServerFrame[]> {
@@ -1509,7 +1509,7 @@ describe("os tectos por conta", () => {
   /**
    * The cap on outgoing frames, measured in the DATABASE and not in the socket.
    *
-   * The earlier attempt measured the test client, `sync()` ran out of pong
+   * The earlier attempt measured the test client: `sync()` ran out of pongs
    * behind six hundred echoes and what you saw was the test's queue, not the
    * server's refusal. What is counted here are the rows that stayed in `events`:
    * no one writes them but the server, and the `pong` at the end proves it has
@@ -1577,8 +1577,8 @@ describe("os tectos por conta", () => {
     const channel = moradaDeSala(HOME)
     anfitriao.send({ t: "channel.subscribe", channels: [channel] })
     await anfitriao.sync()
-    // A targeted invite, waiting for someone who has not yet arrived. It is
-    // reading it that the resync repeats, and that is why there is something to
+    // A directed invite, waiting for someone who has not arrived yet. The resync
+    // reads it again each time, and that is why there is something to
     // count here.
     anfitriao.send({ t: "channel.send", channel, kind: "welcome", ciphertext: "dmVsY29tZQ", recipient: convidado.address })
     await anfitriao.sync()
@@ -1616,7 +1616,7 @@ describe("os tectos por conta", () => {
     client.close()
   }, 30_000)
 
-  /** The list of who lives here, which in community mode goes whole in each frame. */
+  /** The list of local accounts, which in community mode goes in full in every frame. */
   it("pedir o directório pára no tecto", async () => {
     const client = await TestClient.connect(gatewayUrl)
     expect((await login(client, generateIdentity(HOME))).t).toBe("auth.ok")
@@ -1638,16 +1638,16 @@ describe("os tectos por conta", () => {
  * Sign in with the chain: account, device, and the certificate of one over the
  * other.
  *
- * What the server now verifies is a longer link than before:
+ * What the server now verifies is a longer chain than before:
  * `hash(accountKey) == endereço`, the account signed this device, and it is this
- * device that signs the challenge. What it does NOT now gain is the ability to
+ * device that signs the challenge. What it does NOT gain is the ability to
  * invent a device: without the account key nobody produces a certificate that
- * closes, and it is each client that validates the chain before it admits a
+ * verifies, and it is each client that validates the chain before it admits a
  * leaf.
  *
  * The fields are optional and not a new `t`, so the old path, the account
- * key matching directly with the address, continues to be accepted and
- * continues to be sufficient proof, because it requires the account key in hand.
+ * key matching directly with the address, is still accepted and
+ * is still sufficient proof, because it requires the account key in hand.
  * That is what the `login` above does, and that is why the forty-odd tests in this
  * file did not change.
  */
@@ -1771,8 +1771,8 @@ describe("gateway: a cadeia de aparelho no login", () => {
     const identity = generateIdentity(HOME)
     const outro = generateIdentity(HOME)
 
-    // A true account certificate, but issued for another device: whoever catches
-    // a stranger's chain on the wire cannot put it on.
+    // A genuine account certificate, but issued for another device: whoever grabs
+    // someone else's chain off the wire cannot wear it.
     client.send({
       t: "auth.begin",
       address: identity.address,
@@ -1809,7 +1809,7 @@ describe("gateway: a cadeia de aparelho no login", () => {
   })
 
   it("recusa meia cadeia, em vez de a tratar como ausência", async () => {
-    // Falling into the old path would give an error about the key not matching the
+    // Falling back to the old path would give an error about the key not matching the
     // address, and would send you looking for the fault in the wrong place.
     const semCertificado = await TestClient.connect(gatewayUrl)
     const identity = generateIdentity(HOME)
@@ -1851,8 +1851,8 @@ describe("gateway: a cadeia de aparelho no login", () => {
 })
 
 /**
- * The device manifest at the gateway: the announced capacity, the retention
- * window stated, and the three responses from `manifest.publish`.
+ * The device manifest at the gateway: the advertised capability, the stated
+ * retention window, and the three replies to `manifest.publish`.
  *
  * The cryptographic guards (signature, version) have their tests in
  * `store.test.ts`; what is measured here is what only the gateway knows: who
@@ -1951,11 +1951,11 @@ describe("gateway: o manifesto de aparelhos", () => {
 })
 
 /**
- * The claim in bundle: one package per device from the manifest, only to the caller.
+ * The bundle claim: one key package per device in the manifest, only to the caller.
  *
- * The scenario is "a second device from the same account connects, and the first stays",
+ * The starting point is "a second device from the same account connects, and the first stays",
  * above: now both publish pools, the account publishes the manifest with both,
- * and a third one claims. What we count here are PACKAGES SPENT, read
+ * and a third one claims. What we count here are KEY PACKAGES USED UP, read
  * from the database, because that is what a 0.2.3 client inviting someone cannot see
  * change: without `bundle`, one.
  */
@@ -1987,8 +1987,8 @@ describe("gateway: keypackage.claim em bundle", () => {
     const ligB = await TestClient.connect(gatewayUrl)
     await entrarComCadeia(ligA, a)
     await entrarComCadeia(ligB, b)
-    // A states the device; B does not (like a 0.2.3 client), and the server removes it
-    // from login with the chain.
+    // A states the device; B does not (like a 0.2.3 client), and the server derives it
+    // from the chain login.
     ligA.send({ t: "keypackage.publish", packages: pacotes(3), replace: true, ...(comDevice ? { device: toBase64(a.deviceSigningPublicKey) } : {}) })
     ligB.send({ t: "keypackage.publish", packages: pacotes(3), replace: true })
     const agora = Math.floor(Date.now() / 1000)
@@ -2079,7 +2079,7 @@ describe("gateway: keypackage.claim em bundle", () => {
 
   it("um aparelho do manifesto sem pacotes não é erro: vêm os que há", async () => {
     const { a, b, ligA, ligB } = await contaComDoisAparelhos()
-    // Esgotar o B.
+    // Exhaust B.
     for (let i = 0; i < 3; i++) enclave.store.claimKeyPackage(a.address, b.deviceSigningPublicKey)
     const carlos = await TestClient.connect(gatewayUrl)
     await entrarComCadeia(carlos, generateIdentity(HOME))
@@ -2125,7 +2125,7 @@ describe("gateway: keypackage.claim em bundle", () => {
     expect(await lig.nextOf("error")).toMatchObject({ code: "device-mismatch", fatal: false })
     await lig.sync()
     expect(enclave.store.availableKeyPackages(ana.address)).toBe(0)
-    // The same device from login, stated or inferred, enters.
+    // The same device as the login, stated or inferred, is accepted.
     lig.send({ t: "keypackage.publish", packages: pacotes(2), replace: true, device: toBase64(ana.deviceSigningPublicKey) })
     await lig.sync()
     expect(enclave.store.availableKeyPackages(ana.address, ana.deviceSigningPublicKey)).toBe(2)
@@ -2133,10 +2133,10 @@ describe("gateway: keypackage.claim em bundle", () => {
   })
 
   /**
-   * Login WITHOUT the chain (the one from scripts) with `device` declared: the declared
-   * is NEVER a source. If it were, any account could invent a device per frame
-   * and the limit of five hundred per device would cease to exist. Without chain the
-   * packages stay NULL, the declared is refused, and the limit is the account's.
+   * Login WITHOUT the chain (the one from scripts) with `device` declared: the declared value
+   * is NEVER the source. If it were, any account could invent a device per frame
+   * and the cap of five hundred per device would cease to exist. Without a chain the
+   * packages stay NULL, the declared value is refused, and the cap is the account's.
    */
   it("sem cadeia, um `device` declarado é recusado, e os pacotes sem `device` ficam NULL com o tecto da conta", async () => {
     const ana = generateIdentity(HOME)
@@ -2150,14 +2150,14 @@ describe("gateway: keypackage.claim em bundle", () => {
     await lig.sync()
     expect(enclave.store.availableKeyPackages(ana.address)).toBe(0)
 
-    // No `device`: they enter, without a device.
+    // No `device`: they are accepted, with no device.
     for (let i = 0; i < 5; i++) lig.send({ t: "keypackage.publish", packages: pacotes(100) })
     await lig.sync()
     expect(enclave.store.availableKeyPackages(ana.address)).toBe(Gateway.KEYPACKAGES_EM_ESPERA)
     const semAparelho = enclave.store.availableKeyPackages(ana.address)
     // All NULL: a claim for any device sees none.
     expect(enclave.store.claimKeyPackage(ana.address, inventado.deviceSigningPublicKey)).toBeUndefined()
-    // The limit holds: one more batch does not enter, with or without `device` declared.
+    // The cap holds: one more batch is refused, with or without `device` declared.
     lig.send({ t: "keypackage.publish", packages: pacotes(10) })
     lig.send({ t: "keypackage.publish", packages: pacotes(10), device: toBase64(inventado.deviceSigningPublicKey) })
     expect(await lig.nextOf("error")).toMatchObject({ code: "device-mismatch" })
@@ -2198,7 +2198,7 @@ describe("gateway: keypackage.claim em bundle", () => {
     for (let i = 0; i < 5; i++) ligA.send({ t: "keypackage.publish", packages: pacotes(100) })
     await ligA.sync()
     expect(enclave.store.availableKeyPackages(a.address, a.deviceSigningPublicKey)).toBe(Gateway.KEYPACKAGES_EM_ESPERA)
-    // A is at the limit; B still publishes.
+    // A is at the cap; B still publishes.
     ligB.send({ t: "keypackage.publish", packages: pacotes(10) })
     await ligB.sync()
     expect(enclave.store.availableKeyPackages(a.address, b.deviceSigningPublicKey)).toBe(10)
@@ -2209,7 +2209,7 @@ describe("gateway: keypackage.claim em bundle", () => {
 
 /**
  * The pairing boxes: blind transport between a connection with an account and
- * one without, in memory, with timeout and caps.
+ * one without, in memory, with an expiry and caps.
  *
  * What we measure here is the most sensitive line of the gateway, `needsAuth`: that
  * `pair.join` passes without an account, that `pair.open` does NOT pass, that `pair.send` and
@@ -2366,7 +2366,7 @@ describe("caixas de emparelhamento", () => {
     expect(await intruso.nextOf("pair.rejected")).toMatchObject({ pairId, reason: "full" })
     expect(await pc.cliente.nextOf("pair.closed")).toMatchObject({ pairId, reason: "intruder" })
     expect(await telemovel.nextOf("pair.closed")).toMatchObject({ pairId, reason: "intruder" })
-    // After it burned, even the phone that was in it cannot speak without an account.
+    // Once burned, even the phone that was in it cannot speak without an account.
     telemovel.send({ t: "pair.send", pairId, payload: "x" })
     expect(await telemovel.next()).toMatchObject({ t: "error", code: "unauthenticated" })
     intruso.close()
@@ -2396,7 +2396,7 @@ describe("caixas de emparelhamento", () => {
     telemovel.close()
     expect(await pc.cliente.nextOf("pair.closed")).toMatchObject({ pairId, reason: "peer-left" })
 
-    // And the reverse: the host falls, the phone hears.
+    // And the reverse: the host drops, the phone hears it.
     const pc2 = await anfitriao()
     const pairId2 = pairIdDeTeste()
     pc2.cliente.send({ t: "pair.open", pairId: pairId2 })
@@ -2441,7 +2441,7 @@ describe("caixas de emparelhamento", () => {
     await pc.cliente.nextOf("pair.joined")
     telemovel.send({ t: "pair.send", pairId, payload: "A".repeat(8 * 1024 + 1) })
     expect(await telemovel.next()).toMatchObject({ t: "error", code: "bad-frame" })
-    // And an object does not even pass through the mold: measuring it would force the server to
+    // And an object does not even pass the schema: measuring it would force the server to
     // serialize whatever was sent to it BEFORE the authentication gate.
     telemovel.send({ t: "pair.send", pairId, payload: { grande: "A".repeat(8 * 1024) } } as unknown as FrameDoCliente)
     expect(await telemovel.next()).toMatchObject({ t: "error", code: "bad-frame" })
@@ -2504,7 +2504,7 @@ describe("caixas de emparelhamento", () => {
     a.cliente.send({ t: "pair.close", pairId: sonda })
     await a.cliente.sync()
     try {
-      // Opens up to the cap and counts: the first refusal must be `full`, and
+      // Open up to the cap and count: the first refusal must be `full`, and
       // must arrive exactly when the cap is reached.
       Gateway.PAIR_CAIXAS_VIVAS = 3
       const ids = [pairIdDeTeste(), pairIdDeTeste(), pairIdDeTeste(), pairIdDeTeste()]
@@ -2555,7 +2555,7 @@ describe("caixas de emparelhamento", () => {
 
 describe("batimento do websocket", () => {
   /*
-    Nginx in front of orwell.pt cuts a idle websocket after one hour
+    Nginx in front of orwell.pt cuts an idle websocket after one hour
     (`proxy_read_timeout 1h`). An idle client was cut every hour and,
     on each reconnection, ran the profile repair round on all channels again:
     two messages per channel per hour, measured in the production database on

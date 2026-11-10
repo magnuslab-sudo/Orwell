@@ -17,9 +17,9 @@ import {
  *
  * - Ana publishes a synthetic 3 MB video; Bruno, who follows, receives it, and the
  *   bytes have the same SHA-256.
- * - Cancel mid-way deletes the publication, and followers no longer see it.
+ * - Cancelling midway deletes the publication, and followers no longer see it.
  * - Anyone who arrives later (Carla) has the publication with the thumbnail but no bytes,
- *   asks for them from other members (S5), and receives them the same.
+ *   asks the other members for them (S5), and receives identical bytes.
  *
  * With `MEDIR_VIDEO=1`, also measures the time for 5, 15 and 30 MB and the size of each
  * frame on the server (lines `MEDIDA-VIDEO`). It is the measurement that set the cap.
@@ -230,7 +230,7 @@ describe("revisão do vídeo (26/10/2026)", () => {
     ana!.session.on("video", (evento) => {
       if (evento.fase === "a-enviar" && evento.feitas === 1) ana!.session.cancelarEnvioDeVideo()
     })
-    // Before cancellation, the bytes were in the vault: that proves they left.
+    // Before cancellation, the bytes were in the vault: that proves they were removed.
     let estavaNoCofre = false
     ana!.session.on("video", (evento) => {
       if (evento.sha === sha && evento.fase === "a-enviar") estavaNoCofre ||= ana!.vault.contents.videos?.[sha] !== undefined
@@ -262,7 +262,7 @@ describe("revisão do vídeo (26/10/2026)", () => {
     const feed = await feedCom(ana!, bruno!)
     const bytes = bytesSinteticos(3 * VIDEO_BYTES_POR_PARTE)
     const sha = await resumoDoVideo(bytes)
-    // The second part does not leave (the connection dropped, for example).
+    // The second part is not sent (the connection dropped, for example).
     const enviar = ana!.session.send.bind(ana!.session)
     let partes = 0
     ana!.session.send = async (canal, payload) => {
@@ -279,7 +279,7 @@ describe("revisão do vídeo (26/10/2026)", () => {
       "a lápide da publicação partida chega ao Bruno",
       30_000,
     )
-    // Retry: a new publication, and the first one stays deleted. Live, only one.
+    // Retry: a new publication, and the broken one stays deleted. Only one is live.
     ana!.session.send = enviar
     const segunda = await ana!.session.publicarVideo("outra vez", [], {}, { bytes, name: "x.mp4", mediaType: "video/mp4", duration: 3 })
     await ate(() => bruno!.session.estadoDoVideo(sha).fase === "pronto", "o vídeo chega ao Bruno", 30_000)
@@ -299,7 +299,7 @@ describe("revisão do vídeo (26/10/2026)", () => {
     const bytes = bytesSinteticos(3 * VIDEO_BYTES_POR_PARTE)
     const sha = await resumoDoVideo(bytes)
     const video = { bytes, name: "a.mp4", mediaType: "video/mp4", duration: 3 }
-    // Without the guard from the interface: both on the same tick, before `preparar` ends.
+    // Without the interface guard: both in the same tick, before `preparar` finishes.
     const primeiro = ana!.session.publicarVideo("o primeiro", [], {}, video)
     const segundo = ana!.session.publicarVideo("o segundo", [], {}, video)
     await expect(segundo).rejects.toThrow("a video upload is already in progress")
@@ -314,7 +314,7 @@ describe("revisão do vídeo (26/10/2026)", () => {
     await feedCom(ana!, bruno!)
     const bytes = bytesSinteticos(VIDEO_BYTES_POR_PARTE + VIDEO_BYTES_POR_PARTE / 2)
     const sha = await resumoDoVideo(bytes)
-    // The `post` refuses (no connection, or server rate limit), after `preparar` has saved the bytes.
+    // The `post` is refused (no connection, or server rate limit), after `preparar` has saved the bytes.
     let estavaNoCofre = false
     ana!.session.post = async () => {
       estavaNoCofre = ana!.vault.contents.videos?.[sha] !== undefined
@@ -355,9 +355,9 @@ describe("revisão do vídeo (26/10/2026)", () => {
 
 describe.skipIf(!process.env["MEDIR_VIDEO"])("medidas (MEDIR_VIDEO=1)", () => {
   /**
-   * Publishes via the lower path (the publication and the parts on hand). Up to
-   * the limit: as of the 26/10/2026 revision, the receiver rejects an attachment
-   * above `VIDEO_MAX_BYTES` (that is where 30 MB was measured).
+   * Publishes through the low-level path (the publication and the parts by hand). Up to
+   * the cap: since the 26/10/2026 review, the receiver rejects an attachment
+   * above `VIDEO_MAX_BYTES` (this is where 30 MB used to be measured).
    */
   async function emBruto(autor: ContaDeTeste, feed: string, bytes: Uint8Array): Promise<{ sha: string; envioMs: number }> {
     const sha = await resumoDoVideo(bytes)
@@ -433,7 +433,7 @@ describe.skipIf(!process.env["MEDIR_VIDEO"])("medidas (MEDIR_VIDEO=1)", () => {
   }, 320_000)
 
   it("o tecto do servidor: 600 envios por minuto, contados", () => {
-    // Not a measure of time: it is the metric that the report uses, written where the suite sees it.
+    // Not a measure of time: it is the calculation that the report uses, written where the suite sees it.
     const partesNoTecto = partesDoVideo(25 * 1024 * 1024)
     expect(partesNoTecto).toBe(25)
     expect(partesNoTecto).toBeLessThan(600)

@@ -31,18 +31,19 @@ import { openDatabase } from "./db.js"
 import { Store } from "./store.js"
 
 /**
- * One commit per epoch, per channel, what keeps a group from splitting.
+ * One commit per epoch, per channel: what keeps a group from splitting.
  *
- * On 9/12/2026 the common room in production was in three branches: members
- * writing in epoch 17, others in 12, and the entry card in 16. Nobody saw or
+ * On 12/9/2026 the production common room was split into three branches: members
+ * writing in epoch 17, others in 12, and the join card in 16. Nobody saw or
  * heard each other, because the roster and the call key come from the epoch.
  * On the server side, two paths led there: store ANY handshake (two nearly
  * simultaneous entries got recorded with the same epoch, and each author applied
- * theirs), and accept the card from any member over the good one (a late member
- * reput the one from their epoch, and the next one to enter opened another
+ * its own), and accept the card from any member over the good one (a lagging member
+ * put back the one from its epoch, and the next one to join opened another
  * branch).
  *
- * All frames here are real, from `@enclave/crypto`. No byte is built by hand,  * see `cabecalho-mls.test.ts` for the reason.
+ * All frames here are real, from `@enclave/crypto`. No byte is built by hand:
+ * see `cabecalho-mls.test.ts` for the reason.
  */
 
 const HOME = parseServerName("enclave.test")
@@ -51,9 +52,9 @@ const FEED = "!feed-abc:enclave.test"
 const LEITOR = "@leitor:enclave.test"
 
 /**
- * Real commits on the chain. `commits[i]` starts from epoch `i`, and `sessoes[i]` is the
- * group AT epoch `i`, where a second commit for the same epoch is drawn from, which
- * is exactly the branch we want to prevent.
+ * Real commits in a chain. `commits[i]` starts from epoch `i`, and `sessoes[i]` is the
+ * group AT epoch `i`, from which we draw a second commit for the same epoch: exactly
+ * the branch we want to prevent.
  */
 async function cadeia(canal: string, quantos: number): Promise<{ commits: Uint8Array[]; sessoes: GroupSession[] }> {
   let sala = await createChannel(generateIdentity(HOME), canal)
@@ -73,7 +74,7 @@ async function ramo(sessao: GroupSession): Promise<Uint8Array> {
   return (await rotateEpoch(sessao)).commits[0] as Uint8Array
 }
 
-/** An outsider joining via the group's key package at this epoch. */
+/** An outsider joining via the group's card at this epoch. */
 async function entradaPeloCartao(sessao: GroupSession): Promise<{ commit: Uint8Array; session: GroupSession }> {
   const [pacote] = await generateKeyPackages(generateIdentity(HOME), 1)
   if (!pacote) throw new Error("sem key package")
@@ -124,7 +125,7 @@ function handshakesGuardados(canal: string): number {
 describe("um commit por epoch, por canal", () => {
   it("duas entradas na mesma epoch: a primeira fica, a segunda é recusada e não se guarda", async () => {
     // The race we measure: an external commit and a member commit, both
-    // starting from epoch 0. We store both, then each author applies theirs.
+    // starting from epoch 0. Had both been stored, each author would apply its own.
     const { sessoes } = await cadeia(COMUM, 0)
     const entrada = await entradaPeloCartao(sessoes[0] as GroupSession)
     const doMembro = await ramo(sessoes[0] as GroupSession)
@@ -157,7 +158,7 @@ describe("um commit por epoch, por canal", () => {
 
   it("com memória, só a epoch do canal: um commit de uma epoch à frente é recusado e não salta", async () => {
     // Live, a commit ahead comes from a branch the server rejected (the
-    // old client applied theirs anyway) or a forged header.
+    // old client that applied its own anyway) or from a forged header.
     // Jumping to it would make that branch official and lock the real group.
     // The jump only exists at startup, over history. See `inicializarEpochs`.
     const { commits } = await cadeia(COMUM, 4)
@@ -179,7 +180,7 @@ describe("um commit por epoch, por canal", () => {
     const proposta = await createProposal(velha.state, false, { proposalType: "add", add: { keyPackage: pacote.publicPackage } }, velha.suite)
     expect(guardar(COMUM, encodeMlsMessage(proposta.message)).ok).toBe(true)
 
-    // The Welcome is encrypted: no epoch can read it.
+    // The Welcome is encrypted: it does not even have an epoch to read.
     const adicao = await addMembers(velha, [pacote.publicPackage])
     expect(guardar(COMUM, adicao.welcome, { kind: "welcome" }).ok).toBe(true)
     expect(store.epochDoCanal(COMUM)).toBe(3)
@@ -207,14 +208,14 @@ describe("um commit por epoch, por canal", () => {
 
   it("num canal refundável, um commit de epoch 0 é o grupo refeito com o mesmo nome, e recomeça o canal", async () => {
     /*
-      A caller who loses group state, another browser, imported account, "restart
-      rooms", rebuilds the feed and conversations with the SAME identifier, from
+      Whoever loses group state (another browser, an imported account, "restart
+      rooms") rebuilds the feed and conversations with the SAME identifier, from
       epoch 0, and invites again; `#acceptWelcome` says that is how a remade channel heals.
-      Refusing the epoch 0 commit left that group unable to invite anyone ever: no commit
-      of theirs would reach the old epoch.
+      Refusing the epoch 0 commit would leave that group unable to invite anyone ever
+      again: none of its commits would reach the old group's epoch.
 
-      Whoever can refound is decided by the caller (`Gateway.#podeRefundar`): the owner
-      of the feed, one of two people in a conversation. Here we prove what the
+      The caller decides who may refound (`Gateway.#podeRefundar`): the owner
+      of the feed, either of the two people in a conversation. Here we prove what the
       base does with that decision.
     */
     const antigo = await cadeia(FEED, 6)
@@ -225,8 +226,8 @@ describe("um commit por epoch, por canal", () => {
     expect(guardar(FEED, refeito.commits[0] as Uint8Array, { refundavel: true }).ok).toBe(true)
     expect(store.epochDoCanal(FEED)).toBe(1)
     expect(guardar(FEED, refeito.commits[1] as Uint8Array).ok).toBe(true)
-    // And the old group, if someone still commits there, behind or ahead of
-    // the new group's epoch, that is what gets locked out. With live jumping, the
+    // And it is the old group, if someone still commits there (behind or ahead of
+    // the new group's epoch), that is left out. With live jumping, the
     // lagging epoch 5 commit was accepted and locked the remade group.
     expect(guardar(FEED, await ramo(antigo.sessoes[1] as GroupSession))).toEqual({ ok: false, reason: "stale-epoch", epoch: 2 })
     expect(guardar(FEED, await ramo(antigo.sessoes[5] as GroupSession))).toEqual({ ok: false, reason: "stale-epoch", epoch: 2 })
@@ -240,8 +241,8 @@ describe("um commit por epoch, por canal", () => {
   }, 30_000)
 
   it("na sala comum não há refundação: um commit de epoch 0 atrasado é recusado como outro qualquer", async () => {
-    // The common room is only created empty (`mine && empty`), and it is the only one with a key package:
-    // an external join via the epoch 0 key package racing against the founder's first
+    // The common room is only created empty (`mine && empty`), and it is the only one with a card:
+    // an external join via the epoch 0 card racing against the founder's first
     // commit is the most likely race it faces.
     const { commits, sessoes } = await cadeia(COMUM, 2)
     for (const commit of commits) guardar(COMUM, commit)
@@ -257,7 +258,7 @@ describe("um commit por epoch, por canal", () => {
   it("um commit com uma epoch que não cabe num número seguro não é travado nem mexe no canal", async () => {
     const { commits } = await cadeia(COMUM, 2)
     guardar(COMUM, commits[0] as Uint8Array)
-    // The same real commit with the epoch (u64, right after the group) at the maximum.
+    // The same real commit with the epoch (u64, right after the group) set to the maximum.
     const enorme = (commits[1] as Uint8Array).slice()
     const inicioDaEpoch = 2 + 2 + 1 + new TextEncoder().encode(COMUM).length
     enorme.fill(0xff, inicioDaEpoch, inicioDaEpoch + 8)
@@ -268,9 +269,9 @@ describe("um commit por epoch, por canal", () => {
 
 describe("o mesmo commit reenviado é o mesmo commit, e não um atrasado", () => {
   /*
-    The echo is lost in a socket drop, the client resends the commit that
+    The echo is lost in a socket drop, so the client resends the commit that
     was already accepted. With `stale-epoch`, the new client discarded it and
-    fell behind itself: it cannot apply its own commit when it comes back via
+    fell behind itself: it could not apply its own commit when it came back via
     backfill. The right answer is the event that is already there.
   */
   it("devolve o evento original, sem gravar outra linha nem mexer na epoch", async () => {
@@ -295,7 +296,7 @@ describe("o mesmo commit reenviado é o mesmo commit, e não um atrasado", () =>
   }, 30_000)
 
   it("fora da sala comum, o commit de epoch 0 reenviado não recomeça o canal", async () => {
-    // Without this, refound caught the founder's resend: the epoch went back to 1
+    // Without this, refounding caught the founder's resend: the epoch went back to 1
     // and the commit was recorded twice.
     const { commits } = await cadeia(FEED, 2)
     for (const commit of commits) guardar(FEED, commit)
@@ -313,9 +314,9 @@ describe("o mesmo commit reenviado é o mesmo commit, e não um atrasado", () =>
 describe("destinatário só num Welcome", () => {
   /*
     An event with a recipient is only delivered to them, and backfill does not
-    show it to anyone else. In a Welcome that is what you want. In a commit it was
-    a commit that counted toward the channel's epoch and that other members never
-    saw, the channel advanced without them.
+    show it to anyone else. For a Welcome that is what we want. For a commit, it
+    meant a commit that counted toward the channel's epoch and that other members
+    never saw: the channel moved on without them.
   */
   it("um commit ou uma mensagem com destinatário é recusado, e não conta nem se guarda", async () => {
     const { commits } = await cadeia(COMUM, 2)
@@ -354,15 +355,15 @@ describe("o cartão de entrada guarda-se só se descrever a epoch do canal", () 
     const bom = await publishableGroupInfo(sessoes[3] as GroupSession)
     expect(store.putGroupInfo(COMUM, bom)).toEqual({ ok: true })
 
-    // The lagging member restoring their epoch's key package over the good one.
+    // The lagging member putting its epoch's card back over the good one.
     const velho = await publishableGroupInfo(sessoes[2] as GroupSession)
     expect(store.putGroupInfo(COMUM, velho)).toEqual({ ok: false, reason: "stale-groupinfo", epoch: 3 })
     expect(store.takeGroupInfo(COMUM)).toEqual(bom)
   }, 30_000)
 
   it("de uma epoch à frente do canal também é recusado: descreve um ramo que o servidor não aceitou", async () => {
-    // Whoever publishes this applied a commit that was refused. Stored, the
-    // next one to arrive entered that branch with a commit from the next epoch, and
+    // Whoever publishes this applied a commit that was refused. Had it been stored, the
+    // next arrival would join that branch with a commit for the next epoch, and
     // a commit ahead is accepted.
     const { commits, sessoes } = await cadeia(COMUM, 3)
     for (const commit of commits.slice(0, 2)) guardar(COMUM, commit)
@@ -385,8 +386,8 @@ describe("o cartão de entrada guarda-se só se descrever a epoch do canal", () 
   }, 30_000)
 
   it("aceitar um commit apaga o cartão que deixou de servir", async () => {
-    // Without this, the `hello.ok` said there was a key package, no member published
-    // another, and the next arrival wasted a key package on a dead key package.
+    // Without this, the `hello.ok` said there was a card, no member published
+    // another, and the next arrival wasted a key package on a dead card.
     const { commits, sessoes } = await cadeia(COMUM, 1)
     expect(store.putGroupInfo(COMUM, await publishableGroupInfo(sessoes[0] as GroupSession))).toEqual({ ok: true })
     expect(guardar(COMUM, commits[0] as Uint8Array).ok).toBe(true)
@@ -412,7 +413,7 @@ describe("arranque: a epoch de cada canal tirada do que já está guardado", () 
     for (let epoch = 0; epoch <= 16; epoch++) {
       historia.push(["handshake", commits[epoch] as Uint8Array])
       // The two paths that split the room: a second commit in the same epoch,
-      // and a join via an old key package with the group already far ahead.
+      // and a join via an old card with the group already far ahead.
       if (epoch === 12) historia.push(["handshake", await ramo(sessoes[12] as GroupSession)])
       if (epoch === 13) historia.push(["handshake", (await entradaPeloCartao(sessoes[6] as GroupSession)).commit])
     }
@@ -449,7 +450,7 @@ describe("arranque: a epoch de cada canal tirada do que já está guardado", () 
   }, 30_000)
 
   it("um canal refeito com o mesmo nome arranca na epoch do grupo novo, e um que não se refunda não", async () => {
-    // The rule applied over history in the order it arrived, otherwise
+    // The rule run over history in arrival order; otherwise
     // startup would lock the remade group at the old epoch.
     const grupo = "!sala:enclave.test"
     for (const canal of [FEED, grupo]) {
@@ -475,9 +476,9 @@ describe("arranque: a epoch de cada canal tirada do que já está guardado", () 
 
   it("depois de uma refundação só contam os commits do grupo novo, e um commit tardio do velho não o tranca", async () => {
     /*
-      Feed or conversation G1 went to epoch 20, the owner remakes it (G2, epoch 0),
+      Feed or conversation G1 went to epoch 20, the owner remade it (G2, epoch 0),
       and then a late G1 commit still arrived at epoch 21. Running the rule
-      over all history with jumping gave 22, the channel locked for G2, which
+      over all history with jumping gave 22: the channel locked for G2, which
       is at 1. Count from the LAST refound (the last epoch 0 commit, by arrival order),
       and without jumping: the G1 latecomer is left out.
     */
@@ -500,8 +501,8 @@ describe("arranque: a epoch de cada canal tirada do que já está guardado", () 
 
   it("o servidor corre-o ao arrancar: refunda grupos refeitos antes do deploy, e nunca a sala comum", async () => {
     const { commits, sessoes } = await cadeia(COMUM, 2)
-    // With a late join via an epoch 0 key package at the end: in the common room
-    // it is no refound at all.
+    // With a late join via an epoch 0 card at the end: in the common room
+    // it is not a refound.
     const tardia = await entradaPeloCartao(sessoes[0] as GroupSession)
     ;[...commits, tardia.commit].forEach((commit, seq) => inserirCru(COMUM, seq, "handshake", commit))
     // A remade group channel with the same name before deploy (the client's `knownBefore`).
@@ -581,7 +582,7 @@ describe("na rede: o gateway recusa ao autor, e a mais ninguém", () => {
   it("a entrada e o commit do fundador na mesma epoch: o segundo volta ao autor com o ref, e não chega a ninguém", async () => {
     const idFundador = generateIdentity(casa)
     const fundador = await Cliente.ligar(url, idFundador)
-    // Found the room: subscribe while no one used it, and speak in there.
+    // Found the room: subscribe while no one has used it, and speak in it.
     fundador.enviar({ t: "channel.subscribe", channels: [sala] })
     fundador.enviar({ t: "channel.send", channel: sala, kind: "application", ciphertext: toBase64(new Uint8Array([1])) })
     await fundador.proximoDe("channel.event")
@@ -622,8 +623,8 @@ describe("na rede: o gateway recusa ao autor, e a mais ninguém", () => {
     const pagina = await fundador.proximoDe("channel.backfill.page")
     expect(pagina.events.filter((evento) => evento.kind === "handshake")).toHaveLength(1)
 
-    // The founder's old key package, restored after join: refused to them, and
-    // the good one, from whoever joined, stays as what is delivered.
+    // The founder's old card, put back after the join: refused for it, and
+    // the good one (from whoever joined) is still the one delivered.
     fundador.enviar({ t: "channel.groupinfo.put", channel: sala, info: toBase64(await publishableGroupInfo(grupoDoFundador)) })
     expect(await fundador.proximoDe("channel.rejected")).toEqual({
       t: "channel.rejected",
@@ -650,11 +651,11 @@ describe("na rede: o gateway recusa ao autor, e a mais ninguém", () => {
     /*
       Refound worked in 0.9 for those who lost state and remade THEIR feed or
       THEIR conversation with the same identifier: the name (`!feed-x`, `!dm-a.b`)
-      said who they were. An opaque address names no one, and the server does not
-      tell a direct from a room; opened to whoever started it, it was how a
-      room creator could split it to everyone with an epoch 0 commit. Whoever
-      lost the group asks for a slot (slice 3). Opened to any member, it was how
-      a hostile member could split a private channel on purpose.
+      said who they were. An opaque address names no one, and the server cannot
+      tell a DM from a room; open to whoever created it, it let a room's creator
+      split it for everyone with an epoch 0 commit. Whoever lost the group asks
+      for a seat (slice 3). Open to any member, it let a hostile member split a
+      private channel on purpose.
     */
     const idDono = generateIdentity(casa)
     const idMembro = generateIdentity(casa)
@@ -733,7 +734,7 @@ describe("na rede: o gateway recusa ao autor, e a mais ninguém", () => {
     autor.enviar({ t: "channel.send", channel: canal, kind: "handshake", ciphertext: toBase64(fundacao.commits[0] as Uint8Array) })
     await autor.proximoDe("channel.event")
 
-    // The other member joins via Welcome, which is what gives them a slot here.
+    // The other member joins via Welcome, which is what gives it a seat here.
     const [pacote] = await generateKeyPackages(idOutro, 1)
     if (!pacote) throw new Error("sem key package")
     const adicao = await addMembers(fundacao.session, [pacote.publicPackage])

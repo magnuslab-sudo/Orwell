@@ -5,11 +5,11 @@ import { addMembers, createChannel, exportSession, generateKeyPackages, importSe
 import { leavesOf } from "./sender.js"
 
 /**
- * **Whoever is removed from a group learns about it** (F7, audit of 20/10/2026).
+ * **A member removed from a group finds out** (F7, audit of 20/10/2026).
  *
- * ts-mls does not apply a commit that removes the leaf of whoever processes it:
- * the UpdatePath comes encrypted for whoever stays, and processing fails before
- * reaching `removedFromGroup`. `receive` now recognizes the case, using epoch proofs,
+ * ts-mls does not apply a commit that removes the processing member's own leaf:
+ * the UpdatePath is encrypted for those who stay, and processing fails before
+ * reaching `removedFromGroup`. `receive` now recognizes the case, using the epoch's proofs,
  * and returns the group marked.
  */
 const CASA = parseServerName("localhost:8448")
@@ -59,9 +59,9 @@ describe("a remoção da nossa folha", () => {
 
   /*
     The negative cases (M6 of the review): none of these can mark the group as
-    left, because marking it is dropping the channel. A commit from another epoch,
+    left, because marking it means dropping the channel. A commit from another epoch,
     corrupted bytes (the server inventing a removal), and a removal by reference,
-    which cannot be read without resolving stored proposals: whoever receives it
+    which cannot be read without resolving stored proposals: the receiver
     stays "active", and keeps the old behavior.
   */
   it("um commit de outra epoch não marca", async () => {
@@ -69,7 +69,7 @@ describe("a remoção da nossa folha", () => {
     const carlos = generateIdentity(CASA)
     const [pacote] = await generateKeyPackages(carlos, 1)
     if (!pacote) throw new Error("sem pacote")
-    // Ana spends one epoch with Bruno not seeing, and removes him in that new epoch.
+    // Ana moves one epoch ahead without Bruno seeing it, and removes him in that new epoch.
     const entrada = await addMembers(grupoAna, [pacote.publicPackage])
     const remocao = await removeMembers(entrada.session, leavesOf(entrada.session.state.ratchetTree, bruno.address))
     const [commit] = remocao.commits

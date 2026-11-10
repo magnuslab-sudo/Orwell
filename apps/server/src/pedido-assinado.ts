@@ -15,9 +15,9 @@ import type { Store } from "./store.js"
 /**
  * The signed request (`packages/protocol/src/denuncia.ts`), on the server side.
  *
- * Authenticates report routes without gateway session: the device signs the
- * request, the chain links the device to the account, and the account belongs
- * to the address. Returns always, never throws: the caller transforms the reason
+ * Authenticates the report routes without a gateway session: the device signs
+ * the request, the chain links the device to the account, and the account is
+ * the one the address names. Returns, never throws: the caller turns the reason
  * into an HTTP response.
  */
 export type RecusaDoPedido =
@@ -32,9 +32,9 @@ export type RecusaDoPedido =
   | "wrong-route"
 
 /**
- * The maximum nonces in memory. Route caps protect the map per account; this
- * protects it in total (many accounts, or a cap set badly). Full, even after
- * cleaning expired ones, a new nonce is refused as a replay.
+ * The maximum number of nonces in memory. The route caps bound the map per
+ * account; this bounds it in total (many accounts, or a badly set cap). When it
+ * is full, even after clearing expired ones, a new nonce is refused as a replay.
  */
 export const NONCES_MAX = 200_000
 
@@ -42,8 +42,8 @@ export const NONCES_MAX = 200_000
  * Nonces already accepted, held in memory.
  *
  * A request only passes the clock if `|agora - emitido| <= janela`, so the
- * same copy can pass it again only during two windows after the
- * first was accepted. Keeping each nonce for that duration is enough; after that
+ * same copy can pass it again only within two windows after the
+ * first one was accepted. Keeping each nonce for that duration is enough; after that
  * the clock rejects the repeat by itself. Losing this on restart opens, in the worst
  * case, one repeat within that window, and the routes that use it have their own caps.
  *
@@ -63,7 +63,7 @@ export class NoncesVistos {
     return this.#vistos.size
   }
 
-  /** True if the nonce is new and there is room for it. Does not record. */
+  /** True if the nonce has not been seen and there is room for it. Does not record it. */
   livre(nonce: string, agora = Date.now()): boolean {
     if (agora - this.#ultimaLimpeza >= this.janelaMs) this.limpar(agora)
     const visto = this.#vistos.get(nonce)
@@ -75,14 +75,14 @@ export class NoncesVistos {
     return true
   }
 
-  /** Records the nonce. False, without recording, if it was seen or there is no room. */
+  /** Records the nonce. False, without recording, if it was already seen or there is no room. */
   consumir(nonce: string, agora = Date.now()): boolean {
     if (!this.livre(nonce, agora)) return false
     this.#vistos.set(nonce, agora)
     return true
   }
 
-  /** `libre` and `consume` in one. */
+  /** `livre` and `consumir` in one step. */
   tentar(nonce: string, agora = Date.now()): boolean {
     return this.consumir(nonce, agora)
   }
@@ -102,9 +102,9 @@ export function verificarPedidoAssinado(
     nonces: NoncesVistos
     agora?: number
     /**
-     * The route cap, by the signature address. Runs after everything else
+     * The route cap, keyed by the signature's address. Runs after everything else
      * passes and before the nonce is recorded: the request it refuses returns
-     * `ok` with `coube: false` and no nonce in memory. No cap, it fits.
+     * `ok` with `coube: false` and no nonce in memory. With no cap, it fits.
      */
     tecto?: (endereco: string) => boolean
   },
@@ -146,9 +146,9 @@ export function verificarPedidoAssinado(
     return recusa("bad-device-cert")
   }
   // The key stored at first login must be this one. Read-only: the chain is a
-  // public certificate (goes in key packages and MLS credential), and anyone
-  // with a copy cannot create accounts here. An account that never logged in is
-  // also "key-mismatch".
+  // public certificate (it goes in key packages and the MLS credential), and a
+  // copy of it does not let anyone create accounts here. An account that never
+  // logged in is also "key-mismatch".
   const guardada = deps.store.signingKeyOf(pedido.endereco)
   if (guardada === undefined || !mesmosBytes(guardada, chaveDeConta)) return recusa("key-mismatch")
 
@@ -161,7 +161,7 @@ export function verificarPedidoAssinado(
   try {
     mensagem = mensagemDoPedido(assinado)
   } catch {
-    // `body` is z.unknown(): a number like 1e400 in JSON arrives as Infinity, and
+    // `corpo` is z.unknown(): a number like 1e400 in JSON arrives as Infinity, and
     // canonical JSON does not encode it.
     return recusa("malformed")
   }
@@ -171,9 +171,9 @@ export function verificarPedidoAssinado(
   const agora = deps.agora ?? Date.now()
   if (Math.abs(agora - pedido.emitido) > JANELA_DO_PEDIDO_MS) return recusa("stale-request")
 
-  // Replay (or the map full, which counts the same), then the cap, and only then
+  // Replay (or a full map, reported the same way), then the cap, and only then
   // the nonce is recorded. All synchronous: between checking and recording no
-  // other request runs, and `consume` checks again anyway.
+  // other request runs, and `consumir` checks again anyway.
   if (!deps.nonces.livre(pedido.nonce, agora)) return recusa("replayed")
   const coube = deps.tecto?.(pedido.endereco) ?? true
   if (coube && !deps.nonces.consumir(pedido.nonce, agora)) return recusa("replayed")

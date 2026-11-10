@@ -27,10 +27,10 @@ import type { ServerConfig } from "./config.js"
  * who lives on another server, the gateway calls `claimRemote`, and what the
  * peer answers reaches the client via `keypackage.claimed`.
  *
- * The peer is a fake fetch: federation never ran between two servers for real,
+ * The peer is a fake `fetch`: federation never ran between two real servers,
  * and what is proven here is the translation, both ways. A 0.2.3 peer answers
  * with just `keyPackage`; a new peer answers with the bundle; a peer that
- * answers junk did not answer. And the request that goes out carries
+ * answers garbage counts as no answer. And the request that goes out carries
  * `bundle`/`devices` when the client asked for them, and does not when it did
  * not.
  */

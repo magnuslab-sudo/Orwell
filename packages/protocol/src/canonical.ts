@@ -78,7 +78,7 @@ export function toBase64(bytes: Uint8Array): string {
  *
  * The two alphabets differ only in the last two characters (`-_` against `+/`),
  * so accepting both costs one substitution and removes an entire class of
- * interoperability failure — a value produced by some other library's `base64`
+ * interoperability failure: a value produced by some other library's `base64`
  * would otherwise fail to decode for no reason a caller could act on. Encoding
  * always emits base64url.
  */

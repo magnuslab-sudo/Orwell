@@ -7,22 +7,22 @@ import { epochOf, type GroupSession } from "./group.js"
  * `docs/planos/2026-10-20-sincronia-absoluta.md`, section 4.5).
  *
  * Digests and anti-entropy requests travel in the `channel.sinal` frame, which
- * the server passes to those connected and does not store. They cannot go through
- * the MLS ratchet: each MLS message spends one generation from the sender, and a
+ * the server relays to whoever is connected and does not store. They cannot go through
+ * the MLS ratchet: each MLS message uses up one of the sender's generations, and a
  * member who does not receive them must skip them. The cap is 512 skips
  * (`maximumForwardRatchetSteps`); an afternoon of digests would deafen anyone
- * offline.
+ * who was offline.
  *
  * That is why the key comes from the MLS epoch exporter, like the SFrame key
  * (`deriveSframeKeyMaterial` in `sframe.ts`), with its own label. It does not
- * spend generations, and only those who are members of the group in this epoch
- * have it: not the server.
+ * use up generations, and only members of the group in this epoch
+ * have it, not the server.
  *
- * The key proves the sender is a MEMBER, not WHICH member. The content carries
- * the device signature (see `pedido.ts` in the core) for that reason, and the
+ * The key proves the sender is a MEMBER, not WHICH member. That is why the content carries
+ * the device signature (see `pedido.ts` in the core), and the
  * receiver checks it against the sender's leaf.
  *
- * A signal from an epoch we no longer have is thrown away. It does not count
+ * A signal from an epoch we no longer have is discarded. It does not count
  * toward deafness: it is not an MLS frame.
  */
 
@@ -41,8 +41,8 @@ export interface ChaveDoSinal {
 /**
  * The signal key for this channel in the group's current epoch.
  *
- * The context is the channel name: two channels never share a key, even if one
- * exporter repeated.
+ * The context is the channel name: two channels never share a key, even if an
+ * exporter secret repeated.
  */
 export async function derivarChaveDoSinal(session: GroupSession, canal: string): Promise<ChaveDoSinal> {
   const chave = await mlsExporter(
@@ -64,12 +64,12 @@ function dadosAdicionais(canal: string, epoca: bigint): Uint8Array {
 }
 
 /**
- * Encrypt a payload: `versão | época (u64) | nonce (24) | XChaCha20-Poly1305`.
+ * Encrypt a signal: `versão | época (u64) | nonce (24) | XChaCha20-Poly1305`.
  *
  * The epoch is sent in the clear (the server already sees it in MLS frames)
  * so the receiver can pick the key without trying them all. The channel and
- * epoch go into the additional data: a payload doesn't move from one channel
- * or epoch to another.
+ * epoch go into the additional data: a signal cannot be moved to another channel
+ * or epoch.
  */
 export function selarSinal(chave: ChaveDoSinal, canal: string, texto: Uint8Array, nonce?: Uint8Array): Uint8Array {
   const n = nonce ?? crypto.getRandomValues(new Uint8Array(BYTES_DO_NONCE))

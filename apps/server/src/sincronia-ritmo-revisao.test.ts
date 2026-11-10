@@ -11,14 +11,14 @@ import {
 } from "../testes/cliente-de-teste.js"
 
 /**
- * The fixes from the S6 revision (retry of sends rejected by rate limit), with
- * the server for real and the rejections injected by hand.
+ * The fixes from the S6 review (retrying sends rejected by rate limit), with
+ * a real server and the rejections injected by hand.
  *
- * The server's rate limit stays at its value: the rejections measured here are
+ * The server's cap stays at its normal value: the rejections measured here are
  * chosen by the test, one at a time, on a socket placed between the `Session` and the
  * server (`filtroDeEnvios`). This way each case rejects exactly the send it wants,
- * and the rest of the path (the cipher, the echo, the server's order, the doubling of
- * the receiver) is genuine.
+ * and the rest of the path (the encryption, the echo, the server's ordering, the
+ * receiver's fold) is genuine.
  */
 
 interface Trama {
@@ -41,7 +41,7 @@ interface Visto {
 }
 
 /**
- * Sockets opened next will pass `channel.send` through `regra`. A rejection doesn't
+ * Sockets opened after this pass `channel.send` through `regra`. A rejection doesn't
  * reach the server: the filter returns to the `Session` the `channel.rejected` with
  * `rate-limited`, as the server would.
  */
@@ -155,7 +155,7 @@ async function abrirPausa(conta: ContaDeTeste, canal: string, esperaMs: number):
     feita = true
     return { recusar: esperaMs }
   }
-  // The write signal in progress (`until` in the future) doesn't repeat: it only opens the pause.
+  // A typing signal still in progress (`until` in the future) is not retried: it only opens the pause.
   await conta.session.send(canal, { t: "typing", until: Date.now() + 3_000 } as never)
   await ate(() => filtro.recusadas.length > antes && conta.avisos.includes("send-rate-limited"), "a pausa abre")
 }
@@ -216,7 +216,7 @@ describe("revisão de S6: a troca de conta (achado 3)", () => {
     await ana!.session.connect()
     await ate(() => ana!.session.connection === "online" && ana!.session.channels.includes(canal), "a Bia está ligada na sessão que era da Ana")
 
-    // After the pause, with room to spare: nothing goes out, from nobody.
+    // After the pause, with room to spare: none of that goes out, from anyone.
     await esperar(6_000)
     const viu = dora!.session.history(canal).filter((e) => e.payload["body"] === segredo)
     expect(viu).toEqual([])
@@ -235,7 +235,7 @@ describe("revisão de S6: a espera em ciclo (achado 4)", () => {
     const desde = Date.now()
     const id = crypto.randomUUID()
     // The message is already waiting for the first pause when another rejection, without
-    // `ref`, extends it to 3 s. The waiter has to see the new pause.
+    // `ref`, extends it to 3 s. The waiting send must see the new pause.
     const enviou = ana!.session.send(canal, mensagem(id, "depois da pausa"))
     await esperar(100)
     filtro.injectar(ana!.address, { t: "channel.rejected", channel: canal, reason: "rate-limited", retryAfterMs: 3_000 })
@@ -252,7 +252,7 @@ describe("revisão de S6: a espera em ciclo (achado 4)", () => {
     const c2 = await canalComTodos(servidor, ana!, [])
     await esperar(500)
 
-    // Ana's first commit is rejected for rate limit: it opens the pause for commits.
+    // Ana's first commit is rejected for rate limit: it opens the commit pause.
     // Written inside the filter: without the `as`, TypeScript narrows it to `null` forever.
     let recusou = null as number | null
     filtro.regra = (trama, endereco) => {
@@ -282,12 +282,12 @@ describe("revisão de S6: a voz não se repete velha (achado 5)", () => {
       if (evento.from === ana!.address && evento.payload.t === "voice.join") vistos.push(String(evento.payload.joinId))
     })
 
-    // Everything Ana sends in this channel during 1.5 s is rejected, with 2 s of wait time.
+    // Everything Ana sends in this channel for 1.5 s is rejected, with a 2 s wait.
     const fim = Date.now() + 1_500
     filtro.regra = (trama, endereco) =>
       endereco === ana!.address && trama.channel === canal && trama.kind === "application" && Date.now() < fim ? { recusar: 2_000 } : null
     const join = (joinId: string, at: number) => ({ t: "voice.join", at, video: false, sframe: false, alone: false, joinId }) as never
-    // One with 3.5 s of age (when retried it will be over 5 s) and one just sent.
+    // One 3.5 s old (by the time it is retried it will be over 5 s old) and one just sent.
     await ana!.session.send(canal, join("velho", Date.now() - 3_500))
     await ana!.session.send(canal, join("fresco", Date.now()))
     await ate(() => vistos.includes("fresco"), "o fresco repete-se e chega", 20_000)
@@ -304,7 +304,7 @@ describe("revisão de S6: desistir pelo tempo (achado 1)", () => {
     Session.PRAZO_DOS_REENVIOS_MS = 6_000
     const lista = estados(ana!)
 
-    // `retryAfterMs` of 1 ms, as the server says when just one slot is left.
+    // `retryAfterMs` of 1 ms, as the server says when only one slot is left.
     filtro.regra = (trama, endereco) =>
       endereco === ana!.address && trama.channel === canal && trama.kind === "application" ? { recusar: 1 } : null
     const inicio = Date.now()

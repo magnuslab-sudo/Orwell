@@ -17,14 +17,14 @@ import {
  * Defect in production on 1.3.3 (5/11/2026): an account switched from browser to
  * desktop app and lost the common room. The log repeated, once per minute:
  * `rejoin-resync` → 10 s → `commit-unconfirmed` → "Join request sent". The epoch
- * went up each time (365, 366, …): the commit ENTERED, and the author never knew.
+ * went up each time (365, 366, …): the commit got IN, and the author never knew.
  *
- * The cause: who already has a durable subscription on the channel (the
- * `subscriptions` table) passes through `#relay` as seated, and the external
+ * The cause: an account that already has a durable subscription in the channel
+ * (the `subscriptions` table) passes `#relay` as seated, and the external
  * commit promotes nothing, but the NEW connection is not in `connection.channels`,
  * because the client only subscribes to the room after the verdict. `broadcast`
- * delivers to who is in that set, and the echo, which is the verdict, did not
- * reach who asked for it. Before INV-01 (1.2.1) `channel.groupinfo.take` put the
+ * delivers to the connections in that set, and the echo, which is the verdict,
+ * never reached the connection that asked for it. Before INV-01 (1.2.1) `channel.groupinfo.take` put the
  * connection in the channel, and the echo came through there.
  *
  * The rule these tests set: an accepted send always has an echo to whoever sent
@@ -51,7 +51,7 @@ const cifra = (): string => toBase64(crypto.getRandomValues(new Uint8Array(64)))
 describe("sala comum: reentrada por cartão de quem já tem subscrição durável", () => {
   it("o commit externo com resync, numa ligação nova, recebe veredicto e a conta volta a entrar", async () => {
     // Short timeout for the verdict: the bug is the lack of it, and ten seconds
-    // per lap is a test no one runs.
+    // per round is a test nobody runs.
     Session.CONFIRM_MS = 3_000
     const sala = servidor.sala
     const [fundador] = await contasDeTeste(servidor, ["fundador"])
@@ -62,8 +62,8 @@ describe("sala comum: reentrada por cartão de quem já tem subscrição duráve
 
     /*
       The account in the browser. The account file exported BEFORE it joins the
-      room is what the desktop app will import: same device key,
-      without the room group (production case: the app had no group and the
+      room is what the desktop app will import: the same device key,
+      without the room's group (the production case: the app had no group and the
       tree still had this device's leaf).
     */
     const frase = "frase-passe-de-teste"
@@ -78,14 +78,14 @@ describe("sala comum: reentrada por cartão de quem já tem subscrição duráve
     await ate(() => browser.channels.includes(sala), "a paptira entra pelo cartão no browser")
     await ate(() => fundador.session.membersOf(sala).length === 2, "o fundador vê-a")
     await ate(() => servidor.enclave.store.hasGroupInfo(sala), "a paptira repõe o cartão")
-    // Durable subscription, per account: it tells `#relay` to treat the
-    // new connection as seated.
+    // The durable subscription, per account: this is what makes `#relay` treat
+    // the new connection as seated.
     expect(servidor.enclave.store.isSubscribed(sala, address)).toBe(true)
     browser.disconnect()
     const epocaAntes = fundador.session.groupFor(sala)?.state.groupContext.epoch ?? 0n
 
     // The desktop app: imports the file and connects. New connection, no
-    // room in `connection.channels` (has no group to subscribe to).
+    // room in `connection.channels` (it has no group for it to subscribe to).
     const backend = new CofreEmMemoria()
     const cofreDaApp = new Vault(backend)
     await cofreDaApp.importVault(ficheiroDeConta, frase)
@@ -132,7 +132,7 @@ describe("o servidor dá sempre veredicto a quem envia", () => {
     dono.enviar({ t: "channel.send", channel: canal, kind: "application", ciphertext: cifra() })
     await dono.proximoDe("channel.event")
 
-    // The account has a durable place (entered on another device, another connection).
+    // The account has a durable seat (it joined on another device, on another connection).
     servidor.enclave.store.subscribe(canal, idOutra.address)
     const outra = await Cliente.ligar(servidor.url, idOutra)
     outra.enviar({ t: "channel.send", channel: canal, kind: "application", ciphertext: cifra(), ref: "ref-da-outra" })
@@ -141,7 +141,7 @@ describe("o servidor dá sempre veredicto a quem envia", () => {
     const recusa = recebidos.find((f) => f.t === "channel.rejected")
     expect(eco ?? recusa).toBeDefined()
     expect(eco).toBeDefined()
-    // And the owner, who is subscribed, gets it as always, once only.
+    // And the owner, who is subscribed, gets it as usual, only once.
     const doDono = (await dono.ateAoPong()).filter((f) => f.t === "channel.event")
     expect(doDono).toHaveLength(1)
     dono.fechar()
