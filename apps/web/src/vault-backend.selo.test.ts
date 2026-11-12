@@ -161,7 +161,7 @@ describe("um escritor sem ficha (separador com o código de antes)", () => {
     // What the old tab wrote stays: the owner does not write over a state it does not know.
     expect(gravado()).toBe(40)
     expect(motivos).toEqual(["outro-escritor"])
-    // E fica selado.
+    // And it stays sealed.
     await expect(dono.write(bytes(4))).rejects.toThrow(RECUSA_DE_ESCRITA)
     expect(motivos).toEqual(["outro-escritor"])
   })

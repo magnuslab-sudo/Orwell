@@ -79,7 +79,7 @@ for (const quem of [alice, bob]) {
 
 const escrita = (page) => page.locator(".chat-composer input[type=text], .chat-composer input:not([type])").first()
 
-// ------------------------------------------------------- 1. enviar o PDF e o ZIP
+// ------------------------------------------------------- 1. send the PDF and the ZIP
 const clipe = alice.page.locator('.composer-attach:has(input:not([accept]))').locator("input")
 await clipe.setInputFiles([caminhoPdf, caminhoZip])
 await alice.page.locator(".composer-files li").first().waitFor({ timeout: 20_000 })

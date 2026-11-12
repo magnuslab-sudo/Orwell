@@ -141,7 +141,7 @@ const verificar = (ok, frase) => {
   if (!ok) falhas.push(frase)
 }
 
-// ------------------------------------------------------------------ o palco
+// ------------------------------------------------------------------ the stage
 const fundadora = await contaAntiga("Fundadora")
 verificar(await ate(() => fundadora.channels.includes(SALA), 20_000), "a fundadora cria a sala comum")
 const antiga = await contaAntiga("Antiga")

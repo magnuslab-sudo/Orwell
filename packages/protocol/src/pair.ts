@@ -329,7 +329,7 @@ export function decifrarPairPayload(chave: Uint8Array, pairId: string, wire: unk
   }
 }
 
-// ------------------------------------------------------------------ o SAS
+// ------------------------------------------------------------------ the SAS
 
 /**
  * The transcript that both sides hash:

@@ -115,7 +115,7 @@ describe("readPrefs / writePrefs", () => {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ notifications: false }))
       const primeira = readPrefs()
       expect(primeira).toMatchObject({ notifications: true, avisosDaAppRevistos: true })
-      // A pessoa desliga: a escolha fica.
+      // The person switches it off: the choice stays.
       writePrefs({ ...primeira, notifications: false })
       expect(readPrefs().notifications).toBe(false)
     } finally {

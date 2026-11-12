@@ -232,8 +232,8 @@ function ler(leitor: Leitor): CabecalhoMls {
       const epoch = leitor.u64()
       leitor.vector() // tree_hash
       leitor.vector() // confirmed_transcript_hash
-      leitor.vector() // extensions do contexto
-      leitor.vector() // extensions do GroupInfo
+      leitor.vector() // context extensions
+      leitor.vector() // GroupInfo extensions
       leitor.vector() // confirmation_tag
       leitor.u32() // signer
       leitor.vector() // signature

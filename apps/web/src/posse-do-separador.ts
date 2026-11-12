@@ -211,7 +211,7 @@ export function criarPosse(opcoes: OpcoesDaPosse): Posse {
   function comTrinco(trincos: TrincosMin): Omit<Posse, "id" | "estado" | "aoMudar"> {
     /** Release the lock you hold: resolve the promise that binds you. */
     let soltar: (() => void) | null = null
-    /** Cancela o lugar na fila. */
+    /** Cancels the place in the queue. */
     let fila: AbortController | null = null
     /** The ownership request in progress: the deadline timer. */
     let pedido: ReturnType<typeof setTimeout> | null = null

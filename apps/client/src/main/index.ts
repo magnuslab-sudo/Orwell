@@ -1095,7 +1095,17 @@ function registerIpc(window: BrowserWindow): void {
   // process here: measuring it in the renderer would accidentally time the IPC.
   tratar("session:latency", () => session.measureLatency())
   // The half-open connection check, also where the socket lives. See `Session.verificarLigacao`.
-  tratar("session:verificar-ligacao", () => session.verificarLigacao())
+  // The numbers come from the renderer: only finite numbers get through, nothing else.
+  const numero = (valor: unknown): number | undefined => (typeof valor === "number" && Number.isFinite(valor) && valor >= 0 ? valor : undefined)
+  tratar("session:verificar-ligacao", (_evento, opcoes?: { silencioMinimoMs?: unknown }) => {
+    const silencioMinimoMs = numero(opcoes?.silencioMinimoMs)
+    return session.verificarLigacao(silencioMinimoMs === undefined ? {} : { silencioMinimoMs })
+  })
+  // The return to the foreground, where the socket lives. See `Session.retomar`.
+  tratar("session:retomar", (_evento, opcoes?: { escondidaMs?: unknown; suspende?: unknown }) => {
+    const escondidaMs = numero(opcoes?.escondidaMs)
+    return session.retomar({ ...(escondidaMs === undefined ? {} : { escondidaMs }), suspende: opcoes?.suspende === true })
+  })
 
   /*
     If the session still writes: the renderer caches the answer and the main

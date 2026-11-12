@@ -301,7 +301,7 @@ describe("Shell — visitar o perfil de outra pessoa", () => {
       "rascunho a meio",
     )
 
-    // O Escape.
+    // Escape.
     pagina = await abrir()
     await user.keyboard("{Escape}")
     expect(document.querySelector(".pagina-da-pessoa")).toBeNull()

@@ -168,6 +168,8 @@ export interface PortaDaAntiEntropia {
    * inside the attachment: the attachment holds the digest, and the bytes go in parts.
    */
   bytesDoVideo?(sha: string): Uint8Array | null
+  /** An attachment request failed because of a fault, not because nobody has it. For the log. */
+  aoFalharAnexo?(canal: string, detalhe: string): void
   /**
    * Resend the parts of a video to the requester (`q`). `vez` decides
    * if each part can go out. Returns whether all parts were sent.
@@ -534,7 +536,7 @@ export interface EstatisticasDaSincronia {
  */
 export type DesfechoDoAnexo =
   | { ok: true; anexo: Record<string, unknown> }
-  | { ok: false; motivo: "sem-prova" | "sem-ligacao" | "ninguem" | "recusado" | "cancelado" | "por-pedir" }
+  | { ok: false; motivo: "sem-prova" | "sem-ligacao" | "ninguem" | "recusado" | "cancelado" | "por-pedir" | "falhou" }
 
 /**
  * Attachment requests waiting their turn, at most. Opening an album of forty
@@ -675,7 +677,7 @@ export class AntiEntropia {
     return toBase64(this.#porta.eu.aparelho)
   }
 
-  // ----------------------------------------------------------- o piso
+  // ----------------------------------------------------------- the floor
 
   #cofre(): NonNullable<CofreDaSincronia["sincronia"]> {
     const cofre = this.#porta.conteudo() as unknown as CofreDaSincronia
@@ -773,7 +775,7 @@ export class AntiEntropia {
     this.#temporizadores.delete(temporizador)
   }
 
-  // ------------------------------------------------------ vida e capacidade
+  // ------------------------------------------------------ liveness and capability
 
   /** A live event from this device, in this channel: it is live. */
   notarVivo(aparelho: string): void {
@@ -810,7 +812,7 @@ export class AntiEntropia {
     return folhas[0]?.aparelho === meu
   }
 
-  // ------------------------------------------------------------ o resumo
+  // ------------------------------------------------------------ the summary
 
   #itens(canal: string, desde?: number, comApagados = false): ItemDoResumo[] {
     const membros = this.#porta.membros(canal)
@@ -1977,8 +1979,10 @@ export class AntiEntropia {
     let desfecho: DesfechoDoAnexo
     try {
       desfecho = await this.#pedirAnexoAgora(vez.canal, vez.alvo, vez.indice)
-    } catch {
-      desfecho = { ok: false, motivo: "ninguem" }
+    } catch (erro) {
+      // A fault is not "nobody has it" (1.3.7): it is reported as a fault, and the mechanics go to the log.
+      this.#porta.aoFalharAnexo?.(vez.canal, String((erro as Error)?.message ?? erro))
+      desfecho = { ok: false, motivo: "falhou" }
     }
     this.#anexoAVez = null
     vez.resolver(desfecho)
@@ -2004,11 +2008,20 @@ export class AntiEntropia {
     const guardado = this.#anexosRecebidos.get(`${canal}|${chaveCurta(fonte.chave)}|${indice}|${resumo}`)
     if (guardado) return { ok: true, anexo: guardado }
     if (!this.#porta.podeSinalizar()) return { ok: false, motivo: "sem-ligacao" }
-    const lista = candidatos(this.#porta.folhas(canal), {
-      proprio: this.#meuAparelho,
-      capaz: (folha) => this.#ehCapaz(canal, folha),
-      viva: (folha) => this.#viva(folha),
-    })
+    /*
+      Who gets asked: first the live leaves that said they know how
+      (`CAPACIDADE_SINCRONIA`), and THEN the live leaves whose capability is not
+      yet known (1.3.7).
+
+      The capability is only learned from a device signal IN THIS channel, and
+      only lives in memory. After a reload, or with the person who has the image
+      quiet in the channel since then, nobody was a candidate, and the answer was
+      "nobody has this image" with the person connected. A leaf that cannot
+      answer stays silent, and the deadline moves on to the next one.
+    */
+    const vivas = (capaz: (folha: Folha) => boolean): Folha[] =>
+      candidatos(this.#porta.folhas(canal), { proprio: this.#meuAparelho, capaz, viva: (folha) => this.#viva(folha) })
+    const lista = [...vivas((folha) => this.#ehCapaz(canal, folha)), ...vivas((folha) => !this.#ehCapaz(canal, folha))]
     const primeira = eleger(lista, 0)
     if (!primeira) return { ok: false, motivo: "ninguem" }
     return new Promise<DesfechoDoAnexo>((resolver) => {

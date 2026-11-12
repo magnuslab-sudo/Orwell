@@ -230,7 +230,7 @@ const HOME = parseServerName(NOME)
 
 try {
   // ---------------------------------------------------------------------------
-  // 1. O hello.ok
+  // 1. The hello.ok
   // ---------------------------------------------------------------------------
   const sonda = await ClienteCru.ligar()
   const { hello, resultado } = await entrarComCadeia(sonda, generateIdentity(HOME))

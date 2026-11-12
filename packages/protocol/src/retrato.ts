@@ -87,7 +87,7 @@ export interface RetratoPartido {
   bytes: Uint8Array
   /** The items left out because they do not fit (not even in light form). */
   cortados: ItemRelatado[]
-  /** Quantos itens foram na forma leve. */
+  /** How many items went in the light form. */
   aliviados: number
 }
 

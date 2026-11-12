@@ -329,7 +329,7 @@ const CAIXAS = `
   await ctx.close()
 }
 
-// ------------------------------------------------- 390px: o telefone
+// ------------------------------------------------- 390px: the phone
 {
   const { ctx, page } = await abrir(390, 800)
   const m = await page.evaluate(CAIXAS)

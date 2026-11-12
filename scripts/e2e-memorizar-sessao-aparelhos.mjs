@@ -107,7 +107,7 @@ try {
   )
   check("o sessao.enc não tem a chave em claro", !readFileSync(join(dados, "sessao.enc"), "utf8").includes('"chave"'))
 
-  // 2. Fechar e reabrir a app.
+  // 2. Close and reopen the app.
   await reabrirSecretaria()
   check("reabrir a secretária abre sem palavra-passe", (await oQueAbre(sec.page)) === "dentro" && (await quemEsta(sec.page)) === "Ana")
 

@@ -243,7 +243,7 @@ describe("revogarAparelho: as recusas, antes de qualquer escrita", () => {
     const porta = new PortaFalsa()
     mexer(porta)
     const erro = await erroDe(revogarAparelho(porta, aparelho))
-    // Nada saiu: nem manifesto, nem cofre, nem canais.
+    // Nothing went out: no manifest, no vault, no channels.
     expect(porta.publicados).toEqual([])
     expect(porta.revogados.size).toBe(0)
     expect(porta.enviados).toEqual([])

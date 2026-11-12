@@ -43,11 +43,11 @@ describe("a ligação curta de amigo", () => {
       "https://orwell.pt/a#@ana", // the secret does not go in the short fragment
       "https://orwell.pt/a#a b", // space
       "https://orwell.pt/a#%E0%A4%A", // escape partido
-      "https://orwell.pt/A#ana", // o caminho conta letra a letra
+      "https://orwell.pt/A#ana", // the path counts letter by letter
       "https://orwell.pt/app/ab#ana", // different path
       "https://ana@orwell.pt/a#ana", // userinfo
       "ftp://orwell.pt/a#ana",
-      `https://orwell.pt/a#${"x".repeat(3000)}`, // acima do tecto
+      `https://orwell.pt/a#${"x".repeat(3000)}`, // above the cap
     ]) {
       expect(lerLigacaoDeAmigo(mau), mau).toBeNull()
     }

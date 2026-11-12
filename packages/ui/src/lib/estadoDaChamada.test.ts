@@ -125,6 +125,11 @@ describe("avisoDaChamada — o que o registo dizia e o ecrã calava", () => {
     expect(aviso?.texto).toBe(strings.call.avisoCaminhosDiferentes)
   })
 
+  it("a chamada a voltar a ligar (1.3.7) é uma nota, e não o 403", () => {
+    const aviso = avisoDaChamada("call-sfu-a-religar", "sala", nomeDe)
+    expect(aviso).toEqual({ code: "call-sfu-a-religar", nivel: "nota", texto: strings.call.avisoARelegar })
+  })
+
   it("a entrada falhada no SFU é grave e manda ao registo", () => {
     const aviso = avisoDaChamada("call-sfu-entrada-falhou", "createEncodedStreams is not a function", nomeDe)
     expect(aviso?.nivel).toBe("grave")

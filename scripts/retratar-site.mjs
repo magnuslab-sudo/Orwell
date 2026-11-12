@@ -23,10 +23,10 @@
  *   mural.webp     450×N     feed with two posts, photo, likes
  *                            and one comment
  *
- * The conversation and feed no longer fit the 4:1 da old skin banners: in midnight
+ * The conversation and feed no longer fit the 4:1 banners of the old skin: in midnight
  * skin each message is a bubble (max. 640 px) and each post is a card
  * (max. 600 px). Height comes from content, and width is double what the
- * page gives them at 1280-1440 px (459 e 225 px CSS, measured).
+ * page gives them at 1280-1440 px (459 and 225 CSS px, measured).
  *
  * Each crop is taken at 2× with the final proportions already correct, then
  * resized and converted by `cwebp`, quality 82.
@@ -404,7 +404,7 @@ try {
   await ines.page.keyboard.press("Escape")
   await wait(5000)
 
-  // ----------------------------------------------------------------- o mural
+  // ----------------------------------------------------------------- the feed
   await ines.page.getByRole("button", { name: "Feed", exact: true }).first().click()
   await ines.page.getByPlaceholder(/Escreve uma publicação/).fill("Lista fechada para sábado. Quem quiser ajudar a pintar, aparece.")
   await ines.page.getByRole("button", { name: "Publicar" }).click()

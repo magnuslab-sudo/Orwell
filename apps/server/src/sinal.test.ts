@@ -334,7 +334,7 @@ describe("channel.sinal", () => {
   })
 
   it("o tecto de saída do canal soma todos os membros, e conta as cópias", async () => {
-    // 40 caracteres a dois membros custam 80. O segundo sinal levava a 160.
+    // 40 characters to two members cost 80. The second signal would take it to 160.
     config.sinal = { bytesPorCanalPorMinuto: 100 }
     const ana = guardar(await entrar(NOVO))
     const bruno = guardar(await entrar(NOVO))

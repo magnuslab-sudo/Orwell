@@ -284,7 +284,7 @@ verificar(
 const totalDepois = depois.reduce((soma, m) => soma + ligadas(m), 0)
 verificar("a malha continua fechada depois da mudanca", totalDepois === 6, `${totalDepois}/6`)
 
-// ------------------------------------------------- 2. recarregar e voltar a entrar
+// ------------------------------------------------- 2. reload and join again
 
 console.log("\no terceiro recarrega a pagina e volta a entrar...")
 const quemVolta = clientes[2].page

@@ -107,7 +107,7 @@ async function medir(qual, largura, altura) {
   return { ctx, page, erros }
 }
 
-// ------------------------------------------------------------ o selector
+// ------------------------------------------------------------ the selector
 {
   const { ctx, page, erros } = await medir("selector", 1280, 800)
   check("o selector desenha sem erros de página", erros.length === 0, erros[0] ?? "")
@@ -177,7 +177,7 @@ async function medir(qual, largura, altura) {
   await ctx.close()
 }
 
-// ------------------------------------------------------- a folha do macOS
+// ------------------------------------------------------- the macOS sheet
 {
   const { ctx, page, erros } = await medir("permissao", 1280, 800)
   check("a folha da permissão desenha sem erros de página", erros.length === 0, erros[0] ?? "")

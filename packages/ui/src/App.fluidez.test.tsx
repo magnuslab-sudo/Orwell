@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import userEvent from "@testing-library/user-event"
 import { formatInviteLink } from "@enclave/client-core"
 import type { EnclaveBridge } from "./bridge.js"
-import { App, INTERVALO_DO_PULSO_MS } from "./App.js"
+import { App, INTERVALO_DO_PULSO_MS, SILENCIO_DO_PULSO_MS } from "./App.js"
 import { PRIMEIROS_PASSOS_KEY } from "./hooks/usePrimeirosPassos.js"
 import { strings } from "./strings.js"
 
@@ -295,6 +295,8 @@ describe("a ligação meio aberta (1.3.6)", () => {
       vi.advanceTimersByTime(INTERVALO_DO_PULSO_MS + 10)
     })
     expect(verificar.mock.calls.length).toBe(antes + 1)
+    // Since 1.3.7 the pulse only asks after one minute of socket silence.
+    expect(verificar.mock.calls.at(-1)).toEqual([{ silencioMinimoMs: SILENCIO_DO_PULSO_MS }])
 
     visibilidade("hidden")
     await act(async () => {
@@ -321,6 +323,53 @@ describe("a ligação meio aberta (1.3.6)", () => {
     })
     expect(connect.mock.calls.length).toBe(antes + 1)
     expect(verificar.mock.calls.length).toBe(verificadas)
+  })
+})
+
+describe("a volta ao primeiro plano (1.3.7)", () => {
+  function visibilidade(estado: "visible" | "hidden"): void {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => estado })
+  }
+
+  afterEach(() => {
+    visibilidade("visible")
+    vi.useRealTimers()
+  })
+
+  it("com `retomar` na ponte, a volta diz à sessão quanto tempo esteve escondida e se o aparelho suspende", async () => {
+    const banco = bancada()
+    const retomar = vi.fn(() => "nada")
+    const verificar = vi.fn(async () => true)
+    Object.assign(banco.bridge.session as object, { retomar, verificarLigacao: verificar })
+    const nada = (): void => {}
+    const toque = vi.fn(
+      (consulta: string) =>
+        ({ matches: consulta === "(pointer: coarse)", media: consulta, addEventListener: nada, removeEventListener: nada, addListener: nada, removeListener: nada }) as unknown as MediaQueryList,
+    )
+    const original = window.matchMedia
+    window.matchMedia = toque as unknown as typeof window.matchMedia
+    try {
+      render(<App bridge={banco.bridge} />)
+      await dentro()
+      banco.ligar()
+      vi.useFakeTimers({ toFake: ["Date"] })
+      visibilidade("hidden")
+      document.dispatchEvent(new Event("visibilitychange"))
+      vi.advanceTimersByTime(45_000)
+      visibilidade("visible")
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"))
+        await Promise.resolve()
+      })
+      expect(retomar).toHaveBeenCalledTimes(1)
+      const [opcoes] = retomar.mock.calls[0] as unknown as [{ escondidaMs: number; suspende: boolean }]
+      expect(opcoes.escondidaMs).toBeGreaterThanOrEqual(45_000)
+      expect(opcoes.suspende).toBe(true)
+      // The check is no longer called directly by the return: the session decides.
+      expect(verificar).not.toHaveBeenCalled()
+    } finally {
+      window.matchMedia = original
+    }
   })
 })
 

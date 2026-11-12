@@ -440,7 +440,7 @@ export class AnfitriaoDeEmparelhamento {
   }
 }
 
-// ------------------------------------------------------------ o convidado
+// ------------------------------------------------------------ the guest
 
 /**
  * The new side, no account. Opens its own socket to the link server.

@@ -58,7 +58,7 @@ describe("Conta › Sessão, com a memória da sessão", () => {
     expect(screen.getByText(strings.settings.sessaoNaoExpira)).toBeTruthy()
     expect(screen.getByText(strings.settings.memorizarSessaoNota)).toBeTruthy()
     expect(screen.queryByText(strings.definicoesNovas.bloquearSozinho)).toBeNull()
-    // E desligar esquece.
+    // And switching off forgets.
     fireEvent.click(interruptor())
     await waitFor(() => expect(interruptor().getAttribute("aria-checked")).toBe("false"))
     expect(screen.getByText(strings.definicoesNovas.bloquearSozinho)).toBeTruthy()

@@ -223,7 +223,7 @@ try {
     process.exit(1)
   }
 
-  // ------------------------------------------------------- 2. o QUARTO entra
+  // ------------------------------------------------------- 2. the FOURTH one joins
 
   const quarto = clientes[3]
   await abrirCanal(quarto.page, SALA)
@@ -287,7 +287,7 @@ try {
     abertos.join(", "),
   )
 
-  // ------------------------------------- 5. o socket do quarto cai e volta
+  // ------------------------------------- 5. the fourth one's socket drops and comes back
 
   /*
    * **The fourth's network hiccups, and it is the most mundane case there is.**
@@ -365,7 +365,7 @@ try {
     aLigarDepois.join("; "),
   )
 
-  // ------------------------------------------------------------- 6. o registo
+  // ------------------------------------------------------------- 6. the log
 
   for (const [indice, cliente] of clientes.entries()) {
     const registo = await lerRegisto(cliente.page)

@@ -204,7 +204,7 @@ async function retratar(page, nome) {
   console.log(`  ..  captura: ${ficheiro}`)
 }
 
-/** Nada rola na horizontal: a largura do documento cabe na janela. */
+/** Nothing scrolls horizontally: the document width fits in the window. */
 const semRolagemHorizontal = (page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
 

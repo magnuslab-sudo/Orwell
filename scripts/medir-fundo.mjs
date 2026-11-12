@@ -476,12 +476,12 @@ async function medirContraste(page, etiquetaTema) {
     COST, measured on the only scale that makes sense: HEADROOM above the minimum.
     
     Neither absolute difference nor percentage works, and both were tried. Text
-    at 13,88:1 que drops to 12,86 perde 1,02 pontos and 7,3%, and loses nothing that reads,
-    because it stays at triple the minimum. Text at 5,40:1 que loses 0,14 pontos
-    (2,6%) and gets much closer to a real problem. Both calculations rank the
+    at 13.88:1 that drops to 12.86 loses 1.02 points and 7.3%, and loses nothing
+    that reads, because it stays at triple the minimum. Text at 5.40:1 that loses
+    0.14 points (2.6%) gets much closer to a real problem. Both calculations rank the
     first as worse, and the first one does not matter.
     
-    What gets measured is headroom: `(contraste − 4,5)`, which separates each text from the
+    What gets measured is headroom: `(contraste − 4.5)`, which separates each text from the
     WCAG minimum, and how much of that headroom the background eats. Then the
     numbers align, the veil eats a similar slice across the interface, and that
     slice must stay small.
@@ -726,7 +726,7 @@ console.log("\n— A ESCADA: o fundo não pode inverter a hierarquia dos painéi
   )
 }
 
-/* --------------------------------------------------- 2. o custo, a rolar */
+/* --------------------------------------------------- 2. the cost, while scrolling */
 
 console.log("\n— CUSTO: frames a rolar a conversa\n")
 
@@ -1196,7 +1196,7 @@ console.log("\n— ECRÃ ESTREITO: a sombra que não tem quem a lance\n")
   await ctx.close()
 }
 
-/* ------------------------------------------------------------ 8. o peso */
+/* ------------------------------------------------------------ 8. the weight */
 
 console.log("\n— O PESO\n")
 {

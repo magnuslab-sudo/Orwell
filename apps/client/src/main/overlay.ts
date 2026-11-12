@@ -30,7 +30,7 @@ export const CANAIS_DA_OVERLAY = {
   estado: "overlay:estado",
   /** Main renderer → main: the new faces, by id. */
   caras: "overlay:caras",
-  /** Renderer principal → principal: ligada e opacidade. */
+  /** Main renderer → main process: on/off and opacity. */
   preferencias: "overlay:preferencias",
   /** Main renderer → main process: shortcut loaded. */
   alternar: "overlay:alternar",

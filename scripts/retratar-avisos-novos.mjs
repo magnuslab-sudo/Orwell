@@ -251,7 +251,7 @@ for (const [largura, altura] of [
     await ctx.close()
   }
 
-  // 3. O sino.
+  // 3. The bell.
   {
     const { ctx, page, erros } = await abrir(largura, altura, "sino")
     await page.waitForSelector(".notif-janela", { timeout: 10_000 })

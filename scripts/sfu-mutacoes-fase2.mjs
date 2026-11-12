@@ -396,7 +396,7 @@ const MUTACOES = [
     porque: "sem isto a chamada monta, ouve-se quem já lá estava, e ninguém que entre DEPOIS se ouve — nunca, e sem um erro em lado nenhum",
   },
 
-  // ---------------------------------------------------------- o protocolo
+  // ---------------------------------------------------------- the protocol
   {
     nome: "ambito-sem-comprimento",
     ficheiro: PROTOCOLO,

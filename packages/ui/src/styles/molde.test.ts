@@ -26,7 +26,7 @@ describe("o molde das folhas", () => {
     expect(grupo).toMatch(/flex-direction:\s*column/)
     expect(grupo).toMatch(/gap:\s*var\(--space-4\)/)
     expect(regra(".sheet-body")).toMatch(/gap:\s*var\(--space-4\)/)
-    // E o `hidden` continua a esconder, apesar do `display: flex`.
+    // And `hidden` still hides, despite `display: flex`.
     expect(regra(".sheet-grupo[hidden]")).toMatch(/display:\s*none/)
   })
 

@@ -200,7 +200,7 @@ export function VideoDaPublicacao({ item }: { item: MediaItem }): React.JSX.Elem
     elemento.src = estado.url
     palcoRef.current.appendChild(elemento)
     void elemento.play().catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `leitor` só lê refs e este vídeo: o estado é o gatilho
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `leitor` only reads refs and this video: the state is the trigger
   }, [estado])
 
   const abrir = async (): Promise<void> => {

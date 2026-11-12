@@ -51,7 +51,7 @@ if (!process.argv.includes("--sem-construir")) {
   console.log("")
 }
 
-// --- 1. o dist ---------------------------------------------------------------
+// --- 1. the dist ---------------------------------------------------------------
 
 const noDist = existsSync(DIST) ? readdirSync(DIST) : []
 const html = existsSync(join(DIST, "index.html")) ? readFileSync(join(DIST, "index.html"), "utf8") : ""

@@ -88,7 +88,7 @@ await bob.page.waitForTimeout(500)
 // and with half a dozen lines the whole conversation fits on the screen.
 for (let i = 1; i <= 30; i++) await enviar(alice.page, `mensagem nova número ${i}`)
 
-// E volta.
+// And back.
 await bob.page.goto(URL, { waitUntil: "networkidle" })
 // The lock only appears when the vault does not open on its own on this device.
 const cadeado = bob.page.locator('input[type="password"]').first()

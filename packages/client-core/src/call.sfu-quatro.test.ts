@@ -38,7 +38,7 @@ import {
  * where this family of bugs lives.
  */
 
-// ------------------------------------------------------------------ o mundo
+// ------------------------------------------------------------------ the world
 
 const dormir = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -229,7 +229,7 @@ class Central {
   }
 }
 
-// ------------------------------------------------------------- o dispositivo
+// ------------------------------------------------------------- the device
 
 /** The `mediasoup-client` pretending. Only what is needed to set up the call. */
 class DispositivoFalso implements DispositivoDeMedia {
@@ -368,6 +368,11 @@ class Sala {
    * peer key: `ana>bruno` is Ana without Bruno's key.
    */
   readonly semChave = new Set<string>()
+  /**
+   * SFU joins that fail before reaching the server, per person, and with which
+   * message. It is the phone's socket dropping again in the middle of the rebuild.
+   */
+  readonly entradasQueFalham = new Map<UserAddress, string[]>()
 
   constructor(canal = "!geral:s") {
     this.canal = canal
@@ -414,6 +419,11 @@ class Sala {
         suportaSfu: () => true,
         criarDispositivo: () => new DispositivoFalso(),
         async sfuEntrarNoAmbito(canal, ambito) {
+          const falha = sala.entradasQueFalham.get(address)?.shift()
+          if (falha !== undefined) {
+            await dormir(central.latencia)
+            throw new Error(falha)
+          }
           return await central.entrar(
             id,
             {
@@ -770,6 +780,98 @@ describe("uma chamada de voz a quatro, pelo SFU", () => {
       expect(ligados(pessoa), `${pessoa.address}: ${JSON.stringify(pessoa.listas.at(-1))}`).toEqual(outros)
     }
 
+    await sala.largar()
+  }, 30_000)
+
+  it("o socket cai outra vez a meio do refazer: tenta de novo, diz que está a voltar, e não dá o 403", async () => {
+    const pausa = Call.PAUSA_ENTRE_REFAZERES_MS
+    Call.PAUSA_ENTRE_REFAZERES_MS = 20
+    try {
+      const sala = new Sala()
+      sala.central.latencia = 2
+      const gente = ["ana", "bruno", "carla", "diogo"].map((nome) => sala.criar(nome))
+      for (const pessoa of gente) {
+        await pessoa.call.join(sala.canal)
+        await sala.assentar()
+      }
+      const diogo = gente[3]!
+      const erros: string[] = []
+      let acabou = false
+      diogo.call.on("error", ({ detail }) => erros.push(detail))
+      diogo.call.on("ended", () => (acabou = true))
+
+      sala.central.largar(diogo.address)
+      await sala.assentar()
+      // The first attempt without a connection, the second without an answer, the third gets through.
+      sala.entradasQueFalham.set(diogo.address, ["the connection dropped", "the server did not answer in time"])
+      const refazer = diogo.call.ligacaoVoltou()
+      await sala.assentar(10)
+      // The session connected again: the return wakes the wait, and does not queue another rebuild.
+      void diogo.call.ligacaoVoltou()
+      await refazer
+      await sala.assentar()
+
+      expect(erros).toEqual([])
+      expect(acabou).toBe(false)
+      expect(diogo.diagnosticos.some((linha) => linha.startsWith("call-sfu-a-religar"))).toBe(true)
+      expect(diogo.diagnosticos.filter((linha) => linha.startsWith("call-sfu-refazer-tentativa"))).toHaveLength(2)
+      expect(diogo.diagnosticos.some((linha) => linha.startsWith("call-sfu-refazer-falhou"))).toBe(false)
+      for (const pessoa of gente) {
+        const outros = gente
+          .filter((cada) => cada !== pessoa)
+          .map((cada) => cada.address)
+          .sort()
+        expect(ligados(pessoa), pessoa.address).toEqual(outros)
+      }
+      await sala.largar()
+    } finally {
+      Call.PAUSA_ENTRE_REFAZERES_MS = pausa
+    }
+  }, 30_000)
+
+  it("três tentativas falhadas: só então o 403, e a chamada acaba", async () => {
+    const pausa = Call.PAUSA_ENTRE_REFAZERES_MS
+    Call.PAUSA_ENTRE_REFAZERES_MS = 20
+    try {
+      const sala = new Sala()
+      const [ana, bruno] = ["ana", "bruno"].map((nome) => sala.criar(nome)) as [Pessoa, Pessoa]
+      await ana.call.join(sala.canal)
+      await bruno.call.join(sala.canal)
+      await sala.assentar()
+      const erros: string[] = []
+      let acabou = false
+      bruno.call.on("error", ({ detail }) => erros.push(detail))
+      bruno.call.on("ended", () => (acabou = true))
+      sala.central.largar(bruno.address)
+      sala.entradasQueFalham.set(bruno.address, Array(3).fill("the server did not answer in time"))
+      await bruno.call.ligacaoVoltou()
+      expect(erros).toEqual(["the call dropped and did not come back"])
+      expect(acabou).toBe(true)
+      expect(bruno.diagnosticos.filter((linha) => linha.startsWith("call-sfu-refazer-tentativa"))).toHaveLength(3)
+      await sala.largar()
+    } finally {
+      Call.PAUSA_ENTRE_REFAZERES_MS = pausa
+    }
+  }, 30_000)
+
+  it("quem sai a meio das tentativas sai já: não espera pelo resto", async () => {
+    const sala = new Sala()
+    const [ana, bruno] = ["ana", "bruno"].map((nome) => sala.criar(nome)) as [Pessoa, Pessoa]
+    await ana.call.join(sala.canal)
+    await bruno.call.join(sala.canal)
+    await sala.assentar()
+    let acabou = false
+    bruno.call.on("ended", () => (acabou = true))
+    sala.central.largar(bruno.address)
+    // No connection: the wait would be the whole window (30 s).
+    sala.entradasQueFalham.set(bruno.address, ["the connection dropped"])
+    const refazer = bruno.call.ligacaoVoltou()
+    await sala.assentar(10)
+    const partiu = Date.now()
+    await bruno.call.leave()
+    await refazer
+    expect(Date.now() - partiu).toBeLessThan(2_000)
+    expect(acabou).toBe(true)
     await sala.largar()
   }, 30_000)
 
@@ -1398,7 +1500,7 @@ describe("quem sai do canal a meio de uma chamada por SFU", () => {
     await sala.assentar()
     expect(ligados(ana)).toEqual([])
 
-    // O commit seguinte senta-a noutra folha.
+    // The next commit seats her in another leaf.
     sala.semChave.clear()
     await ana.call.rekey(sala.canal)
     await sala.assentar()

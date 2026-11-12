@@ -132,7 +132,7 @@ try {
   await dormir(3000)
   for (const cliente of [a, b]) await marcar(cliente.page, "antes-da-partilha")
 
-  // ------------------------------------------------- 1. partilhar, e ver
+  // ------------------------------------------------- 1. share, and see
 
   const carregou = await partilharEcra(a.page)
   verificar("o botão de partilhar EXISTE numa chamada por SFU, e carrega-se", carregou)
@@ -250,7 +250,7 @@ try {
     receptorDeAudio.map((r) => `${r.saida} frames`).join(", "),
   )
 
-  // ------------------------------------------------- 2. o produto desenha-o
+  // ------------------------------------------------- 2. the product draws it
 
   const palco = await lerPalco(b.page)
   verificar(
@@ -264,7 +264,7 @@ try {
     palco.map((p) => `${p.largura}x${p.altura}`).join(", "),
   )
 
-  // -------------------------------------------- 3. parar, e o palco esvazia
+  // -------------------------------------------- 3. stop, and the stage empties
 
   const parou = await pararEcra(a.page)
   verificar("o botão de parar existe e carrega-se", parou)

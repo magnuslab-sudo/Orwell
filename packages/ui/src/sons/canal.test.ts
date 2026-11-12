@@ -92,7 +92,7 @@ describe("somDoCanal: quando uma mensagem num canal faz som", () => {
   })
 })
 
-/* -------------------------------------------------------------- o motor */
+/* -------------------------------------------------------------- the engine */
 
 function relogioFalso(): Relogio & { avancar(ms: number): void } {
   let t = 10_000
@@ -291,7 +291,7 @@ describe("os sons: o do canal e o da menção", () => {
   })
 })
 
-/* ------------------------------------------------------ o interruptor */
+/* ------------------------------------------------------ the switch */
 
 describe('o interruptor "Som das mensagens nos canais"', () => {
   it("ligado de fábrica", () => {

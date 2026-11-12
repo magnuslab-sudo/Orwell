@@ -84,8 +84,8 @@ export const en: Traducao = {
     anexosOffline: "Images and files need a connection.",
   },
 
-  /** Ver a nota do português. A palavra "update" não aparece num botão de
-   *  propósito: nada disto actualiza nada. */
+  /** See the Portuguese note. The word "update" does not appear on a button on
+   *  purpose: none of this updates anything. */
   actualizacao: {
     titulo: "There is a newer version of Orwell",
     versoes: (instalada: string, disponivel: string): string =>
@@ -264,10 +264,10 @@ export const en: Traducao = {
     failedTitle: "Pairing failed",
   },
 
-  /* Os nomes dos destinos. A fronteira e a razão dela estão escritas no
-     português, em `linguas/pt.ts`; aqui vale igual, com o mesmo cuidado que a
-     `terminologia inglesa` do `catalogo.test.ts` já tem: a secção chama-se
-     Communities, a coisa continua a ser um channel, e "server" continua fora. */
+  /* The names of the destinations. The boundary and its reason are written in
+     the Portuguese, in `linguas/pt.ts`; the same holds here, with the same care
+     the English terminology in `catalogo.test.ts` already has: the section is
+     called Communities, the thing is still a channel, and "server" stays out. */
   rail: {
     profile: "Me",
     chat: "Communities",
@@ -301,7 +301,7 @@ export const en: Traducao = {
     noRoomsAfter: " beside it.",
     addFriend: "Add friend",
     callPeople: (n: number): string => (n === 1 ? "1 person in a call, waiting for company" : `${n} people in a call`),
-    /** A contagem e quem são. A razão inteira está na folha portuguesa. */
+    /** The count and who they are. The whole reason is in the Portuguese sheet. */
     callWho: (frase: string, quem: string): string => `${frase}: ${quem}`,
     callingYou: (name: string): string => `${name} is calling you`,
     inCallWith: (outros: number): string =>
@@ -742,8 +742,8 @@ export const en: Traducao = {
     screenSoundMutedSelf: "The system sound is muted",
     screenSoundMute: "Mute the screen sound",
     screenSoundUnmute: "Turn on the screen sound",
-    /* O convite a ver, e quem está a ver. A razão inteira está na folha
-       portuguesa: o ecrã de alguém passou a ver-se por escolha. */
+    /* The invite being viewed, and who is viewing. The whole reason is in the
+       Portuguese sheet: someone's screen is now seen by choice. */
     screenWatch: "Watch",
     screenStopWatching: "Stop watching",
     screenWatchAria: (name: string): string => `Watch ${name}'s screen`,
@@ -794,6 +794,7 @@ export const en: Traducao = {
       "One person in this call cannot hear you. Both of you, leave the call and join again.",
     avisoEntradaFalhou:
       "The call did not start. Try again. If it fails again, copy the log in Settings, Diagnostics.",
+    avisoARelegar: "The connection dropped. The call is connecting again.",
     avisoPresencaCaducouDe: (nome: string): string => `${nome} lost the connection and left the call.`,
     avisoPresencaCaducou: "One person lost the connection and left the call.",
     avisoFechar: "Dismiss the warning",
@@ -1205,13 +1206,13 @@ export const en: Traducao = {
     emChamada: "In a call",
     aPartilharEcra: "Sharing screen",
     /**
-     * «Canal · Sala», pela ordem de quem procura: primeiro onde, depois a
-     * divisão. Era «canal / sala»; o dono pediu o ponto a 27 de Outubro de
-     * 2026, e a mesma linha serve o cartão lateral, que a faz andar quando
-     * não cabe (ver `Andante`).
+     * «Canal · Sala», in the order of whoever is looking: first where, then the
+     * room. It was «canal / sala»; the owner asked for the dot on 27 October
+     * 2026, and the same line serves the side card, which scrolls it when it
+     * does not fit (see `Andante`).
      */
     ondeComSala: (canal: string, sala: string): string => `${canal} · ${sala}`,
-    /** O ping, no lugar de «Ligado» no cartão lateral: diz que está ligado e quão bem. */
+    /** The ping, in place of «Ligado» on the side card: says it is connected and how well. */
     ping: (ms: number): string => `${ms} ms`,
     ligado: "Connected",
   },
@@ -1403,7 +1404,7 @@ export const en: Traducao = {
     inputDevice: "Microphone",
     inputGain: "Input volume",
     outputVolume: "Output volume",
-    /** O teste do microfone, por palavras. Ver as notas no português, que é o catálogo base. */
+    /** The microphone test, in words. See the notes in the Portuguese, which is the base catalogue. */
     testeNaChamada: "You are in a call. The test uses the same microphone.",
     entradaParada: 'Turn on "Hear me" and speak. The bars show the sound after noise reduction.',
     entradaAEscutar: "Listening. Say something.",
@@ -1911,7 +1912,7 @@ export const en: Traducao = {
     categoryUndo: "Undo",
     categoryRestored: (nome: string): string => `The category "${nome}" is back, with its rooms.`,
     categoryRestoredEmpty: (nome: string): string => `The category "${nome}" is back.`,
-    // O inglês não concorda o verbo com o número; o parâmetro fica pela assinatura.
+    // English does not agree the verb with the number; the parameter stays for the signature.
     categoryPartial: (nomes: string, _quantos: number): string =>
       `${nomes} did not change category. Check the connection and try again.`,
   },
@@ -2004,9 +2005,9 @@ export const en: Traducao = {
     votarEm: (opcao: string): string => `Vote for ${opcao}`,
     retirarVoto: (opcao: string): string => `Take back the vote for ${opcao}`,
     /*
-      Montada com um ciclo e sem `join`, como a portuguesa: a fronteira de
-      marca percorre TODAS as funções do catálogo e chama-as com uma cadeia de
-      amostra. Uma que só saiba trabalhar sobre um array rebenta essa auditoria.
+      Built with a loop and without `join`, like the Portuguese one: the brand
+      boundary goes through ALL the catalogue's functions and calls them with a
+      sample string. One that only knows how to work on an array breaks that audit.
     */
     quemVotou: (nomes: string[], restantes = 0): string => {
       let lista = ""
@@ -2843,6 +2844,7 @@ export const errosEn: Record<string, FraseDeErro> = {
   "could not read this video": "This device cannot read that video. Choose another one.",
   "a video upload is already in progress": "A video is already uploading. Wait until it ends.",
   "the video upload failed": "The video upload stopped. The post was deleted. Publish it again.",
+  "the attachment request failed": "The request for the file failed. Try again.",
 
   /* Friends and feed. */
   "too many friend lists in a row":

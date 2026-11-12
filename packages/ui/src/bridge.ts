@@ -654,17 +654,24 @@ export interface EnclaveBridge {
      */
     latency?: () => Promise<number | null>
     /**
-     * Does the connection still carry anything? A `ping` with a short deadline;
-     * with no `pong`, the session treats the connection as dropped and connects
-     * again. `true` when the connection is alive, `false` when it is dead or
-     * there is no connection.
+     * Does the connection still carry anything? A `ping`, and any frame within
+     * the deadline proves it does; with no frame at all, the session treats the
+     * connection as dropped and connects again. `true` when the connection is
+     * alive, `false` when it is dead or there is no connection.
+     * `silencioMinimoMs`: with a more recent frame, it does not even ask.
      *
      * This guards against the phone's half-open connection (1.3.6): a socket
      * that says `OPEN` but no longer carries anything to anyone. Optional like
      * the other additions: an old `preload` does not have it, and then nothing
      * is checked.
      */
-    verificarLigacao?: () => Promise<boolean>
+    verificarLigacao?: (opcoes?: { silencioMinimoMs?: number }) => Promise<boolean>
+    /**
+     * The page came back to the foreground: connect, reconnect at once, check in
+     * the background, or nothing. See `Session.retomar` (1.3.7). Optional:
+     * without it, a check runs.
+     */
+    retomar?: (opcoes?: { escondidaMs?: number; suspende?: boolean }) => unknown
     /**
      * Does this session still write? `false` after the tab loses ownership of
      * the vault or gets stale code (`pararDeEscrever` from the web host):

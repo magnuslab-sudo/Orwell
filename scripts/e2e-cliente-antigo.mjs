@@ -970,7 +970,7 @@ try {
     return recusadas
   }
 
-  // A medida DESLIGADA: o defeito, medido.
+  // The measure SWITCHED OFF: the defect, measured.
   const tectoDasListas = Session.LISTAS_SEGUIDAS_MAX
   Session.LISTAS_SEGUIDAS_MAX = Number.POSITIVE_INFINITY
   const marcaSemMedida = redeB.length

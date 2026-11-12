@@ -9,7 +9,7 @@
   
   The rain is ONE layer ABOVE the panels, like in the wireframes: there it's a positioned sibling, so it paints over the panels. The drops have 3% opacity and the layer half that, and they don't measurably reduce contrast for any text. The mouse and touch pass through (`pointer-events: none`), and it sits below everything with `z-index` (drawers, veils, menus, alerts).
   
-  `prefers-reduced-motion` turns off the rain entirely and stops the aurora: it's moving decoration, and that's exactly what that preference asks not to have. On mobile (up to 600 px) the aurora also stays still: each step of it forces a redraw of its own 60 px blur.
+  `prefers-reduced-motion` turns off the rain entirely (it is still, and goes because it is decoration), and the aurora keeps moving, slower and closer to its place (`aurora-calma`, 72 s): the owner's rule, with reduced motion nothing stops. On mobile (up to 600 px) the aurora also stays still: each step of it forces a redraw of its own 60 px blur.
   
   This file comes LAST in `styles.css`: the `background-image` of the lights must come after the `background:` shorthand from the other sheets, which erases it.
   */
@@ -92,8 +92,32 @@ body::before {
     display: none;
   }
 
+}
+
+/*
+  The aurora with reduced motion: the owner's rule is that nothing stops, it
+  just moves slower. Up to 1.3.7 it stood still (`animation: none`), and on the
+  owner's Windows, which runs with reduced motion, the background never moved.
+  Now it goes round in 72 s (three times as long) and half the distance. Only
+  above 600 px: on the phone it stays still in both modes, because of the cost
+  of the blur. The `!important` is against the universal rule in `base.css`,
+  as in the opening ring.
+*/
+@media (prefers-reduced-motion: reduce) and (min-width: 601px) {
   body::before {
-    animation: none;
+    animation: aurora-calma 72s ease-in-out infinite alternate !important;
+  }
+}
+
+@keyframes aurora-calma {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-1.5%, 2%) scale(1.025);
+  }
+  100% {
+    transform: translate(2%, -1%) scale(1.04);
   }
 }
 

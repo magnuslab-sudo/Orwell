@@ -208,7 +208,7 @@ export function Composer({
    * switching rooms and coming back finds it where it was.
    */
   resposta?: RespostaNaCaixa | null | undefined
-  /** O interruptor "@ Mencionar". */
+  /** The "@ Mencionar" toggle. */
   onAlternarMencao?: (() => void) | undefined
   /** The X on the bar, and Esc in the box. */
   onCancelarResposta?: (() => void) | undefined
@@ -581,7 +581,7 @@ export function Composer({
   /** Attachments chosen with a connection, and the connection dropped before sending. */
   const anexosSemLigacao = offline && (images.length > 0 || files.length > 0)
   const notaOffline = offline && (pediuAnexoOffline || anexosSemLigacao)
-  /** Nada sai enquanto houver bytes a entrar: ver `aComprimir` e `aLer`. */
+  /** Nothing goes out while bytes are still coming in: see `aComprimir` and `aLer`. */
   const ocupada = aComprimir || aLer
 
   return (

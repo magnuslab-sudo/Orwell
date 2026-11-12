@@ -129,7 +129,7 @@ const sinalizacao = {
   sfuPausar: async () => {},
 }
 
-// --- o produto -----------------------------------------------------------------
+// --- the product -----------------------------------------------------------------
 const cifra = new CifraDeMedia(
   {
     selfAddress: "@prova:local",

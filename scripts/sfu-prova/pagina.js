@@ -157,7 +157,7 @@ async function emitir(device, chave) {
   })
   estado.produtor = produtor.id
 
-  // Palpite 2, lado do emissor.
+  // Guess 2, sender side.
   estado.temRtpSender = produtor.rtpSender !== undefined
   registo(`producer.rtpSender: ${estado.temRtpSender ? "existe" : "NÃO EXISTE"}`)
   if (!produtor.rtpSender) throw new Error("producer.rtpSender não existe — não há onde pendurar a cifra")
@@ -221,12 +221,12 @@ async function receber(device, chave, jaExistentes) {
       rtpParameters: params.rtpParameters,
     })
 
-    // Palpite 2, lado do receptor.
+    // Guess 2, receiver side.
     estado.temRtpReceiver = consumidor.rtpReceiver !== undefined
     registo(`consumer.rtpReceiver: ${estado.temRtpReceiver ? "existe" : "NÃO EXISTE"}`)
     if (!consumidor.rtpReceiver) throw new Error("consumer.rtpReceiver não existe — não há onde pendurar a decifra")
 
-    // Palpite 1, lado do receptor.
+    // Guess 1, receiver side.
     let fluxos
     try {
       fluxos = consumidor.rtpReceiver.createEncodedStreams()

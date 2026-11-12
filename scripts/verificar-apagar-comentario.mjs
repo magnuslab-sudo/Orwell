@@ -42,7 +42,7 @@ if (!chegouAoShell) {
   process.exit(1)
 }
 
-// ------------------------------------------------------- publicar e comentar
+// ------------------------------------------------------- post and comment
 await page.getByRole("button", { name: "Feed" }).first().click()
 await page.waitForTimeout(500)
 await page.getByPlaceholder(/Diz coisas/).fill("a serra ao amanhecer")
@@ -56,7 +56,7 @@ await page.getByRole("button", { name: "Comentar", exact: true }).click()
 await page.waitForTimeout(1800)
 check("o comentário aparece", await page.getByText("arrependi-me disto").isVisible())
 
-// ----------------------------------------------------------------- o caixote
+// ----------------------------------------------------------------- the bin
 const caixote = page.getByRole("button", { name: "Apagar o comentário" })
 check("o caixote está no meu comentário", (await caixote.count()) === 1)
 // It exists in the DOM but is invisible until the line is hovered: it is an action that

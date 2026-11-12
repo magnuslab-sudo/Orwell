@@ -15,9 +15,11 @@ import { Vault, type VaultBackend } from "./vault.js"
  * What this measures: with the socket silent in both directions and NO
  * `close`, the check detects the death, the connection stops calling itself
  * "online", it connects again, and the new connection asks again for what was
- * missed. And a send made during the check does not go out to the dead socket:
- * it waits and fails as "no connection", which is what makes the interface
- * queue the message.
+ * missed.
+ *
+ * And what 1.3.7 adds, because 1.3.6 in production doubled the reconnections:
+ * a late `pong` (6 to 12 s) tears nothing down, any frame proves the socket is
+ * alive, no send waits for the check, and an SFU join is not cut by it.
  */
 
 class MemoryBackend implements VaultBackend {
@@ -48,6 +50,10 @@ class FakeSocket {
   readyState = 0
   /** Silent: accepts what it is sent and neither answers nor closes. The half-open connection. */
   mudo = false
+  /** How long the `pong` takes (the server answers in order, behind slow work). */
+  atrasoDoPong = 0
+  /** How long `sfu.scope.joined` takes. */
+  atrasoDoSfu = 0
   readonly sent: Sent[] = []
   readonly #listeners = new Map<string, ((event: unknown) => void)[]>()
 
@@ -78,11 +84,15 @@ class FakeSocket {
     const frame = JSON.parse(raw) as Sent
     this.sent.push(frame)
     if (this.mudo) return
+    const atraso = frame.t === "ping" ? this.atrasoDoPong : frame.t === "sfu.scope.join" ? this.atrasoDoSfu : 0
     for (const reply of resposta(frame) ?? []) {
-      setTimeout(() => {
-        if (!this.mudo) this.#fire("message", { data: JSON.stringify(reply) })
-      }, 0)
+      setTimeout(() => this.entregar(reply), atraso)
     }
+  }
+
+  /** A server frame, if the socket still carries anything. */
+  entregar(trama: unknown): void {
+    if (!this.mudo && this.readyState === 1) this.#fire("message", { data: JSON.stringify(trama) })
   }
 
   /** A half-open socket does not say it closed: `close()` fires nothing. */
@@ -102,6 +112,7 @@ function resposta(frame: Sent): unknown[] | undefined {
   if (frame.t === "auth.begin") return [{ t: "auth.challenge", nonce: "AAAA" }]
   if (frame.t === "auth.finish") return [{ t: "auth.ok", address: "@x:localhost:8448" }]
   if (frame.t === "ping") return [{ t: "pong" }]
+  if (frame.t === "sfu.scope.join") return [{ t: "sfu.scope.joined", ref: frame.ref, rtpCapabilities: {}, producers: [] }]
   if (frame.t === "channel.backfill") {
     return [{ t: "channel.backfill.page", channel: frame.channel, more: false, events: [] }]
   }
@@ -149,13 +160,43 @@ afterEach(() => {
   delete (globalThis as unknown as { WebSocket?: unknown }).WebSocket
 })
 
+const MENSAGEM = (id: string) => ({ t: "message" as const, id, sentAt: 1, body: "olá", attachments: [], links: [], mentions: [] })
+
+/** The original values, restored after each test that shrinks them. */
+const ORIGEM = {
+  prazo: Session.PRAZO_DA_VERIFICACAO_MS,
+  antesDoPing: Session.SILENCIO_ANTES_DO_PING_MS,
+  antesDeVerificar: Session.SILENCIO_ANTES_DE_VERIFICAR_MS,
+  ausencia: Session.AUSENCIA_QUE_RELIGA_MS,
+}
+afterEach(() => {
+  Session.PRAZO_DA_VERIFICACAO_MS = ORIGEM.prazo
+  Session.SILENCIO_ANTES_DO_PING_MS = ORIGEM.antesDoPing
+  Session.SILENCIO_ANTES_DE_VERIFICAR_MS = ORIGEM.antesDeVerificar
+  Session.AUSENCIA_QUE_RELIGA_MS = ORIGEM.ausencia
+})
+
 describe("a ligação meio aberta", () => {
+  it("os prazos de produção: 15 s de espera, 5 s de silêncio antes do ping, 60 s antes de um envio verificar", () => {
+    expect(Session.PRAZO_DA_VERIFICACAO_MS).toBe(15_000)
+    expect(Session.SILENCIO_ANTES_DO_PING_MS).toBe(5_000)
+    expect(Session.SILENCIO_ANTES_DE_VERIFICAR_MS).toBe(60_000)
+  })
+
   it("uma ligação viva responde ao ping, e fica como estava", async () => {
     const session = await sessaoLigada()
     const antes = FakeSocket.todos.length
-    expect(await session.verificarLigacao(500)).toBe(true)
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0, prazoMs: 500 })).toBe(true)
     expect(session.connection).toBe("online")
     expect(FakeSocket.todos.length).toBe(antes)
+  }, 60_000)
+
+  it("com uma trama recente, nem pergunta: true sem mandar ping", async () => {
+    const session = await sessaoLigada()
+    const socket = FakeSocket.last!
+    const enviadas = socket.sent.length
+    expect(await session.verificarLigacao()).toBe(true)
+    expect(socket.sent.length).toBe(enviadas)
   }, 60_000)
 
   it("um socket mudo nos dois sentidos, sem close: dá pela morte, deixa de dizer online, e liga outra vez", async () => {
@@ -166,73 +207,176 @@ describe("a ligação meio aberta", () => {
     session.on("connection", ({ state }) => estados.push(state))
 
     morto.mudo = true
-    // Without the check, nothing changes: that is the fault. The state stays "online".
     await assentar(20)
     expect(session.connection).toBe("online")
 
-    expect(await session.verificarLigacao(200)).toBe(false)
-    // Right after the death, the state is no longer "online".
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0, prazoMs: 200 })).toBe(false)
     expect(estados[0]).not.toBe("online")
     expect(morto.readyState).toBe(3)
 
-    // And it connects again, without waiting for the full backoff.
     await esperar(() => FakeSocket.todos.length > antes && session.connection === "online")
     const nova = FakeSocket.last!
     expect(nova).not.toBe(morto)
-    // The new connection asks again for what was missed: it subscribes and recovers the channel.
     await esperar(() => nova.sent.some((frame) => frame.t === "channel.backfill" && frame.channel === GERAL))
     expect(nova.sent.some((frame) => frame.t === "channel.subscribe")).toBe(true)
   }, 60_000)
 
-  it("um envio feito durante a verificação não sai para o socket morto: falha como sem ligação", async () => {
+  it("um pong atrasado 8 s, com outras tramas a passar: não liga outra vez", async () => {
+    const session = await sessaoLigada()
+    const vivo = FakeSocket.last!
+    vivo.atrasoDoPong = 8_000
+    const antes = FakeSocket.todos.length
+    // The server keeps delivering: one presence per second.
+    const fluxo = setInterval(() => vivo.entregar({ t: "presence", address: "@y:localhost:8448", online: true }), 1_000)
+    try {
+      const partiu = Date.now()
+      expect(await session.verificarLigacao({ silencioMinimoMs: 0 })).toBe(true)
+      // The first frame answered, long before the pong.
+      expect(Date.now() - partiu).toBeLessThan(2_500)
+      await new Promise((resolve) => setTimeout(resolve, 8_500))
+      expect(session.connection).toBe("online")
+      expect(FakeSocket.todos.length).toBe(antes)
+      expect(vivo.readyState).toBe(1)
+    } finally {
+      clearInterval(fluxo)
+    }
+  }, 60_000)
+
+  it("um pong atrasado 12 s, sem mais nada: chega dentro do prazo, e não liga outra vez", async () => {
+    const session = await sessaoLigada()
+    const vivo = FakeSocket.last!
+    vivo.atrasoDoPong = 12_000
+    const antes = FakeSocket.todos.length
+    const partiu = Date.now()
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0 })).toBe(true)
+    const demorou = Date.now() - partiu
+    expect(demorou).toBeGreaterThanOrEqual(11_900)
+    expect(demorou).toBeLessThan(14_000)
+    expect(session.connection).toBe("online")
+    expect(FakeSocket.todos.length).toBe(antes)
+  }, 60_000)
+
+  it("um socket morto a sério liga outra vez dentro do prazo de 15 s", async () => {
     const session = await sessaoLigada()
     const morto = FakeSocket.last!
     morto.mudo = true
-    const enviadasAntes = morto.sent.length
-
-    const verificacao = session.verificarLigacao(200)
-    const envio = session.send(GERAL, { t: "message", id: "mensagem-1", sentAt: 1, body: "olá", attachments: [], links: [], mentions: [] })
-
-    expect(await verificacao).toBe(false)
-    await expect(envio).rejects.toThrow("the connection dropped")
-    // Only the ping went to the dead socket.
-    expect(morto.sent.slice(enviadasAntes).map((frame) => frame.t)).toEqual(["ping"])
+    const partiu = Date.now()
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0 })).toBe(false)
+    const demorou = Date.now() - partiu
+    expect(demorou).toBeGreaterThanOrEqual(14_900)
+    expect(demorou).toBeLessThan(16_000)
+    await esperar(() => FakeSocket.last !== morto && session.connection === "online")
   }, 60_000)
 
-  it("e com a ligação viva, o envio feito durante a verificação espera e sai", async () => {
+  it("um envio durante a verificação sai já: não espera por ela (medido)", async () => {
     const session = await sessaoLigada()
-    const vivo = FakeSocket.last!
-    const verificacao = session.verificarLigacao(500)
-    const envio = session.send(GERAL, { t: "message", id: "mensagem-2", sentAt: 1, body: "olá", attachments: [], links: [], mentions: [] })
-    expect(await verificacao).toBe(true)
+    const socket = FakeSocket.last!
+    // The worst case of 1.3.6: the socket silent, the check waiting.
+    socket.mudo = true
+    const verificacao = session.verificarLigacao({ silencioMinimoMs: 0, prazoMs: 3_000 })
+    const partiu = Date.now()
+    const envio = session.send(GERAL, MENSAGEM("mensagem-1")).catch(() => undefined)
+    await esperar(() => socket.sent.some((frame) => frame.t === "channel.send"), 2_000)
+    const latencia = Date.now() - partiu
+    expect(latencia).toBeLessThan(500)
+    expect(await verificacao).toBe(false)
     await envio
-    expect(vivo.sent.map((frame) => frame.t)).toContain("channel.send")
   }, 60_000)
 
-  it("um envio depois de um silêncio longo verifica a ligação antes de sair", async () => {
-    // The iPhone does not always say the page came back (no `visibilitychange` on
-    // unlocking an installed app). The socket's silence says the rest.
-    const antes = Session.SILENCIO_ANTES_DE_VERIFICAR_MS
-    try {
-      const session = await sessaoLigada()
-      const morto = FakeSocket.last!
-      morto.mudo = true
-      const enviadasAntes = morto.sent.length
-      Session.SILENCIO_ANTES_DE_VERIFICAR_MS = 0
-      Session.PRAZO_DA_VERIFICACAO_MS = 200
-      const envio = session.send(GERAL, { t: "message", id: "mensagem-3", sentAt: 1, body: "olá", attachments: [], links: [], mentions: [] })
-      await expect(envio).rejects.toThrow("the connection dropped")
-      expect(morto.sent.slice(enviadasAntes).map((frame) => frame.t)).toEqual(["ping"])
-      await esperar(() => FakeSocket.last !== morto && session.connection === "online")
-    } finally {
-      Session.SILENCIO_ANTES_DE_VERIFICAR_MS = antes
-      Session.PRAZO_DA_VERIFICACAO_MS = 5_000
-    }
+  it("um envio depois de um silêncio longo sai já, e lança a verificação ao lado", async () => {
+    Session.SILENCIO_ANTES_DE_VERIFICAR_MS = 0
+    const session = await sessaoLigada()
+    const socket = FakeSocket.last!
+    const enviadas = socket.sent.length
+    const partiu = Date.now()
+    await session.send(GERAL, MENSAGEM("mensagem-3"))
+    expect(Date.now() - partiu).toBeLessThan(500)
+    const tipos = socket.sent.slice(enviadas).map((frame) => frame.t)
+    expect(tipos).toContain("channel.send")
+    expect(tipos).toContain("ping")
+  }, 60_000)
+
+  it("uma entrada no SFU não é cortada pela verificação, com o pong atrasado 8 s", async () => {
+    const session = await sessaoLigada()
+    const socket = FakeSocket.last!
+    socket.atrasoDoPong = 8_000
+    socket.atrasoDoSfu = 6_000
+    const antes = FakeSocket.todos.length
+    const entrada = session.sfuEntrarNoAmbito(GERAL, "voz")
+    const verificacao = session.verificarLigacao({ silencioMinimoMs: 0 })
+    await expect(entrada).resolves.toMatchObject({ producers: [] })
+    expect(await verificacao).toBe(true)
+    expect(FakeSocket.todos.length).toBe(antes)
+    expect(session.connection).toBe("online")
+  }, 60_000)
+
+  it("o que se escreveu para o socket morto, sem eco, sai outra vez pela ligação nova", async () => {
+    const session = await sessaoLigada()
+    const morto = FakeSocket.last!
+    morto.mudo = true
+    await session.send(GERAL, MENSAGEM("mensagem-perdida"))
+    expect(morto.sent.some((frame) => frame.t === "channel.send")).toBe(true)
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0, prazoMs: 200 })).toBe(false)
+    await esperar(() => FakeSocket.last !== morto && session.connection === "online")
+    await esperar(() => FakeSocket.last!.sent.some((frame) => frame.t === "channel.send"))
   }, 60_000)
 
   it("sem ligação não há nada a verificar: responde false sem mandar nada", async () => {
     const session = await sessaoLigada()
     session.disconnect()
-    expect(await session.verificarLigacao(200)).toBe(false)
+    expect(await session.verificarLigacao({ prazoMs: 200 })).toBe(false)
+  }, 60_000)
+})
+
+describe("a volta ao primeiro plano (retomar)", () => {
+  it("com tramas durante a ausência: não faz nada", async () => {
+    const session = await sessaoLigada()
+    const socket = FakeSocket.last!
+    const enviadas = socket.sent.length
+    expect(session.retomar({ escondidaMs: 60_000, suspende: true })).toBe("nada")
+    expect(socket.sent.length).toBe(enviadas)
+  }, 60_000)
+
+  it("sem uma trama durante uma ausência longa, num telemóvel: liga outra vez já, sem ping, e recupera", async () => {
+    Session.AUSENCIA_QUE_RELIGA_MS = 300
+    const session = await sessaoLigada()
+    const morto = FakeSocket.last!
+    morto.mudo = true
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    const enviadas = morto.sent.length
+    expect(session.retomar({ escondidaMs: 400, suspende: true })).toBe("religar")
+    expect(morto.sent.length).toBe(enviadas)
+    expect(session.connection).not.toBe("online")
+    await esperar(() => FakeSocket.last !== morto && session.connection === "online")
+    await esperar(() => FakeSocket.last!.sent.some((frame) => frame.t === "channel.backfill" && frame.channel === GERAL))
+  }, 60_000)
+
+  it("no computador, ou com a ausência curta: só verifica", async () => {
+    Session.AUSENCIA_QUE_RELIGA_MS = 300
+    const session = await sessaoLigada()
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(session.retomar({ escondidaMs: 400, suspende: false })).toBe("verificar")
+    expect(session.retomar({ escondidaMs: 100, suspende: true })).toBe("verificar")
+    expect(session.connection).toBe("online")
+  }, 60_000)
+
+  it("com uma chamada, não religa: verifica, e a chamada fica", async () => {
+    Session.AUSENCIA_QUE_RELIGA_MS = 300
+    const session = await sessaoLigada()
+    await session.sfuEntrarNoAmbito(GERAL, "voz")
+    const antes = FakeSocket.todos.length
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(session.retomar({ escondidaMs: 400, suspende: true })).toBe("verificar")
+    expect(await session.verificarLigacao({ silencioMinimoMs: 0, prazoMs: 500 })).toBe(true)
+    expect(FakeSocket.todos.length).toBe(antes)
+  }, 60_000)
+
+  it("sem ligação: liga já", async () => {
+    const session = await sessaoLigada()
+    const morto = FakeSocket.last!
+    morto.close()
+    await esperar(() => session.connection !== "online")
+    expect(session.retomar()).toBe("ligar")
+    await esperar(() => session.connection === "online")
   }, 60_000)
 })

@@ -431,6 +431,15 @@ export class HistoricoEntreAparelhos {
     return true
   }
 
+  /**
+   * The page came back to the foreground (1.3.7): asks the siblings again, if
+   * the replay interval has already passed. Without this, a long connection on
+   * the phone asked once and never again.
+   */
+  aoVoltar(): void {
+    this.#irmaoLigado()
+  }
+
   /** A sibling said it is connected (requested history): this one also asks it, once per interval. */
   #irmaoLigado(): void {
     const agora = this.#porta.agora()
@@ -864,7 +873,7 @@ export class HistoricoEntreAparelhos {
     for (const [ref, item] of this.#noAr) if (agora - item.em > 30_000) this.#noAr.delete(ref)
   }
 
-  // ------------------------------------------------------------- o fio
+  // ------------------------------------------------------------- the wire
 
   /** A `channel.sinal` from the account's channel. Runs serially with the clock. */
   aoSinal(frame: { channel: string; from: string; sinal: string }): Promise<void> {

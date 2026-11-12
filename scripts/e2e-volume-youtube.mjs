@@ -221,7 +221,7 @@ try {
   await bruno.setViewportSize({ width: 1280, height: 860 })
   await espera(800)
 
-  // ======================================================= 1. a barra do volume
+  // ======================================================= 1. the volume bar
   check("a Ana entra na sala de voz", await entrarNaVoz(ana))
   await espera(1000)
   check("o Bruno entra na sala de voz", await entrarNaVoz(bruno))

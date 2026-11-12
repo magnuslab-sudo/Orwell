@@ -103,7 +103,7 @@ export const TECTOS_DO_HISTORICO = {
   itensPorPedidoDeMedia: 8,
 }
 
-// ------------------------------------------------------------------ o resumo
+// ------------------------------------------------------------------ the summary
 
 /**
  * The summary of a channel: SHA-256 of the sorted list of entry identities

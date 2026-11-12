@@ -263,7 +263,7 @@ for (const nomeDoMotor of escolhidos) {
     await recarregarSemChaveDoSeparador(p1)
     check("recarregar sem a chave do separador entra sem palavra-passe", (await oQueAbre(p1)) === "dentro")
 
-    // 3. Fechar o browser e reabrir.
+    // 3. Close the browser and reopen it.
     await ctx.close()
     ctx = await abrirBrowser()
     vigiar(ctx)

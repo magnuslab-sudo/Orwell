@@ -132,7 +132,7 @@ export interface GanhoFalso {
 /** The `GainNode` objects created, in order. The Settings meter creates one. */
 export const ganhos: GanhoFalso[] = []
 
-/** Quantos contextos foram abertos, e quantos foram fechados. */
+/** How many contexts were opened, and how many were closed. */
 export const contextos = { abertos: 0, fechados: 0 }
 
 class ContextoFalso {

@@ -167,7 +167,7 @@ verificar(
   await b.page.getByText(/Atende Ana/).first().isVisible().catch(() => false),
 )
 
-// ------------------------------------------------------------ o fecho
+// ------------------------------------------------------------ the close
 console.log("\n=== fechar, e o estado atravessar ===")
 await b.page.getByRole("button", { name: "Fechar ticket" }).click()
 await b.page.waitForTimeout(3000)

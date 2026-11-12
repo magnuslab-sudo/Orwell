@@ -32,7 +32,7 @@ h3 {
   color: var(--titulo);
 }
 
-/* ------------------------------------------------------------- o vidro */
+/* ------------------------------------------------------------- the glass */
 
 /*
   The color of panels, cards, sheets, and menus is all in `paineis.css`,
@@ -50,7 +50,7 @@ h3 {
   color: var(--discreto);
 }
 
-/* -------------------------------------------------------------- o carril */
+/* -------------------------------------------------------------- the rail */
 
 .rail {
   background: transparent;
@@ -258,7 +258,7 @@ select option {
   background: var(--on-accent);
 }
 
-/* --------------------------------------------- folhas, menus e avisos */
+/* --------------------------------------------- sheets, menus and notices */
 
 .overlay {
   background: rgb(4 6 14 / 0.6);
@@ -350,7 +350,7 @@ select option {
   }
 }
 
-/* ------------------------------------------------- a chamada, na concha */
+/* ------------------------------------------------- the call, in the shell */
 
 /*
   Open voice room: the call is the entire main area. The conversation header,

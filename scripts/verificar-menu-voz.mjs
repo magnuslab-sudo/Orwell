@@ -156,7 +156,7 @@ verificar("com ver perfil", doRui.some((linha) => /Ver perfil/.test(linha)))
 verificar("com copiar endereco", doRui.some((linha) => /Copiar endereço/.test(linha)))
 verificar("e NAO ve destino nenhum", !doRui.some((linha) => /^Mover para/.test(linha)))
 
-// ------------------------------------------------------------- o arrasto
+// ------------------------------------------------------------- the drag
 console.log("\n=== o arrasto: a Ana leva a Carla para a outra sala ===")
 const antesDaCarla = await c.page.evaluate(() => {
   const linha = document.querySelector(".room-row.current .room-name")

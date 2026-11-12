@@ -357,7 +357,7 @@ try {
   check("o Bruno tem os mesmos bytes que a Ana gravou (SHA-256)", shaDoBlob === shaDoFicheiro, `${shaDoBlob.slice(0, 12)}… = ${shaDoFicheiro.slice(0, 12)}…`)
 
   // ---------------------------------------------------------------------------
-  // 5. CSP e rede.
+  // 5. CSP and network.
   // ---------------------------------------------------------------------------
   check("nenhuma recusa da CSP", vigiaA.csp.length + vigiaB.csp.length === 0, [...vigiaA.csp, ...vigiaB.csp].join(" | ").slice(0, 200))
   check("nenhum pedido fora de 127.0.0.1", vigiaA.fora.length + vigiaB.fora.length === 0, [...vigiaA.fora, ...vigiaB.fora].join(" ").slice(0, 200))

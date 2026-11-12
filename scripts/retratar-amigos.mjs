@@ -60,7 +60,7 @@ await retrato("amigos-1280")
 await A.page.getByRole("button", { name: "Comunidades", exact: true }).click({ force: true })
 await A.page.waitForTimeout(1000)
 await retrato("conversas-1280")
-// O selo, ampliado.
+// The seal, enlarged.
 const selo = A.page.locator(".channel-row").filter({ has: A.page.locator(".selo-oficial") }).first()
 await selo.screenshot({ path: `${SAIDA}/selo-linha-1280.png` })
 console.log(`${SAIDA}/selo-linha-1280.png`)

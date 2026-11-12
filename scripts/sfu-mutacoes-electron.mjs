@@ -48,7 +48,7 @@ const MUTACOES = [
       "a ponte da secretária responde com uma promessa, e uma promessa é um objecto: sem await, a aplicação instalada entra por SFU contra TODOS os servidores, incluindo os que não têm motor de media nenhum",
   },
 
-  // --------------------------------------------------- a ponte do renderer
+  // --------------------------------------------------- the renderer bridge
   {
     nome: "ponte-electron-sem-caminho",
     ficheiro: PONTE,
@@ -89,7 +89,7 @@ const MUTACOES = [
       "sem isto a chamada monta, ouve-se quem já lá estava, e ninguém que entre depois se ouve — nunca, e sem um erro em lado nenhum",
   },
 
-  // ------------------------------------------------- o processo principal
+  // ------------------------------------------------- the main process
   {
     nome: "principal-sem-canal-da-capacidade",
     ficheiro: PRINCIPAL,

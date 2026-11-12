@@ -160,7 +160,7 @@ async function noCanal(cofre: StoredChatMessage[], salas?: ChannelRoom[]): Promi
   return user
 }
 
-/** Abrir a folha e escrever. */
+/** Open the sheet and type. */
 async function procurar(user: ReturnType<typeof userEvent.setup>, termo: string): Promise<HTMLElement> {
   await user.click(await screen.findByRole("button", { name: strings.chat.searchToggle }))
   const folha = await screen.findByRole("dialog", { name: strings.chat.searchToggle })

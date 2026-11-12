@@ -177,7 +177,7 @@ describe("a sala AFK na aplicação", () => {
     await esperar(1_000)
     expect(salasPedidas()).toEqual(["voz", "afk"])
 
-    // A vista estava na chamada e segue-a: o aviso aparece no painel.
+    // The view was on the call and follows it: the notice appears in the panel.
     const aviso = await screen.findByText(strings.salaAfk.movido(5))
     expect(aviso).toBeTruthy()
 

@@ -65,7 +65,7 @@ async function sugestoesDaArroba(page) {
   return nomes
 }
 
-/** O texto do sino. */
+/** The bell's text. */
 async function sino(page) {
   await page.locator(".me-bell").first().click()
   await page.locator(".notif-list").first().waitFor({ timeout: 5_000 }).catch(() => {})
@@ -98,7 +98,7 @@ try {
   check("o Bruno entra no canal", await aceitarConvite(bruno.page, CANAL, { espera: 60_000 }))
   check("a Carla entra no canal", await aceitarConvite(carla.page, CANAL, { espera: 60_000 }))
 
-  // 1. O Bruno passa a administrador.
+  // 1. Bruno becomes an administrator.
   await abrirCanal(ana.page, CANAL)
   await ana.page.locator(".member-row").filter({ hasText: "Bruno" }).first().click({ button: "right" })
   await ana.page.locator(".context-menu").getByRole("menuitem", { name: "Tornar administrador" }).click()

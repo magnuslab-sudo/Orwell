@@ -3,18 +3,19 @@ import { en, errosEn } from "./en.js"
 import { errosPt, pt } from "./pt.js"
 
 /**
- * O que uma língua tem de cumprir para poder entrar aqui.
+ * What a language must meet to get in here.
  *
- * A regra do desenho é que uma folha em falta cai para português. Isso é a
- * rede de segurança certa contra uma chave em cru no ecrã, e é também o que
- * torna FÁCIL a pior versão deste trabalho: uma folha metade numa língua e
- * metade noutra, que quem vê lê como avaria e não como tradução a meio.
+ * The design rule is that a missing leaf falls back to Portuguese. That is the
+ * right safety net against a raw key on screen, and it is also what makes the
+ * worst version of this work EASY: a sheet half in one language and half in
+ * another, which whoever sees it reads as a fault and not as a translation in
+ * progress.
  *
- * Por isso a completude é medida e não prometida. Uma língua que entre neste
- * ficheiro entra inteira, ou não entra.
+ * So completeness is measured, not promised. A language that enters this file
+ * enters whole, or not at all.
  */
 
-/** Uma folha: um texto, uma função ou um array. Objectos são caminho, não folha. */
+/** A leaf: a text, a function or an array. Objects are a path, not a leaf. */
 function folhas(valor: unknown, caminho: string): string[] {
   if (typeof valor === "string" || typeof valor === "function" || Array.isArray(valor)) return [caminho]
   if (valor && typeof valor === "object") {
@@ -34,7 +35,7 @@ function em(objecto: unknown, caminho: string): unknown {
   return aqui
 }
 
-/** Todo o texto que chega ao ecrã, com as funções montadas com uma amostra. */
+/** All the text that reaches the screen, with the functions called on a sample. */
 function frasesVisiveis(catalogo: unknown): { caminho: string; frase: string }[] {
   const saida: { caminho: string; frase: string }[] = []
   const visitar = (valor: unknown, caminho: string): void => {
@@ -43,14 +44,14 @@ function frasesVisiveis(catalogo: unknown): { caminho: string; frase: string }[]
       return
     }
     if (typeof valor === "function") {
-      // Os números não são decoração: muitas destas são de plural, e chamadas
-      // só com texto caem sempre no mesmo ramo.
+      // The numbers are not decoration: many of these are plurals, and calls
+      // with text only always fall into the same branch.
       for (const argumento of [" ", 0, 1, 2]) {
         try {
           const feita: unknown = (valor as (...args: unknown[]) => unknown)(argumento, argumento, argumento)
           if (typeof feita === "string") saida.push({ caminho, frase: feita })
         } catch {
-          // Uma função que exige uma forma concreta de argumento.
+          // A function that requires a specific shape of argument.
         }
       }
       return
@@ -79,8 +80,8 @@ describe("o inglês está inteiro", () => {
   })
 
   it("e não diz nada que o português não diga", () => {
-    // Uma chave a mais é ou uma gralha, ou texto que ficou órfão depois de o
-    // português mudar. Nos dois casos é código morto que ninguém volta a ler.
+    // An extra key is either a typo, or text left orphaned after the
+    // Portuguese changed. Either way it is dead code that nobody reads again.
     const aMais = folhas(en, "").filter((caminho) => em(pt, caminho) === undefined)
     expect(aMais, `chaves inglesas sem par no português:\n${aMais.join("\n")}`).toEqual([])
   })
@@ -91,9 +92,9 @@ describe("o inglês está inteiro", () => {
   })
 
   it("uma folha do inglês nunca é uma função onde o português é texto", () => {
-    // O compilador já o exige, mas isto apanha o caso que ele deixa passar: uma
-    // função escrita como texto por engano, que compila e depois aparece no
-    // ecrã com um `${}` por dentro.
+    // The compiler already requires it, but this catches the case it lets through:
+    // a function written as text by mistake, which compiles and then shows up on
+    // screen with a `${}` inside.
     const trocadas = TODAS.filter((caminho) => typeof em(en, caminho) !== typeof em(pt, caminho))
     expect(trocadas, `folhas com feitio diferente do português:\n${trocadas.join("\n")}`).toEqual([])
   })
@@ -101,8 +102,8 @@ describe("o inglês está inteiro", () => {
 
 describe("as regras de escrita, nas duas línguas", () => {
   it("nenhum texto visível leva travessão", () => {
-    // Regra da casa, e não gosto pessoal: a barra longa não entra em texto de
-    // interface. Os comentários usam-na à vontade; o que chega ao ecrã não.
+    // A house rule, not a personal taste: the em dash does not go into interface
+    // text. Comments use it freely; what reaches the screen does not.
     for (const [nome, catalogo] of [
       ["pt", pt],
       ["en", en],
@@ -115,8 +116,8 @@ describe("as regras de escrita, nas duas línguas", () => {
   })
 
   it("e nenhuma frase inglesa fica com um marcador por substituir", () => {
-    // `${nome}` escrito dentro de aspas em vez de num template chega ao ecrã
-    // tal e qual. Compila, passa despercebido, e é ridículo.
+    // `${nome}` written inside quotes instead of in a template reaches the screen
+    // as is. It compiles, goes unnoticed, and is ridiculous.
     const cruas = frasesVisiveis(en)
       .filter(({ frase }) => /\$\{/.test(frase))
       .map(({ caminho, frase }) => `${caminho}: ${frase.slice(0, 70)}`)
@@ -125,20 +126,20 @@ describe("as regras de escrita, nas duas línguas", () => {
 })
 
 /**
- * A hierarquia, em inglês, presa pelas mesmas razões que a portuguesa.
+ * The hierarchy, in English, pinned for the same reasons as the Portuguese one.
  *
  * ```
- * Channel   ← o grupo MLS. É o que a cifra protege.
- *  └ Category ← agrupa. Não tem existência criptográfica nenhuma.
- *     └ Room  ← de texto ou de voz.
+ * Channel   ← the MLS group. It is what the encryption protects.
+ *  └ Category ← groups. It has no cryptographic existence at all.
+ *     └ Room  ← text or voice.
  * ```
  *
- * O risco em inglês tem nome e é o Discord: lá, o grupo inteiro chama-se
- * "server". Aqui não pode: o servidor é outra coisa, é o homeserver, e é
- * precisamente a peça que este produto existe para manter ignorante. Chamar
- * "server" a um canal ensinava o modelo trocado a toda a gente que lesse a
- * interface, que foi exactamente o que aconteceu em português quando o canal
- * se chamou "espaço". Ver `terminologia.test.ts`.
+ * The risk in English has a name, and it is Discord: there, the whole group is
+ * called a "server". Here it cannot be: the server is something else, it is the
+ * homeserver, and it is precisely the piece this product exists to keep
+ * ignorant. Calling a channel a "server" would teach the wrong model to
+ * everyone who read the interface, which is exactly what happened in
+ * Portuguese when the channel was called "espaço". See `terminologia.test.ts`.
  */
 describe("terminologia inglesa", () => {
   it("o que se larga e o que se elimina é o CANAL", () => {
@@ -162,10 +163,10 @@ describe("terminologia inglesa", () => {
 
   it('nenhuma frase inglesa chama "server" ao que se junta', () => {
     /*
-      A palavra "server" é legítima e aparece: é o homeserver, e a interface
-      fala dele por bem — "Could not reach the server", "whoever runs the
-      server". O que não pode existir é a construção do Discord, em que se
-      ENTRA num servidor ou se CRIA um.
+      The word "server" is legitimate and does appear: it is the homeserver, and
+      the interface talks about it on purpose: "Could not reach the server",
+      "whoever runs the server". What cannot exist is the Discord construction,
+      where you JOIN a server or CREATE one.
     */
     const doDiscord = frasesVisiveis(en)
       .filter(({ frase }) => /\b(join|create|leave|delete)( a| the| this)? server\b/i.test(frase))

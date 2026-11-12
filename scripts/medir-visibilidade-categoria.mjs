@@ -97,7 +97,7 @@ await page.getByRole("menuitem", { name: "Quem vê esta categoria" }).first().cl
 await page.getByRole("dialog").waitFor({ timeout: 10_000 })
 await page.waitForTimeout(800)
 
-// E agora o telefone.
+// And now the phone.
 await page.setViewportSize({ width: 390, height: 844 })
 await page.waitForTimeout(800)
 

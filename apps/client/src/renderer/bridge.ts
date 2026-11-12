@@ -159,7 +159,9 @@ interface HostApi {
     /** A round trip to the server, in ms. See `bridge.ts` in `@enclave/ui`. */
     latency: () => Promise<number | null>
     /** Does the connection still carry anything? See `bridge.ts` in `@enclave/ui`. Optional: an old `preload` does not bring it. */
-    verificarLigacao?: () => Promise<boolean>
+    verificarLigacao?: (opcoes?: { silencioMinimoMs?: number }) => Promise<boolean>
+    /** The return to the foreground. See `Session.retomar`. Optional, like the one above. */
+    retomar?: (opcoes?: { escondidaMs?: number; suspende?: boolean }) => Promise<unknown>
     /** Whether the session still writes. Synchronous. Optional: an old `preload` does not bring it. */
     escreve?: () => boolean
   }

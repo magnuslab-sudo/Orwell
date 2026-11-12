@@ -70,7 +70,7 @@ const caixa = (page) => page.locator(".chat-composer .composer-line input:not([t
 const linhaCom = (page, texto) => page.locator(".message").filter({ hasText: texto }).first()
 const errosDe = (nome) => registo.filter((linha) => linha.startsWith(`${nome} PAGEERROR`))
 
-/** O texto do sino. */
+/** The bell's text. */
 async function sino(page) {
   await page.locator(".me-bell").first().click()
   await page.locator(".notif-list").first().waitFor({ timeout: 5_000 }).catch(() => {})
@@ -113,7 +113,7 @@ try {
   }
   for (const p of [ana, bruno, carla].filter(Boolean)) await abrirCanal(p.page, CANAL)
 
-  // 1. O Bruno pergunta.
+  // 1. Bruno asks.
   await caixa(bruno.page).fill(PERGUNTA)
   await bruno.page.keyboard.press("Enter")
   check("a pergunta do Bruno chega à Ana", (await ate(() => linhaCom(ana.page, PERGUNTA).isVisible().catch(() => false), 60_000)) >= 0)

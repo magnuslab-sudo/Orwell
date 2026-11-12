@@ -27,8 +27,8 @@
  *  3. The connection comes back by itself, and messages pass in both
  *     directions: Ana's and the computer's reach the phone; the phone's
  *     reaches Ana and BOTH computer tabs.
- *  4. With no `visibilitychange` at all, the pulse (25 s) detects the death
- *     by itself.
+ *  4. With no `visibilitychange` at all, the pulse detects the death by itself
+ *     (1.3.7: only after 60 s of silence and 15 s of waiting).
  *
  * ALL LOCAL AND DISPOSABLE: `servidor-descartavel.mjs`, its own ports, and
  * no way to point it at production.
@@ -200,12 +200,22 @@ try {
   await espera(1_500)
   check("com o socket morto, nada chega ao telemóvel", !(await ve(tel, "da-ana-na-queda")))
 
-  // The phone comes back to the page, and the person writes at once.
-  await tel.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
+  // The phone hides for a few seconds and comes back to the page, and the person writes at once.
+  // Since 1.3.7 the check only asks after 5 s of silence: the absence has to be real.
+  await tel.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" })
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
+  await espera(6_000)
+  await tel.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" })
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
   await escrever(tel, "do-telemovel-ao-voltar")
 
   // --- 2. The check detects the death -----------------------------------------
-  const deuPorEla = await ate(async () => (await tel.evaluate(() => window.__estados)).some((texto) => texto !== "ligado"), 15_000)
+  // Since 1.3.7 the check waits 15 s for any frame before treating the connection as dead.
+  const deuPorEla = await ate(async () => (await tel.evaluate(() => window.__estados)).some((texto) => texto !== "ligado"), 25_000)
   check('a verificação dá pela morte: a barra deixa de dizer "ligado"', deuPorEla, (await tel.evaluate(() => window.__estados)).join(" > "))
 
   // --- 3. The connection comes back, and everything passes both ways ----------
@@ -240,8 +250,9 @@ try {
     window.__estados.push(document.querySelector("footer.statusbar")?.textContent ?? "")
   })
   for (const registo of sockets) registo.morto = true
-  const peloPulso = await ate(async () => (await tel.evaluate(() => window.__estados)).some((texto) => texto !== "ligado"), 40_000, 500)
-  check("sem visibilitychange, o pulso dá pela morte em menos de 40 s", peloPulso, (await tel.evaluate(() => window.__estados)).join(" > "))
+  // 1.3.7: the pulse (25 s) only asks after 60 s of silence, and waits 15 s. In the worst case, 100 s.
+  const peloPulso = await ate(async () => (await tel.evaluate(() => window.__estados)).some((texto) => texto !== "ligado"), 110_000, 500)
+  check("sem visibilitychange, o pulso dá pela morte em menos de 110 s", peloPulso, (await tel.evaluate(() => window.__estados)).join(" > "))
   check("e volta a ligar", await ate(async () => (await estado(tel)) === "ligado", 60_000))
   await escrever(ana, "depois-do-pulso")
   check("e a mensagem seguinte da Ana chega ao telemóvel", await ate(() => ve(tel, "depois-do-pulso"), 60_000))

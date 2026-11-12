@@ -440,7 +440,7 @@ class DispositivoFalso implements DispositivoDeMedia {
 
   /** See `TransporteFalso.recusarCifraDe`. Shared with the send transport. */
   readonly recusarCifraDe = new Set<string>()
-  /** Ver `TransporteFalso.semOnRtpSender`. */
+  /** See `TransporteFalso.semOnRtpSender`. */
   semOnRtpSender = false
 
   createSendTransport(opcoes: ParametrosDoTransporte): TransporteDeMedia {

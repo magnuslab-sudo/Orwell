@@ -40,7 +40,8 @@
  * the TOOLTIP, which is a `::after` on `[data-tip]` (`components.css:692`) and
  * lives inside the button, invisible until you hover and wider than the button.
  * `scrollWidth` on an element with a tooltip measures the tooltip. Write
- * `scrollWidth > clientWidth` here and you get a check that is always red, or,  * worse, always green measuring something else. What is measured now is geometry:
+ * `scrollWidth > clientWidth` here and you get a check that is always red, or,
+ * worse, always green measuring something else. What is measured now is geometry:
  * each button box inside the column box, the question you wanted to ask from the
  * start.
  *

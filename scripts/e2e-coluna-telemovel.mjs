@@ -284,7 +284,7 @@ try {
     }
     check(`${rotulo}: de pé outra vez, a gaveta volta com as salas`, m.aberta && m.visivel && m.salasAVista >= 4, `${m.salasAVista} salas, ${m.caixa}`)
 
-    // 6. A barra do browser aparece e encolhe a janela.
+    // 6. The browser bar appears and shrinks the window.
     await c.setViewportSize({ width, height: height - 80 })
     await wait(500)
     m = await medir(c)

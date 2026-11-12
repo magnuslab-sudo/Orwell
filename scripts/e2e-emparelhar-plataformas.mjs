@@ -143,7 +143,7 @@ try {
     const msDirecta = await ouviu(novo.page, naDirecta)
     check(`${etiqueta}: o novo lê a directa do Bruno`, msDirecta >= 0, `${msDirecta} ms`)
 
-    // 4. Revogar a partir do principal.
+    // 4. Revoke from the main device.
     const commitsAntes = eventosDe(idDoCanal, "handshake")
     await principal.page.getByRole("button", { name: "Configurações", exact: true }).first().click()
     await principal.page.getByRole("button", { name: "Aparelhos", exact: true }).click()

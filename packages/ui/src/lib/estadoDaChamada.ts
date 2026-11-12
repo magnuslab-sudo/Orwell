@@ -162,6 +162,14 @@ export function avisoDaChamada(code: string, detalhe: string | undefined, nomeDe
       return { code, nivel: "grave", texto: strings.call.avisoEntradaFalhou }
 
     /*
+      The connection dropped mid-call and the core is joining again (1.3.7): up
+      to three attempts in 30 s. A note, not grave: the call goes on, and the
+      403 only comes if all three fail. Cleared by `call-sfu-ligado` (see `App.tsx`).
+    */
+    case "call-sfu-a-religar":
+      return { code, nivel: "nota", texto: strings.call.avisoARelegar }
+
+    /*
       Someone disappeared from everyone's screen without pressing hang up.
       Note and not grave: the call goes on, and what this prevents is the person
       thinking the other ignored them.

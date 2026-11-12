@@ -22,7 +22,7 @@ export function useLatencia(bridge: EnclaveBridge): {
   latencia: { ms: number; ate: "servidor" | "par" } | null
   /** The mouse entered the status dot. */
   comecar: () => void
-  /** E saiu. */
+  /** And it left. */
   parar: () => void
 } {
   const [latencia, setLatencia] = useState<{ ms: number; ate: "servidor" | "par" } | null>(null)

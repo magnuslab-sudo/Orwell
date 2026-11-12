@@ -462,7 +462,7 @@ export class CadeiaDeVoz {
   readonly #aGateAtaque: number
   readonly #aGateLibertacao: number
 
-  // 4. AGC, compressor e tecto.
+  // 4. AGC, compressor and ceiling.
   /** Average power of voice while the gate is open. */
   #nivelDaVoz = deDb(ALVO_DA_VOZ_DB) ** 2
   readonly #aNivel: number
@@ -497,7 +497,7 @@ export class CadeiaDeVoz {
   #cpuTotal = 0
   #cpuBlocos = 0
   #ultimoCpu = 0
-  /** Ver `MedidasDaCadeia.naoFinitos`. */
+  /** See `MedidasDaCadeia.naoFinitos`. */
   #naoFinitos = 0
 
   constructor(taxa: number, config: ConfiguracaoDaCadeia = CONFIGURACAO_NORMAL) {
@@ -845,7 +845,7 @@ function todosFinitos(amostras: Float32Array, n: number): boolean {
   return true
 }
 
-// ------------------------------------------------------------------ o processador do worklet
+// ------------------------------------------------------------------ the worklet processor
 
 /**
  * What the worklet scope has that `lib.dom` does not declare. Read from

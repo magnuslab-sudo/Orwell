@@ -71,7 +71,7 @@ export interface Acontecimento {
 
 /** What preferences say, read at the moment of the event. */
 export interface EstadoDoSom {
-  /** O interruptor geral (`sounds`). */
+  /** The master switch (`sounds`). */
   ligado: boolean
   /** 0 a 100 (`soundVolume`). */
   volume: number

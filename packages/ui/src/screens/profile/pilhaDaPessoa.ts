@@ -59,7 +59,7 @@ export interface PilhaDaPessoa {
   fechar: () => void
   /** Starts listening to `popstate`. Can connect again after disconnect. */
   ligar: () => void
-  /** Larga o ouvinte do `popstate`. */
+  /** Drops the `popstate` listener. */
   desligar: () => void
 }
 

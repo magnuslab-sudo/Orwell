@@ -263,7 +263,7 @@ const marcadas = () =>
   )
 }
 
-// ------------------------------------------------- levantada, o mapa aparece
+// ------------------------------------------------- lifted, the map appears
 {
   await levantarAAna()
   const durante = await marcadas()

@@ -126,13 +126,14 @@ describe("as superfícies, sem vidro líquido", () => {
     }
   })
 
-  it("há uma aurora só, na raiz, e pára com movimento reduzido e no telemóvel", () => {
+  it("há uma aurora só, na raiz, anda mais devagar com movimento reduzido e pára no telemóvel", () => {
     const fundoCss = folhas["fundo.css"] as string
     expect(fundoCss).toMatch(/body::before\s*\{[^}]*animation:\s*aurora/)
     for (const [nome, css] of Object.entries(folhas)) {
       if (nome !== "fundo.css") expect(css, nome).not.toMatch(/@keyframes\s+aurora/i)
     }
-    expect(fundoCss).toMatch(/prefers-reduced-motion[\s\S]*body::before\s*\{\s*animation:\s*none/)
+    // The owner's rule: with reduced motion nothing stops (`movimentoReduzido.test.ts`).
+    expect(fundoCss).toMatch(/prefers-reduced-motion: reduce\) and \(min-width: 601px\)\s*\{\s*body::before\s*\{\s*animation:\s*aurora-calma/)
     expect(fundoCss).toMatch(/max-width:\s*600px\)\s*\{\s*body::before\s*\{\s*animation:\s*none/)
   })
 })

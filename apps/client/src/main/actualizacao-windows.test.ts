@@ -451,7 +451,7 @@ describe("o diagnóstico de cada arranque", () => {
     )
     expect(r).toEqual({ accao: "entrar", codigo: "arranque-falhou", detalhe: "a janela não abriu" })
     expect(gravados).toEqual([{ quando: 7, codigo: "arranque-falhou" }])
-    // E a interface aceita-o no "Enviar registo".
+    // And the interface accepts it in "Enviar registo".
     expect(lerDiagnosticoDoArranque(gravados[0])).toEqual({ quando: 7, codigo: "arranque-falhou" })
   })
 

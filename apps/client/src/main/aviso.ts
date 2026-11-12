@@ -100,7 +100,7 @@ export function sanearAviso(cru: unknown): Aviso | null {
 
 export interface FactosDaEntrega {
   cofreAberto: boolean
-  /** O sistema sabe mostrar avisos (`Notification.isSupported()`). */
+  /** The system can show notifications (`Notification.isSupported()`). */
   suportado: boolean
   /** The window is visible and has focus. */
   aFrente: boolean

@@ -135,16 +135,16 @@ if (ficheiros.length === 0) {
 }
 
 /*
-  The page does not publish a number above a file that says another.
+  The page does not publish one number over a file that says another.
 
-  The badge at the top comes from the root `package.json` and always has; the
-  files came from a `readdir` and were never compared to it. Skipping the two slow
-  steps-building and packing-gave a page saying "Version 0.2.0" with a button to
-  download `Orwell-0.1.0-macos-universal.dmg`, and no auto-update fixes it for
-  whoever already installed.
+  The badge at the top comes from the root `package.json` and always did; the
+  files came from a `readdir` and were never compared with it. Skipping the two
+  slow steps (the build and the packaging) gave a page saying "Versão 0.2.0"
+  with a button downloading `Orwell-0.1.0-macos-universal.dmg`, and there is no
+  auto-update that fixes that for whoever already installed it.
 
-  Stop everything and do not publish the ones that mismatch: half published is the
-  same bug with fewer people hit. See `scripts/instaladores.mjs`.
+  It stops everything and does not publish the ones that match: half published
+  is the same defect with fewer people catching it. See `scripts/instaladores.mjs`.
 */
 if (divergentes.length > 0) {
   console.error(`A raiz está na ${versao} e estes instaladores dizem outra coisa:\n`)

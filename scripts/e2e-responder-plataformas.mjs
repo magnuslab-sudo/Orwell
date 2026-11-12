@@ -202,7 +202,7 @@ try {
     })
   }
 
-  // 1. O Bruno (WebKit) pergunta.
+  // 1. Bruno (WebKit) asks.
   await caixa(bruno.page).fill(PERGUNTA)
   await bruno.page.keyboard.press("Enter")
   check("a pergunta chega à secretária da Ana", (await chega(anaSec.page, PERGUNTA)) >= 0)

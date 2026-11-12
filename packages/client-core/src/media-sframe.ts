@@ -851,7 +851,7 @@ export class CifraDeMedia {
     }
   }
 
-  // ------------------------------------------------------- o caminho do worker
+  // ------------------------------------------------------- the worker path
 
   /**
    * Where this encipherment works, decided ONCE.

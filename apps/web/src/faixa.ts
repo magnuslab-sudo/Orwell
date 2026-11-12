@@ -6,7 +6,7 @@
  * new version ("Reload to continue") and the tab with old code writing
  * underneath (`separadores.outroEscritor`).
  *
- * Owner's choice B, 28 October 2026, among six: up to now it was a smooth
+ * Owner's choice B, 28 October 2026, among six mockups: up to now it was a smooth
  * indigo band end to end, with the system font. Now it is a pill at the
  * center, in the panels' color, with cyan outline and shine, the
  * update icon, the short phrase with the detail more faded, and the full cyan

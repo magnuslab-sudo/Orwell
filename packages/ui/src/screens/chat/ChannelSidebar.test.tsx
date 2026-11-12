@@ -409,7 +409,7 @@ describe("ChannelSidebar — mover pessoas entre salas de voz", () => {
     const pessoa = container.querySelectorAll('.room-voice-members li[draggable="true"]')[0] as HTMLElement
     fireEvent.dragStart(pessoa, { dataTransfer: { setData: noop } })
 
-    // The Régie, not the Studio-where they already are-nor the text rooms.
+    // The Régie, not the Studio (where they already are), nor the text rooms.
     expect(marcadas()).toEqual(["Régie"])
 
     fireEvent.dragEnd(pessoa)

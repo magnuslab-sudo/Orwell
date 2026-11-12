@@ -157,7 +157,7 @@ await new Promise((pronto) => servidor.listen(0, "127.0.0.1", pronto))
 const PORTA = servidor.address().port
 const ENDERECO = `http://localhost:${PORTA}/`
 
-// ------------------------------------------------------------- o browser
+// ------------------------------------------------------------- the browser
 const browser = await chromium.launch()
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: ENDERECO })

@@ -775,7 +775,7 @@ export interface DenunciaRecebida {
   lida: boolean
 }
 
-/** Ver `autoriasDosPerfis`. */
+/** See `autoriasDosPerfis`. */
 export interface AutoriaDoPerfilNoCanal {
   u: number
   autoria: unknown

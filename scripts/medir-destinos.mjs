@@ -257,7 +257,7 @@ for (const destino of CARRIL) {
   console.log(`${destino.padEnd(14)} ${JSON.stringify(await controlos(A.page))}`)
 }
 
-// ------------------------------------------------------------------- o selo
+// ------------------------------------------------------------------- the seal
 console.log("\n----- o selo, a 1280 px -----")
 await ir(A.page, "Comunidades")
 console.log(`barra, nome curto     ${JSON.stringify(await folgaDoSelo(A.page, ".channel-row .channel-name", ".channel-row .selo-oficial"))}`)

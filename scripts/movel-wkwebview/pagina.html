@@ -220,7 +220,8 @@ async function correr(modo) {
   }
   /*
    * One mode per run, chosen from outside. Three modes in one load
-   * means a stop in the second throws away what the first measured,    * and that's how this test rig lost two runs before switching to this.
+   * means a stop in the second throws away what the first measured, and
+   * that's how this test rig lost two runs before switching to this.
    */
   const pedidos = (new URLSearchParams(location.search).get("modos") ?? "solto,cifrado,chave-trocada").split(",")
   try {

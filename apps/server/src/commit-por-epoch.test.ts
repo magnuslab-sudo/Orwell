@@ -550,7 +550,7 @@ describe("arranque: a epoch de cada canal tirada do que já está guardado", () 
   })
 })
 
-// ------------------------------------------------------------------ na rede
+// ------------------------------------------------------------------ on the network
 
 describe("na rede: o gateway recusa ao autor, e a mais ninguém", () => {
   let servidor: ServidorDeTeste

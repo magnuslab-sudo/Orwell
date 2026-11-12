@@ -2,7 +2,7 @@ import { createContext, useContext, useState } from "react"
 import { BridgeContext } from "../App.js"
 import type { DesfechoDoAnexo } from "../bridge.js"
 import { descarregar } from "../lib/ficheiros.js"
-import { strings } from "../strings.js"
+import { strings, translateError } from "../strings.js"
 import type { MediaItem } from "../types.js"
 import { dimensoesDaImagem, reserva } from "../lib/dimensoesDaImagem.js"
 
@@ -18,9 +18,14 @@ export const AnexosDoItem = createContext<{ channel: string; alvo: string; lista
 type Motivo = Exclude<DesfechoDoAnexo, { ok: true }>["motivo"]
 type Estado = { fase: "parado" } | { fase: "a-pedir" } | { fase: "chegou"; item: MediaItem } | { fase: "falhou"; motivo: Motivo }
 
-/** The message for a request that yielded no bytes. None of these are errors with a code: they are limits. */
+/**
+ * The message for a request that yielded no bytes. These are limits, not
+ * errors, except one: `falhou` is a fault, and is reported with its code (515).
+ */
 export function fraseDoMotivo(motivo: Motivo, ficheiro: boolean): string {
   switch (motivo) {
+    case "falhou":
+      return translateError("the attachment request failed")
     case "recusado":
       return strings.sincronia.anexoRecusado
     case "sem-ligacao":
@@ -53,7 +58,7 @@ export function usePedirAnexo(item: MediaItem): {
     setEstado({ fase: "a-pedir" })
     const desfecho = await bridge.anexo
       .pedir({ channel: doItem.channel, alvo: doItem.alvo, indice })
-      .catch((): DesfechoDoAnexo => ({ ok: false, motivo: "ninguem" }))
+      .catch((): DesfechoDoAnexo => ({ ok: false, motivo: "falhou" }))
     if (!desfecho.ok) {
       if (desfecho.motivo === "cancelado" || desfecho.motivo === "por-pedir") setEstado({ fase: "parado" })
       else setEstado({ fase: "falhou", motivo: desfecho.motivo })

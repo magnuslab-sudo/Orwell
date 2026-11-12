@@ -229,7 +229,7 @@ export const CODIGOS_DE_ERRO: Readonly<Record<string, number>> = {
   // Screen share audio (26/10/2026): sharing stays muted, and the person knows why.
   "the system did not give the screen sound": 440,
   "this system cannot share the screen sound": 441,
-  // No browser, a caixa do som do selector por marcar (2/11/2026).
+  // In the browser, the selector's sound box left unticked (2/11/2026).
   "the browser did not give the screen sound": 445,
   // Music in the call (phase 9, 27/10/2026). See `musica.ts` and `Call.partilharMusica`.
   "this call server does not carry music": 442,
@@ -287,7 +287,7 @@ export const CODIGOS_DE_ERRO: Readonly<Record<string, number>> = {
   "you may not change the permissions of this room": 451,
   // Voice moderation (2/11/2026). Block 460-469.
   "to leave the call, leave it": 460,
-  // A sensibilidade do microfone (2/11/2026). Bloco 490-499.
+  // The microphone sensitivity (2/11/2026). Block 490-499.
   "audio-invalid-threshold": 490,
   "audio-meter-denied": 491,
   "audio-meter-failed": 492,
@@ -307,6 +307,8 @@ export const CODIGOS_DE_ERRO: Readonly<Record<string, number>> = {
   "could not read this video": 512,
   "a video upload is already in progress": 513,
   "the video upload failed": 514,
+  // Asking for an attachment's bytes failed because of a fault, not because nobody has it (1.3.7).
+  "the attachment request failed": 515,
 
   "a friend request is already pending": 601,
   "that person is blocked": 602,

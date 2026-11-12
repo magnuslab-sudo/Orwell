@@ -413,7 +413,7 @@ describe("o som do ecrã na malha", () => {
     const som = doBruno.transceivers.find((t) => t.mid === ultimoMidDeAudio(oferta))!
     expect(imagem.direction).toBe("sendrecv")
     expect(som.direction).toBe("sendrecv")
-    // E o microfone dele continua no m-line do microfone.
+    // And his microphone stays on the microphone's m-line.
     expect(som.sender.faixa).toBeNull()
   })
 

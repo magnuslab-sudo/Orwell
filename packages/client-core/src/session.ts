@@ -255,6 +255,7 @@ import {
   hasTransmitted,
   hasTransmitterEvidence,
   mayRepair,
+  REPAIR_COOLDOWN_MS,
   mergeOlderHistory,
   noteDeviceManifest,
   noteTransmitter,
@@ -1404,6 +1405,8 @@ export type StatusCode =
   /** Phase 1g: someone who missed the live stream premiere did not receive the Welcome in time and created the group. */
   | "directa-sem-estreia"
   | "catchup-failed"
+  // An attachment request failed because of a fault, not because nobody has it (1.3.7). Log only.
+  | "anexo-pedido-falhou"
   | "event-failed"
   | "keypackages-failed"
   | "invite-sent"
@@ -1923,74 +1926,103 @@ export class Session extends Emitter<SessionEvents> {
     return Math.round(performance.now() - partiu)
   }
 
-  /** How long a check waits for the `pong` before it treats the connection as dead. */
-  static PRAZO_DA_VERIFICACAO_MS = 5_000
 
   /**
-   * How much socket silence makes a send check the connection before it goes out.
+   * How long, after the `ping`, to wait for ANY frame before treating the
+   * connection as dead.
    *
-   * The interface pulse (`INTERVALO_DO_PULSO_MS`, 25 s) brings a `pong` more
-   * often than this, so with the page in view it almost never happens. It covers
-   * the case where nothing said the page came back: the iPhone does not always
-   * fire `visibilitychange` when an installed app is unlocked.
+   * It was 5 s for the `pong` and only for the `pong` (1.3.6), and that is what
+   * broke 1.3.6 in production: the server answers a connection's frames in
+   * order, a `pong` behind slow work arrives at 6 or 8 s, and each of those
+   * tore down a socket that was delivering. Reconnections went from ~24 to 50
+   * to 62 per hour, and a reconnection in the middle of an SFU join is
+   * "Erro 401". Now: 15 s, and anything that arrives counts.
    */
-  static SILENCIO_ANTES_DE_VERIFICAR_MS = 30_000
+  static PRAZO_DA_VERIFICACAO_MS = 15_000
 
-  /** The check in progress, if any. Sends wait for it. See `verificarLigacao`. */
+  /**
+   * The silence there must be BEFORE the `ping` for the check to ask. With a
+   * frame more recent than this, the socket is delivering and the answer is
+   * `true` without sending anything.
+   */
+  static SILENCIO_ANTES_DO_PING_MS = 5_000
+
+  /**
+   * The silence after which a send starts a check, without waiting for it. It
+   * is for the iPhone that unlocks without `visibilitychange`.
+   */
+  static SILENCIO_ANTES_DE_VERIFICAR_MS = 60_000
+
+  /**
+   * How long hidden, without a frame, makes the return reconnect at once (see
+   * `retomar`). Below this the return only checks.
+   */
+  static AUSENCIA_QUE_RELIGA_MS = 30_000
+
+  /**
+   * How long a person's send waits for the channel's recovery before going out
+   * anyway. See `#esperarPelaRecuperacao`.
+   */
+  static ESPERA_PELA_RECUPERACAO_MS = 10_000
+
+  /** The check in progress, if any. Nobody waits for it except whoever asked for it. */
   #verificacao: Promise<boolean> | null = null
 
   /** When the last frame from the server arrived. Zero before the first. */
   #ultimaTramaEm = 0
 
+  /** Whoever is waiting for the socket's next frame (the check). */
+  readonly #aEsperaDeTrama = new Set<() => void>()
+
+  /** The SFU scopes this connection joined. With any of them, there is a call. */
+  readonly #ambitosSfu = new Set<string>()
+
+  /** Is a call joining or in progress on this connection? */
+  get #emChamada(): boolean {
+    return this.#sfuPendentes.size > 0 || this.#ambitosSfu.size > 0
+  }
+
   /**
-   * Does the connection still carry anything? A `ping`, and the `pong` within
-   * the deadline.
+   * Does the connection still carry anything? It exists because of the phone's
+   * half-open connection (1.3.6): the socket says `OPEN` and nothing gets through.
    *
-   * It exists because of the half-open connection (1.3.6). The phone suspends
-   * the page, the network changes underneath, and the socket stays `OPEN`
-   * without ever firing `close`: the app said "connected" and whatever was
-   * written went nowhere. The interface calls this when the page becomes
-   * visible again, when the network comes back, and every so often while the
-   * page is in view (see `App.tsx`).
+   * The rule (1.3.7): liveness is measured by the time since the LAST frame of
+   * any type, not by the `pong`.
+   *  - With a frame less than `silencioMinimoMs` ago, `true` without asking.
+   *  - Otherwise it sends a `ping` and waits `prazoMs` for any frame (the
+   *    `pong` or another). One arrives: `true`.
+   *  - Only with NO frame at all for the whole deadline, and with the silence
+   *    from before the `ping`, does it drop the socket and connect again. The
+   *    new connection runs the usual recovery.
    *
-   * With no `pong` in time, the connection counts as dropped: the socket is
-   * dropped, the session stops calling itself "online", and it connects again
-   * right away, without waiting for the backoff. The new connection runs the
-   * usual recovery, and that is how whatever was lost in the meantime arrives.
+   * No send waits for this. A call that is joining is not cut by this while
+   * the socket keeps bringing frames; a socket silent for 15 s would not have
+   * carried it anyway.
    *
-   * Sends made while the check runs wait for it (see
-   * `#esperarPelaVerificacao`). With the connection dead they fail as "the
-   * connection dropped", and the interface queues the message until the
-   * connection is back, instead of letting it go out to a socket that carries
-   * it to no one.
-   *
-   * One at a time: two calls together (the network and the tab at the same
-   * moment) share the same answer. Also `false` when there is no connection
-   * to check.
+   * One at a time: two calls together share the answer. `false` when there is
+   * no connection to check.
    */
-  verificarLigacao(prazoMs = Session.PRAZO_DA_VERIFICACAO_MS): Promise<boolean> {
+  verificarLigacao(opcoes: { silencioMinimoMs?: number; prazoMs?: number } = {}): Promise<boolean> {
     if (this.#verificacao) return this.#verificacao
     const socket = this.#socket
     if (this.#connection !== "online" || !socket || socket.readyState !== 1) return Promise.resolve(false)
+    const silencioMinimoMs = opcoes.silencioMinimoMs ?? Session.SILENCIO_ANTES_DO_PING_MS
+    const prazoMs = opcoes.prazoMs ?? Session.PRAZO_DA_VERIFICACAO_MS
+    if (Date.now() - this.#ultimaTramaEm < silencioMinimoMs) return Promise.resolve(true)
     const verificacao = (async (): Promise<boolean> => {
+      const perguntouEm = Date.now()
+      // Nobody waits for the `pong` here: it counts as a frame, and that is all.
+      const chegou = this.#esperarTrama(prazoMs)
       try {
         socket.send(JSON.stringify({ t: "ping" } satisfies ClientFrame))
       } catch {
         // A socket that no longer accepts anything answers the question by itself.
       }
-      const frame = await this.#await("pong", prazoMs).catch(() => null)
-      if (frame?.t === "pong") return true
+      if (await chegou) return true
       // Replaced midway (an outside `connect()`): the new connection is in charge.
       if (this.#socket !== socket) return this.#connection === "online"
-      // Dead. Dropped BEFORE closing: its `close`, if it ever comes, no longer belongs to this session.
-      this.#socket = null
-      try {
-        socket.close()
-      } catch {
-        // Closing a dead socket can throw in some environments; it changes nothing.
-      }
-      this.#onClose()
-      if (!this.#deliberateClose) void this.connect().catch(() => {})
+      if (this.#ultimaTramaEm >= perguntouEm) return true
+      this.#largarERelegar(socket)
       return false
     })()
     this.#verificacao = verificacao
@@ -2001,16 +2033,120 @@ export class Session extends Emitter<SessionEvents> {
   }
 
   /**
-   * A send does not go out during a check: it waits for the answer, and fails if
-   * the connection died. After a long socket silence, the send starts a check.
+   * The page came back to the foreground (`visibilitychange`, `pageshow`,
+   * `online`, `focus`). Decides at once, without waiting for any `ping`.
+   *
+   *  - No connection: connects at once, without waiting for the backoff.
+   *  - Frames during the absence: the socket delivered, and in order. Nothing to do.
+   *  - No frame at all during an absence of `AUSENCIA_QUE_RELIGA_MS` or more,
+   *    on a device that suspends the page (`suspende`), and no call: connects
+   *    again at once. The new connection subscribes and recovers EVERY channel
+   *    from the stored cursor, commits included and by `seq`, with live frames
+   *    held back until each channel is done.
+   *  - Everything else: a check, in the background.
+   *
+   * `escondidaMs` is how long the page was hidden (zero if unknown).
+   * Returns what it did, for the interface and for the tests.
    */
-  async #esperarPelaVerificacao(payload?: Payload): Promise<void> {
+  retomar(opcoes: { escondidaMs?: number; suspende?: boolean } = {}): "ligar" | "religar" | "verificar" | "nada" {
+    if (this.#deliberateClose) return "nada"
+    const escondidaMs = opcoes.escondidaMs ?? 0
+    const socket = this.#socket
+    if (this.#connection !== "online" || !socket || socket.readyState !== 1) {
+      if (this.#connection === "connecting") return "nada"
+      this.#reconnectAttempt = 0
+      void this.connect().catch(() => {})
+      return "ligar"
+    }
+    const silenciosa = Date.now() - this.#ultimaTramaEm >= escondidaMs
+    if (silenciosa && opcoes.suspende && escondidaMs >= Session.AUSENCIA_QUE_RELIGA_MS && !this.#emChamada) {
+      // The new connection does everything: recovery, Welcomes, account state, history.
+      this.#largarERelegar(socket)
+      return "religar"
+    }
+    this.#reconciliarAoVoltar()
+    if (!silenciosa && escondidaMs > 0) return "nada"
+    void this.verificarLigacao().catch(() => false)
+    return "verificar"
+  }
+
+  /**
+   * With the socket up, the return reconciles what only ran on connect or
+   * every ten minutes (1.3.7): the sync pass (friendships, invites, seats,
+   * siblings still to seat, the account channel and the account state) and the
+   * history replay between devices. It is what brings the phone level with the
+   * computer every time it comes back. With a cap: one pass per minute, and the
+   * history has its own.
+   */
+  #reconciliarAoVoltar(): void {
+    if (Date.now() - this.#ultimaSincronia >= Session.SINCRONIA_AO_VOLTAR_MS) void this.#sincronizar().catch(() => {})
+    this.#historico.aoVoltar()
+  }
+
+  /** The minimum interval between two sync passes requested by the return. */
+  static SINCRONIA_AO_VOLTAR_MS = 60_000
+
+  /** Drops a socket treated as dead and connects again at once. */
+  #largarERelegar(socket: WebSocket): void {
+    // Dropped BEFORE closing: its `close`, if it ever comes, no longer belongs to this session.
+    this.#socket = null
+    try {
+      socket.close()
+    } catch {
+      // Closing a dead socket can throw in some environments; it changes nothing.
+    }
+    this.#onClose()
+    if (!this.#deliberateClose) void this.connect().catch(() => {})
+  }
+
+  /** `true` if a frame arrives within the deadline, `false` if not. */
+  #esperarTrama(prazoMs: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const chegou = (): void => {
+        clearTimeout(prazo)
+        this.#aEsperaDeTrama.delete(chegou)
+        resolve(true)
+      }
+      const prazo = setTimeout(() => {
+        this.#aEsperaDeTrama.delete(chegou)
+        resolve(false)
+      }, prazoMs)
+      this.#aEsperaDeTrama.add(chegou)
+    })
+  }
+
+  /**
+   * No send waits for the check. After a long silence it starts one, and the
+   * send goes out at once: if the socket is dead, the receipt deadline and the
+   * outbox take care of it, and the check connects again.
+   */
+  #talvezVerificar(payload?: Payload): void {
     const efemero = payload?.t === "typing" || payload?.t === "buzz"
     if (!efemero && this.#connection === "online" && Date.now() - this.#ultimaTramaEm > Session.SILENCIO_ANTES_DE_VERIFICAR_MS) {
-      void this.verificarLigacao()
+      void this.verificarLigacao({ silencioMinimoMs: 0 }).catch(() => false)
     }
-    const verificacao = this.#verificacao
-    if (verificacao && !(await verificacao)) throw new Error("the connection dropped")
+  }
+
+  /**
+   * A person's message in a channel that is still recovering waits for the
+   * recovery: what is left to read may be a commit, and encrypting before that
+   * would mean encrypting in an old epoch. The client only keeps two epochs
+   * back (`retainKeysForEpochs: 2`): three lost commits and the message would
+   * not decrypt.
+   *
+   * Capped (`ESPERA_PELA_RECUPERACAO_MS`) and by polling, on purpose: some
+   * sends are started from inside the channel's own recovery, and waiting for
+   * it without a cap would be waiting for itself. Only `message`, `edit` and
+   * `reaction`, the ones a person writes; everything else goes out as before.
+   */
+  async #esperarPelaRecuperacao(channel: string, payload: Payload): Promise<void> {
+    if (payload.t !== "message" && payload.t !== "edit" && payload.t !== "reaction") return
+    const aRecuperar = (): boolean => this.#recuperacoesPorFazer.has(channel) || this.#recuperacoes.has(channel)
+    if (this.#connection !== "online" || !aRecuperar()) return
+    const ate = Date.now() + Session.ESPERA_PELA_RECUPERACAO_MS
+    while (aRecuperar() && this.#connection === "online" && Date.now() < ate) {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
   }
 
   /**
@@ -2244,8 +2380,11 @@ export class Session extends Emitter<SessionEvents> {
     }
 
     socket.addEventListener("message", (event) => {
-      // Any frame proves the socket still brings things. See `SILENCIO_ANTES_DE_VERIFICAR_MS`.
-      if (this.#socket === socket) this.#ultimaTramaEm = Date.now()
+      // Any frame proves the socket still brings things. See `verificarLigacao`.
+      if (this.#socket === socket) {
+        this.#ultimaTramaEm = Date.now()
+        for (const chegou of [...this.#aEsperaDeTrama]) chegou()
+      }
       // A frame that will not parse is the relay's problem, not a reason to
       // throw inside a DOM event handler where nothing can catch it.
       let frame: ServerFrame
@@ -2522,6 +2661,8 @@ export class Session extends Emitter<SessionEvents> {
       // connect() must resolve on catch-up, not on best-effort archaeology.
       // And after it, a pass of friendships (F9): what only backfill brought was
       // handled in the next connection, which might be days away.
+      // The sends left without an echo on the previous connection, now in the current epoch.
+      this.#repetirOsSemEco()
       void this.#backfillMissed(restored)
         .then(() => {
           // Recovery ends, which triggers the summary (S4, §4.4), without waiting for the pass.
@@ -2768,9 +2909,27 @@ export class Session extends Emitter<SessionEvents> {
     // replay then broke off at `page.channel !== channel` and that channel
     // silently stopped catching up.
     this.#failPending("the connection dropped")
-    // Retries (S6): a rate limit refusal only arrives on the connection that carried
-    // the frame. Without this, payloads with attachments stayed in memory until the
-    // cap. What got no echo is recognized in recovery by the bytes.
+    // The SFU scopes belonged to this connection: the server dropped them with the socket.
+    this.#ambitosSfu.clear()
+    /*
+      The sends without an echo (1.3.7). Until now they were dropped: what the
+      server had was recognized in recovery by the bytes, and what never got
+      there was lost, with the person seeing the message as sent. Since 1.3.7
+      no longer makes sends wait for the check, a message written to a
+      half-open socket ends up here. They are kept, and resent through the
+      channel queue after the new connection recovers the channel
+      (`#repetirOsSemEco`), in the current epoch. If the server did have it
+      after all, the recipient sees the same `id` twice and stores it once
+      (`jaGuardada`).
+    */
+    if (!this.#deliberateClose) {
+      for (const entrada of this.#reenviaveis.values()) {
+        // The ledger has its own receipt, and whoever asked for it resends it; ephemeral frames are not resent.
+        const efemero = entrada.tipo === "payload" && (entrada.payload.t === "typing" || entrada.payload.t === "buzz")
+        if (entrada.tipo === "payload" && entrada.livro === null && !efemero && entrada.vida === this.#vida) this.#semEcoPorRepetir.push(entrada)
+      }
+      this.#semEcoPorRepetir.splice(0, Math.max(0, this.#semEcoPorRepetir.length - Session.REENVIAVEIS_MAX))
+    }
     this.#reenviaveis.clear()
     // And slow mode's turn: the echo it was waiting for no longer comes here. Slow
     // mode stays (the server's bucket belongs to the account, not the connection).
@@ -4624,7 +4783,8 @@ What was left behind:
    */
   async #enviarEmLote(channel: string, payloads: readonly Payload[]): Promise<void> {
     if (!this.#groups.has(channel)) throw new Error("not a member of this channel", { cause: { channel } })
-    await this.#esperarPelaVerificacao(payloads[0])
+    this.#talvezVerificar(payloads[0])
+    if (payloads[0]) await this.#esperarPelaRecuperacao(channel, payloads[0])
     const vida = this.#vida
     const preparados = payloads.map((payload) => {
       const conferido = this.#comMencoesConferidas(channel, this.identity.address, payload)
@@ -4745,10 +4905,11 @@ What was left behind:
    */
   async #sendPayload(channel: string, payload: Payload): Promise<string> {
     if (!this.#groups.has(channel)) throw new Error("not a member of this channel", { cause: { channel } })
-    // Before encrypting: a connection found to be dead spends no generation.
-    await this.#esperarPelaVerificacao(payload)
-    // The life of this account in the session (S6): what to expect from the pace and wake
-    // after an account switch does not leave. See `#vida`.
+    // Goes out now: the check, if there is one, runs alongside. See `#talvezVerificar`.
+    this.#talvezVerificar(payload)
+    await this.#esperarPelaRecuperacao(channel, payload)
+    // The life of this account in the session (S6): whatever waits for the rate
+    // limit and wakes up after an account switch does not go out. See `#vida`.
     const vida = this.#vida
     // The authorship (S4): the signature of this device in the reportable types. See `comAutoria`.
     if (channel !== this.canalDaConta) payload = comAutoria(channel, payload, this.#quemRelata())
@@ -5168,6 +5329,28 @@ What was left behind:
   #proximaOrdem(): number {
     this.#ordemDosEnvios += 1
     return this.#ordemDosEnvios
+  }
+
+  /** The sends a connection carried and did not echo before it dropped. See `#onClose`. */
+  #semEcoPorRepetir: Reenviavel[] = []
+
+  /** Puts the sends without an echo into each channel's resend queue. See `#onClose`. */
+  #repetirOsSemEco(): void {
+    const agora = Date.now()
+    const entradas = this.#semEcoPorRepetir.splice(0)
+    for (const entrada of entradas) {
+      if (entrada.vida !== this.#vida || !this.#groups.has(entrada.channel)) continue
+      entrada.primeiraRecusa ??= agora
+      const fila = this.#porRepetir.get(entrada.channel) ?? []
+      const lugar = fila.findIndex((outra) => outra.ordem > entrada.ordem)
+      if (lugar < 0) fila.push(entrada)
+      else fila.splice(lugar, 0, entrada)
+      this.#porRepetir.set(entrada.channel, fila)
+    }
+    for (const canal of new Set(entradas.map((entrada) => entrada.channel))) if (this.#porRepetir.has(canal)) this.#agendarDreno(canal)
+    if (entradas.length > 0) {
+      this.emit("status", { detail: `${entradas.length} envio(s) sem eco repetido(s) depois de ligar outra vez`, level: "info", code: "send-rate-limited", route: "log" })
+    }
   }
 
   #guardarReenviavel(ref: string, entrada: Reenviavel): void {
@@ -8866,6 +9049,8 @@ What was left behind:
   }> {
     const frame = await this.#pedirSfu({ t: "sfu.scope.join", channel, scope }, "sfu.scope.joined")
     if (frame.t !== "sfu.scope.joined") throw new Error("unexpected answer from the server", { cause: { kind: frame.t } })
+    // There is a call on this connection: the return to the foreground does not cut it. See `retomar`.
+    this.#ambitosSfu.add(`${channel}|${scope}`)
     // The address comes from the wire as a string and the tag is ours, as everywhere
     // in this file: the server does not have the type, and the schema validates it.
     return {
@@ -8883,6 +9068,7 @@ What was left behind:
    * is the clean exit, for when it exists.
    */
   sfuSairDoAmbito(channel: string, scope: string): void {
+    this.#ambitosSfu.delete(`${channel}|${scope}`)
     // An exit that breaks because the connection already dropped is not an error:
     // the server dropped everything it had to drop when the socket died.
     try {
@@ -12364,6 +12550,7 @@ What was left behind:
       agora: () => Date.now(),
       gravarAnexo: (canal, autor, alvo, indice, anexo) => this.#gravarAnexo(canal, autor, alvo, indice, anexo),
       bytesDoVideo: (sha) => this.#videos.bytes(sha),
+      aoFalharAnexo: (canal, detalhe) => this.#anexoFalhou(canal, detalhe),
       servirVideo: (canal, sha, q, vez) => this.#videos.servir(canal, sha, q, vez),
       esperarVideo: (canal, anexo) => this.#videos.esperar(canal, [anexo]),
       aoMudar: (canal) => {
@@ -12592,7 +12779,15 @@ What was left behind:
    */
   pedirAnexo(channel: string, alvo: string, indice: number): Promise<DesfechoDoAnexo> {
     if (this.#connection !== "online") return Promise.resolve({ ok: false, motivo: "sem-ligacao" })
-    return this.#anti.pedirAnexo(channel, alvo, indice).catch((): DesfechoDoAnexo => ({ ok: false, motivo: "ninguem" }))
+    return this.#anti.pedirAnexo(channel, alvo, indice).catch((erro: unknown): DesfechoDoAnexo => {
+      this.#anexoFalhou(channel, String((erro as Error)?.message ?? erro))
+      return { ok: false, motivo: "falhou" }
+    })
+  }
+
+  /** An attachment request that failed because of a fault: it goes to the log, under its own name. */
+  #anexoFalhou(channel: string, detalhe: string): void {
+    this.emit("status", { detail: `pedido de anexo: ${detalhe}`, level: "error", code: "anexo-pedido-falhou", route: "log", channel })
   }
 
   /** Give up on an attachment request (waiting in queue, or running). Says whether there was one. */
@@ -12757,6 +12952,9 @@ What was left behind:
    * in six hours per channel, and who's already reading isn't touched. One at a
    * time: two passes in parallel would claim the same package twice.
    */
+  /** How long a sibling device without key packages waits before trying to seat it again. */
+  static SEM_CHAVES_VOLTA_MS = 10 * 60_000
+
   async #sincronizar(): Promise<void> {
     /*
       If requested while one is running, another runs after, and only one. The one
@@ -12777,6 +12975,16 @@ What was left behind:
         this.#pedirLugares(null)
         await this.#assentarAparelhosEmFalta().catch(() => {})
         await this.#cuidarDoCanalDaConta().catch(() => {})
+        /*
+          And the half for those without the account key (1.3.7). It only ran
+          on connect, and a phone with its socket up for hours never announced
+          itself again, nor sent the state left unsent (a read marker that
+          failed stayed that way until the next connection).
+        */
+        if (!this.#groups.has(this.canalDaConta)) await this.#anunciarAparelho().catch(() => {})
+        if (this.vault.contents.estadoPorEnviar && this.#groups.has(this.canalDaConta)) {
+          await this.#enviarEstadoCompleto().catch(() => {})
+        }
         // S1: announce the resend where it's missing, tell again what is ours to
         // whoever arrived, and ask for profiles of whoever shows up without a name (F10).
         await this.#anunciarReenvioEmFalta().catch(() => {})
@@ -12968,11 +13176,21 @@ What was left behind:
           if (!(erro instanceof AparelhoSemChaves) && this.#nadaSeGastou(erro)) {
             await this.#reporTravao(`${eu}|${chaveDoTravao}`, anteriorDoTravao)
           }
+          /*
+            No key packages NOW does not mean none six hours from now (1.3.7):
+            the phone publishes them when the page wakes up. It tries again in
+            the pass `SEM_CHAVES_VOLTA_MS` from now, not at the end of the brake.
+          */
+          if (erro instanceof AparelhoSemChaves) {
+            await this.vault.update((contents) => {
+              contents.repairAttempts[`${eu}|${chaveDoTravao}`] = Date.now() - REPAIR_COOLDOWN_MS + Session.SEM_CHAVES_VOLTA_MS
+            })
+          }
           throw erro
         }
       } catch (erro) {
-        // A device with no keys now has them in six hours, by the throttle.
-        // Who's already there (a run alongside another repair) is the outcome we wanted.
+        // A device without keys is now tried again in `SEM_CHAVES_VOLTA_MS`.
+        // Already being there (a race with another repair) is the outcome we wanted.
         if ((erro as Error).message !== "that person is already in this channel" && !(erro instanceof AparelhoSemChaves)) {
           this.#falhaDeLugar(canal, "assentar aparelho em falta", erro)
         }

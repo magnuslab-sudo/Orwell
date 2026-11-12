@@ -1471,16 +1471,29 @@ button.tag-pill:active,
   }
 }
 
-/* Without motion, the call is told by width: the ring stays still and thicker,
-   so it does not read like the ring of someone not on the call. */
+/* With less motion the ring keeps pulsing, at twice the duration, growing half
+   as much and starting fainter. The owner's rule is that nothing stops, it just
+   moves slower. Up to 1.3.7 the pulse was removed (`content: none`). The ring is
+   also thicker, so the call reads even between two pulses. The `!important` is
+   against the universal rule in `base.css`. */
 @media (prefers-reduced-motion: reduce) {
   [data-anel][data-em-chamada] {
     box-shadow: 0 0 0 3px var(--anel-cor);
   }
 
   [data-anel][data-em-chamada]::after {
-    content: none;
-    animation: none;
+    animation: anel-pulsa-calmo 3.2s ease-in-out infinite !important;
+  }
+}
+
+@keyframes anel-pulsa-calmo {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
   }
 }
 
@@ -1519,6 +1532,25 @@ button.tag-pill:active,
   }
   100% {
     transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* The same pulse on the card with less motion: at twice the duration and half
+   the growth, so it also ends before the voice ring. */
+@media (prefers-reduced-motion: reduce) {
+  .call-chip [data-anel][data-em-chamada]::after {
+    animation-name: anel-pulsa-calmo-no-cartao !important;
+  }
+}
+
+@keyframes anel-pulsa-calmo-no-cartao {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.05);
     opacity: 0;
   }
 }

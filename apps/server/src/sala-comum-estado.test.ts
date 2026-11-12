@@ -210,7 +210,7 @@ describe("os nomes na sala comum", () => {
     await until(() => ela.session.channels.includes(COMUM), "ela é admitida com o outro fora")
     await until(() => nomeQueVe(ela, dono.address) === "Duarte", "vê o nome de quem a admitiu")
 
-    // E o ausente volta.
+    // And the absent one comes back.
     await ausente.session.connect()
 
     await until(

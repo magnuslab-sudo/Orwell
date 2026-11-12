@@ -403,7 +403,7 @@ try {
   check("o Bruno tem a Dora nos amigos, e a Ana desapareceu (amigos e conversas)", soDora, listaDoBruno.corpo.slice(0, 120))
   check('a oferta não volta: o sino do Bruno já não oferece "Adicionar"', !(await sino(bruno.page)).texto.includes("Adicionar "))
 
-  // 4. A Carla: o aviso, o convite, e a Dora entra sozinha.
+  // 4. Carla: the notice, the invite, and Dora joins on her own.
   let sinoDaCarla = { texto: "" }
   await ate(async () => (sinoDaCarla = await sino(carla.page)).texto.includes(`Convidar ${dora.address} para`), 60_000, 2_000)
   check('a Carla vê "Convidar @dora para ...?"', sinoDaCarla.texto.includes(`Convidar ${dora.address} para`), sinoDaCarla.texto.slice(0, 160))

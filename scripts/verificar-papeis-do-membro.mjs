@@ -136,7 +136,7 @@ await a.page.keyboard.press(" ")
 await a.page.waitForTimeout(2500)
 verificar("marcar pelo teclado dá o papel", await caixa.isChecked())
 
-// ---------------------------------------------------------------- ver
+// ---------------------------------------------------------------- view
 console.log("\n=== ver os papéis é de todos os membros, alterar não ===")
 /**
  * The assignment travels encrypted through the group: wait for Carla's panel to

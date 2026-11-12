@@ -261,7 +261,7 @@ describe("a música na malha", () => {
     const musica = faixa("audio", "musica-do-bruno")
     expect(await bruno.partilharMusica(musica, "Fado")).toBe(true)
     expect(lugar.sender.faixa).toBe(musica)
-    // E o microfone dele continua no lugar do microfone.
+    // And his microphone stays in the microphone's place.
     expect(doBruno.transceivers.find((t) => t.porAddTrack && t.kind === "audio")!.sender.faixa?.id).toBe("mic")
   })
 

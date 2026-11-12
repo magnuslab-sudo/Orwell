@@ -179,7 +179,7 @@ async function oQueSeVe(page, ms = 30_000) {
 }
 
 try {
-  // 1. A Ana funda e arruma, no Chromium.
+  // 1. Ana founds and tidies up, in Chromium.
   const ana = await abrir(chromium, "chromium")
   await criarConta(ana.page, { nome: "Ana", frase: FRASE, servidor: srv.NOME })
   await dentro(ana.page)

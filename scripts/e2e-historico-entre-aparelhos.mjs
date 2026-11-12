@@ -300,7 +300,7 @@ try {
   browserPc = await chromium.launch({ headless: true })
 
   // ---------------------------------------------------------------------------
-  // 1. A Ana no computador. O Bruno: amizade, conversa, mural e tickets.
+  // 1. Ana on the computer. Bruno: friendship, conversation, feed and tickets.
   // ---------------------------------------------------------------------------
   const redePc = []
   const ctxPc = await browserPc.newContext(CONTEXTO)

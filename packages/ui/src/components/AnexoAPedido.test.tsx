@@ -49,6 +49,28 @@ describe("ImagemAPedido", () => {
     expect(screen.getByRole("status").textContent).toBe(strings.sincronia.anexoNinguem)
   })
 
+  it("uma avaria não se diz como «ninguém a tem»: diz-se com o código dela (1.3.7)", async () => {
+    montar({ ok: false, motivo: "falhou" })
+    await carregar()
+    const texto = screen.getByRole("status").textContent ?? ""
+    expect(texto).not.toBe(strings.sincronia.anexoNinguem)
+    expect(texto).toContain("515")
+  })
+
+  it("e a ponte que atira também é uma avaria, e não «ninguém»", async () => {
+    const lista: MediaItem[] = [{ evicted: true, name: "b.png", mediaType: "image/png" }]
+    const bridge = { anexo: { pedir: vi.fn(async () => Promise.reject(new Error("ipc caiu"))) } } as unknown as EnclaveBridge
+    render(
+      <BridgeContext.Provider value={bridge}>
+        <AnexosDoItem.Provider value={{ channel: "!lagar:s", alvo: "post-1", lista }}>
+          <PostImages media={lista} />
+        </AnexosDoItem.Provider>
+      </BridgeContext.Provider>,
+    )
+    await carregar()
+    expect(screen.getByRole("status").textContent ?? "").toContain("515")
+  })
+
   it("se o que chegou não confere, não se mostra", async () => {
     montar({ ok: false, motivo: "recusado" })
     await carregar()

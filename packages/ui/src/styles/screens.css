@@ -1119,13 +1119,19 @@
   animation: pulse 1.8s ease-in-out infinite;
 }
 
-/* Anyone who requested less motion gets the color saying what the animation
-   said, and color alone is enough to separate a room with people from an empty
-   one. The global block in `base.css` already cuts animations; this is explicit
-   to not rely on a rule that lives in another file. */
+/* With less motion the room keeps pulsing, at twice the duration and lighter:
+   the opacity only drops to 0.65, not to 0.3. The owner's rule is that nothing
+   stops, it just moves slower. Up to 1.3.7 this was `animation: none`. The
+   `!important` is against the universal rule in `base.css`. */
 @media (prefers-reduced-motion: reduce) {
   .room-glyph.room-live svg {
-    animation: none;
+    animation: pulse-calmo 3.6s ease-in-out infinite !important;
+  }
+}
+
+@keyframes pulse-calmo {
+  50% {
+    opacity: 0.65;
   }
 }
 
@@ -3263,7 +3269,7 @@ and 623 tall, and would hit the people panel. Same card, at preview scale. */
   background: color-mix(in srgb, var(--text) 10%, transparent);
 }
 
-/* ---------------------------------------------------------- o corpo */
+/* ---------------------------------------------------------- the body */
 
 .call-corpo {
   flex: 1;
@@ -3733,7 +3739,7 @@ and 623 tall, and would hit the people panel. Same card, at preview scale. */
   stroke: color-mix(in srgb, var(--presenca) 55%, transparent);
 }
 
-/* Microfone desligado: cinzento riscado, e nem verde nem halo. */
+/* Microphone off: struck-through grey, and neither green nor halo. */
 .call-chip.mic-calado .anel-de-voz.repouso circle {
   stroke: var(--discreto);
   stroke-opacity: 0.7;
@@ -5229,7 +5235,7 @@ and 623 tall, and would hit the people panel. Same card, at preview scale. */
   min-height: 0;
 }
 
-/* ------------------------------------------------------------- o carrossel */
+/* ------------------------------------------------------------- the carousel */
 
 .carrossel {
   display: flex;
@@ -8536,7 +8542,7 @@ button.tag-pill[aria-pressed="true"] {
   }
 }
 
-/* ------------------------------------------------- o destino Amigos */
+/* ------------------------------------------------- the Amigos destination */
 
 /**
  * Friends: the conversations column, the top stripe, and the body.

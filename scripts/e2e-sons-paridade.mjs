@@ -268,7 +268,7 @@ try {
   check("6. o Bruno é movido: ouve o som de ser movido, uma vez", quantos(sonsDoBruno, "movido") === 1, JSON.stringify(sonsDoBruno))
   check('6. e não ouve a própria entrada nem o "ligado" da sala nova', !sonsDoBruno.includes("entrou") && !sonsDoBruno.includes("ligado"), JSON.stringify(sonsDoBruno))
 
-  // 7. O socket do Bruno cai.
+  // 7. Bruno's socket drops.
   await espera(2500)
   antesBruno = await contar(bruno)
   const fechados = await bruno.evaluate(() => {

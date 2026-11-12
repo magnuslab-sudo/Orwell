@@ -322,7 +322,7 @@ describe("o microfone que morre calado", () => {
   })
 })
 
-// ------------------------------------------------------------ e na malha
+// ------------------------------------------------------------ and on the mesh
 
 /*
  * The mesh doubles, the ones in `call.musica.test.ts`, with the `getSenders`

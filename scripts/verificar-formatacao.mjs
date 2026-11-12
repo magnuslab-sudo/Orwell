@@ -131,7 +131,7 @@ await page.waitForSelector(".spoiler", { timeout: 10_000 })
 
 check("a página desenha sem erros", errosDePagina.length === 0, errosDePagina[0] ?? "")
 
-// ------------------------------------------------ 1. nada do texto virou HTML
+// ------------------------------------------------ 1. none of the text turned into HTML
 {
   const dentro = await page.evaluate(() => ({
     imagens: document.querySelectorAll("#raiz img").length,
@@ -249,7 +249,7 @@ check("a página desenha sem erros", errosDePagina.length === 0, errosDePagina[0
   check("o que está por cima do link tapado é a mancha, e não o link", alvo === "spoiler", String(alvo))
 }
 
-// ------------------------------------------------ 4. o rasurado desenha o risco
+// ------------------------------------------------ 4. the strikethrough draws the line
 {
   const risco = await page.evaluate(() => {
     const s = document.querySelector("#amostra-tudo s")

@@ -185,7 +185,7 @@ verificar("e ve a sala dela", (await salasVisiveis(a.page)).includes(SALA))
 verificar("o Rui, sem o papel, nao ve", await esperarCategoria(b.page, false))
 verificar("a Carla, sem o papel, nao ve", await esperarCategoria(c.page, false))
 
-// --------------------------------------------------- 4. dar o papel
+// --------------------------------------------------- 4. give the role
 console.log("\n=== CAMINHO 4: dar o papel ao Rui, e o Rui passar a ver ===")
 const linhaRui = a.page.locator(".member-row").filter({ hasText: "Rui" }).first()
 const limiteRui = Date.now() + 60_000

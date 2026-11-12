@@ -286,7 +286,7 @@ try {
     await ctx.close()
   }
 
-  // ------------------------------------------------------- o cofre do beta
+  // ------------------------------------------------------- the beta vault
   {
     /*
       A 0.9.x vault pretending: the usual JSON, no `orwv2` header

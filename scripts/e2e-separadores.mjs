@@ -415,7 +415,7 @@ for (const nomeDoMotor of escolhidos) {
     check("o 2 envia a sua", await ve(p2, "dois: escrito no segundo separador"))
     check("o 2 tem agora um WebSocket aberto", s2.abertos() === 1, `${s2.abertos()}`)
 
-    // 4. O separador 3 pede a posse.
+    // 4. Tab 3 asks for ownership.
     const p3 = await ctx.newPage()
     p3.__nome = "p3"
     const s3 = vigiarSockets(p3)

@@ -104,7 +104,7 @@ const catastrofe = await page.locator(".procura-linha").count()
 check("um termo que é uma expressão regular não encontra nada, e não rebenta", catastrofe === 0, `${catastrofe} linhas`)
 check("nenhum erro na consola até aqui", erros.length === 0, erros.join(" | "))
 
-// ------------------------------------------------------------- 3. o salto
+// ------------------------------------------------------------- 3. the jump
 await escrever("agulha")
 // Before jumping: where is the conversation, and is there anywhere to go at
 // all. Without this second measure, the jump check passed on a conversation that

@@ -275,7 +275,7 @@ describe("com Web Locks", () => {
     expect(a.posse.estado.t).toBe("dono")
     expect(b.posse.estado.t).toBe("espera")
 
-    // O segundo clique.
+    // The second click.
     b.posse.pedir({ forcar: true })
     await passar(0)
     expect(b.posse.estado.t).toBe("dono")

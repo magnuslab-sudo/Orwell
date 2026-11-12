@@ -73,7 +73,7 @@ async function aEntradaDeCarla() {
   const [pacoteCarla] = await generateKeyPackages(carla, 1)
   if (!pacoteBruno || !pacoteCarla) throw new Error("sem key packages")
 
-  // A e B na chamada.
+  // A and B on the call.
   const fundacao = await createChannel(ana, CANAL)
   const convite = await addMembers(fundacao, [decodeKeyPackage(pacoteBruno.wire)])
   const anaAntes = convite.session

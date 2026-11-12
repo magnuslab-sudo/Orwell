@@ -551,7 +551,7 @@ async function abrir(opcoes = {}, procura = "") {
   await ctx.close()
 }
 
-// ---------------------------------------------------- 3. o custo por quadro
+// ---------------------------------------------------- 3. the cost per frame
 {
   const { ctx, page } = await abrir()
   const cdp = await ctx.newCDPSession(page)

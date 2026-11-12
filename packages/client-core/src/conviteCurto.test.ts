@@ -96,7 +96,7 @@ describe("a ligação curta de convite", () => {
       `https://orwell.pt/c#${CURTO}.0123456789abcdel`, // l outside the code alphabet
       `https://orwell.pt/c#${CURTO} ${CODIGO}`, // space
       `ftp://orwell.pt/c#${CURTO}.${CODIGO}`,
-      `https://orwell.pt/c#${CURTO}.${CODIGO}${"a".repeat(3000)}`, // acima do tecto
+      `https://orwell.pt/c#${CURTO}.${CODIGO}${"a".repeat(3000)}`, // above the cap
       "",
     ]
     for (const mau of maus) expect(parseShortInviteLink(mau)).toBeNull()

@@ -95,7 +95,7 @@ if (!(await canal.isVisible().catch(() => false))) {
 await canal.click()
 await page.waitForTimeout(1200)
 
-// ------------------------------------------------------------------- o selo
+// ------------------------------------------------------------------- the seal
 const selo = page.getByRole("img", { name: "oficial" }).first()
 const contagem = await selo.count()
 console.log("selos no ecrã:", await page.getByRole("img", { name: "oficial" }).count())

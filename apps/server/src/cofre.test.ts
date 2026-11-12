@@ -601,7 +601,7 @@ describe("o Store do cofre", () => {
     expect(p3.entradas.map((e) => e.chave)).toEqual(chaves.slice(4))
     // An entry larger than the budget goes out alone, so reading makes progress.
     expect(store.cofreGet(ESCOPO, 0, 100, 100).entradas).toHaveLength(1)
-    // E por linhas.
+    // And by lines.
     expect(store.cofreGet(ESCOPO, 0, 1 << 20, 3)).toMatchObject({ mais: true, ate: 3 })
   })
 

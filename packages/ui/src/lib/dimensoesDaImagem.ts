@@ -132,7 +132,7 @@ class LeitorBase64 {
 }
 
 function png(l: LeitorBase64): Dimensoes | null {
-  // Assinatura, comprimento do primeiro bloco, e "IHDR".
+  // Signature, length of the first chunk, and "IHDR".
   if (!l.igual(0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) || !l.igual(12, [0x49, 0x48, 0x44, 0x52])) return null
   return { largura: l.be32(16), altura: l.be32(20) }
 }

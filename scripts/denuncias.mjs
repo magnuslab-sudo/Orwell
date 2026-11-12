@@ -157,7 +157,7 @@ function itemDeDecisaoValido(item) {
   )
 }
 
-// ------------------------------------------------------------ o disco
+// ------------------------------------------------------------ the disk
 
 /**
  * The `denuncias/` folder, with paths relative to it. Always writes via temp
@@ -341,7 +341,7 @@ function baseRemota(caminho) {
   }
 }
 
-// ------------------------------------------------------------ o arquivo
+// ------------------------------------------------------------ the archive
 
 function criarArquivo(disco) {
   const lerJson = (relativo) => {
@@ -753,7 +753,7 @@ function autoridades(arquivo, numero, informado, nota) {
   console.log(`Denúncia ${numero}: autoridades "${informado}" registado em ${hoje()}.`)
 }
 
-// ------------------------------------------------------------ o arranque
+// ------------------------------------------------------------ the start
 
 async function ligar() {
   if (PRODUCAO) {

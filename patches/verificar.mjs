@@ -1,18 +1,19 @@
 /**
- * Falha se algum remendo desta pasta não estiver aplicado em `node_modules`.
+ * Fails if any patch in this folder is not applied in `node_modules`.
  *
- * Existe porque o remendo do ts-mls passou meses fora da imagem de produção sem
- * que nada o dissesse: o `infra/Dockerfile` corria `npm ci` sem ter copiado esta
- * pasta, o `postinstall` respondia "No patch files found" e saía com zero, e o
- * bundle servido ficou com `remove).length > 1` — a expulsão singular sem
- * UpdatePath que o remendo existe para impedir. A imagem construía, subia, e
- * mentia.
+ * It exists because the ts-mls patch spent months outside the production image
+ * without anything saying so: `infra/Dockerfile` ran `npm ci` without having
+ * copied this folder, `postinstall` answered "No patch files found" and exited
+ * with zero, and the served bundle kept `remove).length > 1`: the single-member
+ * removal without an UpdatePath that the patch exists to prevent. The image
+ * built, went up, and lied.
  *
- * Verifica o EFEITO e não o processo: lê o ficheiro remendado e procura as duas
- * formas. `patch-package --error-on-fail` não servia, porque só falha quando um
- * remendo não aplica — sem remendos para aplicar, sai com sucesso na mesma.
+ * It checks the EFFECT, not the process: it reads the patched file and looks
+ * for both forms. `patch-package --error-on-fail` would not do, because it only
+ * fails when a patch does not apply; with no patches to apply, it still exits
+ * successfully.
  *
- * Uso: `node patches/verificar.mjs`, a partir da raiz do repositório.
+ * Usage: `node patches/verificar.mjs`, from the repository root.
  */
 import { readFileSync } from "node:fs"
 
@@ -24,7 +25,7 @@ const REMENDOS = [
     original: "Object.values(grouped.remove).length > 1",
   },
   {
-    // A validação das folhas por fundir na árvore de quem entra (RFC 9420 §12.4.3.1).
+    // The validation of unmerged leaves in the joiner's tree (RFC 9420 §12.4.3.1).
     remendo: "patches/ts-mls+1.6.2.patch",
     ficheiro: "node_modules/ts-mls/dist/src/clientState.js",
     remendado: "if (!dpNode.parent.unmergedLeaves.includes(unmergedLeaf))",

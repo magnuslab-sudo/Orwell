@@ -86,7 +86,7 @@ describe("anéis de presença — as regras que estas contas supõem", () => {
     expect(componentes).toMatch(/\[data-anel="ocupado"\]\s*\{\s*--anel-cor:\s*var\(--presence-busy\)/)
   })
 
-  it("o pulso só anima transform e opacity, e pára com menos movimento", () => {
+  it("o pulso só anima transform e opacity, e com menos movimento pulsa mais devagar sobre um anel mais grosso", () => {
     const fotogramas = /@keyframes anel-pulsa\s*\{([\s\S]*?)\n\}/.exec(componentes)?.[1] ?? ""
     expect(fotogramas).toMatch(/transform/)
     expect(fotogramas.replace(/transform|opacity|scale|[\d.%{}():;\s]/g, "")).toBe("")
@@ -94,6 +94,7 @@ describe("anéis de presença — as regras que estas contas supõem", () => {
     expect(componentes).toMatch(
       /prefers-reduced-motion: reduce\)\s*\{\s*\[data-anel\]\[data-em-chamada\]\s*\{\s*box-shadow:\s*0 0 0 3px/,
     )
+    expect(componentes).toMatch(/\[data-anel\]\[data-em-chamada\]::after\s*\{\s*animation:\s*anel-pulsa-calmo 3\.2s/)
   })
 })
 

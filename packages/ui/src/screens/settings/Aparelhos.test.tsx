@@ -151,7 +151,7 @@ describe("a secção Aparelhos", () => {
     expect(alerta.textContent).toContain("Repete para acabar a revogação.")
     vi.mocked(bridge.pairing!.devices).mockResolvedValue([ESTE])
     await waitFor(() => expect(alerta.closest("li")?.textContent).toContain(strings.settings.revokePending))
-    // Repetir acaba: a marca sai.
+    // Repeating ends: the mark goes away.
     fireEvent.click(screen.getByRole("button", { name: /^Revogar/ }))
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: strings.settings.revoke }))
     expect(await screen.findByText(strings.settings.revoked)).toBeTruthy()

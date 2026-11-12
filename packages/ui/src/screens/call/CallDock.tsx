@@ -170,7 +170,7 @@ export function CallDock({
   const chaveDasVozes = participants.map((participante) => participante.stream?.id ?? "").join("|")
   const vozes = useMemo(
     () => participants.flatMap((participante) => (participante.stream ? [participante.stream] : [])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ver a chave acima
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see the key above
     [chaveDasVozes],
   )
   /*

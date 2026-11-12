@@ -141,7 +141,7 @@ function confere(nome, condicao, detalhe = "") {
 
 console.log(`servidor local em ${LOCAL}\n`)
 
-// 1. O caminho bom.
+// 1. The good path.
 await publicar({ conteudo: instaladorDeEnsaio("1.0.7") })
 {
   const { resultado, estados } = await arrancar()

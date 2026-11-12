@@ -52,7 +52,7 @@ describe("LinkPreview — um vídeo do YouTube", () => {
     expect(alvo.tagName).toBe("A")
     expect(alvo.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     expect(alvo.getAttribute("target")).toBe("_blank")
-    // `noreferrer` mata o Referer; `noopener` corta o `window.opener`.
+    // `noreferrer` kills the Referer; `noopener` cuts `window.opener`.
     expect(alvo.getAttribute("rel")).toBe("noopener noreferrer")
 
     // A simple click follows the link: nothing stops it to play here inside.

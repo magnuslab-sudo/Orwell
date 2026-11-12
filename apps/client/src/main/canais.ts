@@ -501,7 +501,7 @@ export function ligarCanais({ registarPedido, registarLeitura, sessao }: PortasD
     return { ok: true }
   })
 
-  // ------------------------------------------------- emendar e apagar
+  // ------------------------------------------------- edit and delete
   /*
     Deletion is a request. The interface says this in words before anyone clicks.
     It leaves the screen of whoever handles it. Readers keep what they've seen.

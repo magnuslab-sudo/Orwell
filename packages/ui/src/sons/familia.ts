@@ -422,7 +422,7 @@ export const SONS: Record<TipoDeSom, DescricaoDeSom> = {
   "espectador-saiu": { notas: duas("B5", "F#5", 0.06, 0.1, 0.05), presenca: 0.42 },
 }
 
-/* -------------------------------------------------------------- o timbre */
+/* -------------------------------------------------------------- the timbre */
 
 /*
   The marimba (3/11/2026, owner's request: more inspired by MSN). The numbers are

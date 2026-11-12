@@ -37,7 +37,7 @@ await criarConta(page, { nome: "Duarte", frase: "frase-passe-teste", servidor: S
 await page.waitForTimeout(6000)
 check("a conta abre e o shell aparece", (await page.locator(".rail-btn").count()) > 0)
 
-// ------------------------------------------------------------- escrever o link
+// ------------------------------------------------------------- type the link
 await page.getByRole("button", { name: "Feed" }).first().click()
 await page.waitForTimeout(500)
 await page.getByRole("button", { name: "Adicionar link" }).click()

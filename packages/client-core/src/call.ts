@@ -2691,9 +2691,50 @@ export class Call extends Emitter<CallEvents> {
    * family of races the queue exists to prevent.
    */
   async ligacaoVoltou(): Promise<void> {
+    // With a rebuild in progress, the connection coming back wakes it: it tries at once, and does not queue another.
+    if (this.#aRefazer) {
+      if (this.#acordarORefazer) this.#acordarORefazer()
+      else this.#voltouEntretanto = true
+      return
+    }
     const run = this.#queue.catch(() => {}).then(() => this.#refazerMedia())
     this.#queue = run.catch(() => {})
     return run
+  }
+
+  /** How many SFU joins a rebuild attempts before saying the call dropped (403). */
+  static TENTATIVAS_DE_REFAZER = 3
+  /** The total time a rebuild has for those attempts. */
+  static JANELA_DE_REFAZER_MS = 30_000
+  /** The pause between attempts with a connection (it grows: 2 s, 4 s). */
+  static PAUSA_ENTRE_REFAZERES_MS = 2_000
+
+  /** A rebuild in progress. See `#refazerMedia`. */
+  #aRefazer = false
+  /** Wakes the wait between attempts: the connection came back, or the person left. */
+  #acordarORefazer: (() => void) | null = null
+  /** The person left during a rebuild: no more attempts. */
+  #desistirDeRefazer = false
+
+  /** The connection came back in the middle of an attempt: the next wait does not wait. */
+  #voltouEntretanto = false
+
+  #esperarParaRefazer(ms: number): Promise<void> {
+    if (this.#voltouEntretanto) {
+      this.#voltouEntretanto = false
+      return Promise.resolve()
+    }
+    return new Promise((resolve) => {
+      const prazo = setTimeout(() => {
+        this.#acordarORefazer = null
+        resolve()
+      }, ms)
+      this.#acordarORefazer = () => {
+        clearTimeout(prazo)
+        this.#acordarORefazer = null
+        resolve()
+      }
+    })
   }
 
   async #refazerMedia(): Promise<void> {
@@ -2726,15 +2767,58 @@ export class Call extends Emitter<CallEvents> {
      * for warnings that did not arrive.
      */
 
+    /*
+     * Up to `TENTATIVAS_DE_REFAZER` times within `JANELA_DE_REFAZER_MS` (1.3.7).
+     *
+     * It was a single attempt, and on the phone it almost always failed: the
+     * screen unlocking, or the network moving from Wi-Fi to mobile data, drops
+     * the socket again in the middle of the join, the SFU requests die with it,
+     * and what showed was "Erro 403". Now the screen says it is reconnecting
+     * (`call-sfu-a-religar`), and each attempt waits for the connection: its
+     * return wakes the wait (`ligacaoVoltou`). The new join uses the current
+     * session and the keys of the current epoch (`#cifra`). Only the engine is
+     * dropped between attempts: the capture, the channel and the roster stay.
+     */
+    this.emit("diagnostic", { code: "call-sfu-a-religar", detail: motor.ambito ?? "" })
+    this.#aRefazer = true
+    this.#voltouEntretanto = false
+    const comecou = Date.now()
+    let erro: unknown = null
     try {
-      await this.#entrarPorSfu(channel)
-    } catch (erro) {
+      for (let tentativa = 1; tentativa <= Call.TENTATIVAS_DE_REFAZER; tentativa++) {
+        if (this.#channel !== channel || this.#desistirDeRefazer) return
+        try {
+          await this.#entrarPorSfu(channel, { largarAoFalhar: false })
+          erro = null
+          break
+        } catch (falha) {
+          erro = falha
+          this.emit("diagnostic", { code: "call-sfu-refazer-tentativa", detail: `${tentativa}/${Call.TENTATIVAS_DE_REFAZER}: ${String((falha as Error)?.message ?? falha)}` })
+          // A refusal with its own name (full, encryption) does not change by trying again.
+          if (ehRecusaDoSfu(falha) || ehCifraDoEmissorEmFalta(falha)) break
+          const resta = Call.JANELA_DE_REFAZER_MS - (Date.now() - comecou)
+          if (tentativa === Call.TENTATIVAS_DE_REFAZER || resta <= 0) break
+          // Without a connection, trying at once would fail again: wait for it to come back, which wakes this.
+          const semLigacao = /not connected|connection dropped|connection was replaced/.test(String((falha as Error)?.message ?? ""))
+          await this.#esperarParaRefazer(semLigacao ? resta : Math.min(Call.PAUSA_ENTRE_REFAZERES_MS * tentativa, resta))
+        }
+      }
+    } finally {
+      this.#aRefazer = false
+      this.#acordarORefazer = null
+      this.#desistirDeRefazer = false
+      this.#voltouEntretanto = false
+    }
+    if (this.#channel !== channel) return
+
+    if (erro !== null) {
       /*
-       * It was not rebuilt. `#entrarPorSfu` already dropped everything the entry
-       * opened, and what is left is to tell the screen the call ended: it dropped
-       * it like a handoff, and a handoff does not emit `ended`, the panel would
-       * stay open over a call that no longer exists.
+       * It was not rebuilt, not even on the third try. The rest of the call is
+       * dropped, and what is left is to tell the screen the call ended: it
+       * dropped it like a handoff, and a handoff does not emit `ended`, the panel
+       * would stay open over a call that no longer exists.
        */
+      await this.#leave(true).catch(() => {})
       const detalhe = String((erro as Error)?.message ?? erro)
       this.emit("diagnostic", { code: "call-sfu-refazer-falhou", detail: detalhe })
       /*
@@ -2814,6 +2898,11 @@ export class Call extends Emitter<CallEvents> {
   }
 
   async leave(): Promise<void> {
+    // In the middle of a rebuild, leaving does not wait for the attempts: it ends them.
+    if (this.#aRefazer) {
+      this.#desistirDeRefazer = true
+      this.#acordarORefazer?.()
+    }
     const run = this.#queue.catch(() => {}).then(() => this.#leave())
     this.#queue = run.catch(() => {})
     return run
@@ -5552,7 +5641,11 @@ once, and it left.
   /** How many times per minute media remakes because sending does not connect. */
   static readonly REFAZERES_DO_ENVIO_POR_MINUTO = 3
 
-  async #entrarPorSfu(channel: string): Promise<void> {
+  /**
+   * `largarAoFalhar: false` is the rebuild: on a failure only the engine is
+   * dropped, and the capture, the channel and the roster stay for the next attempt.
+   */
+  async #entrarPorSfu(channel: string, opcoes: { largarAoFalhar?: boolean } = {}): Promise<void> {
     const sfu = this.bridge.sfu
     if (!sfu) return
 
@@ -5639,6 +5732,8 @@ once, and it left.
        * word, and says nothing to someone who just wanted to talk to someone. The whole thing goes
        * to the log with a proper name, and to the screen goes a sentence.
        */
+      // In a rebuild, the failure belongs to one attempt, and `#refazerMedia` counts it.
+      if (opcoes.largarAoFalhar === false) throw erro
       const detalhe = String((erro as Error)?.message ?? erro)
       this.emit("diagnostic", { code: "call-sfu-entrada-falhou", detail: detalhe })
       // A cleanup that fails cannot eat the explanation of who told it to do it:

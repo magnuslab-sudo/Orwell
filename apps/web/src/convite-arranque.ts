@@ -48,7 +48,7 @@ export interface AmbienteDoArranque {
   location: Pick<Location, "href" | "pathname">
   history: Pick<History, "replaceState">
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null
-  /** O `import.meta.env.BASE_URL`: `/app/`. */
+  /** The `import.meta.env.BASE_URL`: `/app/`. */
   base: string
 }
 

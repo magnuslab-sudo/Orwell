@@ -53,7 +53,7 @@ K = 3.4               # superellipse exponent: a square O, not a circle
 #
 #   n · banner height · gap · which one slipped off the banner
 CHEIA = (7, 2.25, 0.875, 4)
-COMPACTA = (5, 3.0, 1.5, 3)      # 3 e 1,5 → exactamente 2 px e 1 px a 16
+COMPACTA = (5, 3.0, 1.5, 3)      # 3 and 1.5 → exactly 2 px and 1 px at 16
 DESLOCA = 1.6                     # how far the loose banner slides to the right
 
 # The boundary between the two. Below this the full variant runs out of pixels
@@ -90,7 +90,7 @@ def formas(variante=CHEIA) -> list[str]:
             continue
         interno = _meia(A_INT, B_INT, yc)
         dx = centrar + (DESLOCA if i == solta else 0.0)
-        if interno < 1.0:                       # topo e base: a tarja atravessa
+        if interno < 1.0:                       # top and bottom: the bar runs across
             saida.append(_tarja(CENTRO - meia + dx, CENTRO + meia + dx, y0, alt))
         else:                                   # middle: two stems, the open O
             saida.append(_tarja(CENTRO - meia + dx, CENTRO - interno + dx, y0, alt))

@@ -133,7 +133,7 @@ const MUTACOES = [
     porque: "o âmbito ficava a anunciar a quem chegasse um fluxo que já não existe, e o cliente novo esperava por media que nunca vinha",
   },
 
-  // ------------------------------------------------------ o gateway ecoa a fonte
+  // ------------------------------------------------------ the gateway echoes the source
   {
     nome: "gateway-nao-ecoa-a-fonte",
     ficheiro: GATEWAY,
@@ -145,7 +145,7 @@ const MUTACOES = [
     porque: "sem a fonte, do outro lado o ecrã é indistinguível de uma câmara e vai parar ao cartão de 190 por 128 com as bordas cortadas",
   },
 
-  // ------------------------------------------------------------- o motor do cliente
+  // ------------------------------------------------------------- the client engine
   {
     nome: "produtor-sem-fonte",
     ficheiro: MOTOR,

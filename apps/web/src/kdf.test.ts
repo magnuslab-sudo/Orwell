@@ -49,7 +49,7 @@ class WorkerFalso {
   onmessageerror: ((evento: unknown) => void) | null = null
   static ultimo: WorkerFalso | null = null
   static falhaAoCriar = false
-  /** Quantos foram criados e quantos foram enterrados. Ver o `finally`. */
+  /** How many were created and how many were buried. See the `finally`. */
   static criados = 0
   static terminados = 0
   /**

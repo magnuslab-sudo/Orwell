@@ -206,6 +206,8 @@ export const BridgeContext = createContext<EnclaveBridge | null>(null)
 
 /** How often the connection is checked while the page is in view. See the pulse in `App`. */
 export const INTERVALO_DO_PULSO_MS = 25_000
+/** The socket silence below which the pulse does not even ask (1.3.7). */
+export const SILENCIO_DO_PULSO_MS = 60_000
 
 /** How much of a channel's stored history is seeded into React state. */
 const MEMORY_PER_CHANNEL = 200
@@ -2589,6 +2591,10 @@ function Shell({
       // Media through SFU held up (the entry, or the call remade after a drop): the
       // next drop is another.
       if (code === "call-sfu-ligado") vigiaDaQueda.current.mediaVoltou()
+      // The call came back, or gave up (and the 403 says why): the "reconnecting" notice is no longer true.
+      if (code === "call-sfu-ligado" || code === "call-sfu-refazer-falhou") {
+        setAvisoDeChamada((actual) => (actual?.code === "call-sfu-a-religar" ? null : actual))
+      }
 
       /*
         And the three that could not stay only in the log.
@@ -3258,14 +3264,31 @@ function Shell({
   /*
     When connected, "try now" is not enough: on the phone the socket is often
     left half open (1.3.6). The system suspends the page, the network changes
-    underneath, and the socket stays `OPEN` without ever firing `close`. So,
-    when connected, we ask the server (`verificarLigacao`: a `ping` with a short
-    deadline), and with no answer the session treats the connection as dropped
-    and connects again. With no connection, it connects, as before.
+    underneath, and the socket stays `OPEN` without ever firing `close`.
+
+    When connected, the return goes to the session (`retomar`), which decides at
+    once, without waiting for any `ping`: with no frame during a long absence on
+    a device that suspends the page, it connects again right away, and the new
+    connection recovers every channel from its cursor; with frames, it does
+    nothing; otherwise, it checks in the background. With no connection, it
+    connects, as before.
+
+    `suspende`: a touch screen, or a page the browser froze (`freeze`). The
+    computer does not suspend a hidden tab, and reconnecting there on every
+    return was what 1.3.6 did to reconnections.
   */
+  const escondidaEm = useRef<number | null>(null)
+  const congelada = useRef(false)
   const verificarOuLigar = useCallback(() => {
+    const desde = escondidaEm.current
+    escondidaEm.current = null
+    const suspende = congelada.current || window.matchMedia?.("(pointer: coarse)").matches === true
+    congelada.current = false
     if (connectionRef.current === "online") {
-      void bridge.session?.verificarLigacao?.().catch(() => false)
+      const sessao = bridge.session
+      const escondidaMs = desde === null ? 0 : Date.now() - desde
+      if (sessao?.retomar) void Promise.resolve(sessao.retomar({ escondidaMs, suspende })).catch(() => {})
+      else void sessao?.verificarLigacao?.().catch(() => false)
       return
     }
     ligarAgora(false)
@@ -3276,29 +3299,41 @@ function Shell({
     const aoVoltarARede = (): void => verificarOuLigar()
     const aoVerSe = (): void => {
       if (document.visibilityState === "visible") verificarOuLigar()
+      else escondidaEm.current ??= Date.now()
     }
     // A page that comes back from the back/forward cache (Safari on the iPhone): the
     // socket left there is almost always a dead socket.
     const aoVoltarDaCache = (event: PageTransitionEvent): void => {
       if (event.persisted) verificarOuLigar()
     }
+    const aoCongelar = (): void => {
+      congelada.current = true
+      escondidaEm.current ??= Date.now()
+    }
+    // Focus too: some phones unlock without `visibilitychange`.
+    const aoFocar = (): void => {
+      if (document.visibilityState === "visible") verificarOuLigar()
+    }
     window.addEventListener("online", aoVoltarARede)
     document.addEventListener("visibilitychange", aoVerSe)
     window.addEventListener("pageshow", aoVoltarDaCache)
+    document.addEventListener("freeze", aoCongelar)
+    window.addEventListener("focus", aoFocar)
     return () => {
       window.removeEventListener("online", aoVoltarARede)
       document.removeEventListener("visibilitychange", aoVerSe)
       window.removeEventListener("pageshow", aoVoltarDaCache)
+      document.removeEventListener("freeze", aoCongelar)
+      window.removeEventListener("focus", aoFocar)
     }
   }, [stage, verificarOuLigar])
 
   /*
-    The pulse: while the page is in view and connected, one check every
-    `INTERVALO_DO_PULSO_MS`. It stops the banner from saying "connected" over a
-    dead socket when the network changes without the page being hidden. Hidden,
-    there is no pulse at all: no battery and no traffic for someone who is not
-    looking, and the check on return handles the rest. A `ping` is a frame of a
-    few bytes.
+    The pulse: while the page is in view and connected, every
+    `INTERVALO_DO_PULSO_MS`. Since 1.3.7 it does not tear down anything that
+    delivers: it only asks after `SILENCIO_DO_PULSO_MS` without a frame, and only
+    drops the socket if nothing arrives during the whole check deadline. Hidden,
+    there is no pulse at all.
   */
   useEffect(() => {
     if (stage !== "ready" || connection !== "online") return
@@ -3307,7 +3342,7 @@ function Shell({
       if (pulso !== undefined || document.visibilityState !== "visible") return
       pulso = setInterval(() => {
         if (document.visibilityState !== "visible") return
-        void bridge.session?.verificarLigacao?.().catch(() => false)
+        void bridge.session?.verificarLigacao?.({ silencioMinimoMs: SILENCIO_DO_PULSO_MS }).catch(() => false)
       }, INTERVALO_DO_PULSO_MS)
     }
     const desarmar = (): void => {
@@ -5610,7 +5645,7 @@ function Shell({
    */
   const papeisDe = useCallback(
     (channel: string) => bridge.channels.roles?.(channel) ?? [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` é o gatilho da releitura
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` is the trigger for re-reading
     [bridge, papeisVersao],
   )
 
@@ -5706,7 +5741,7 @@ function Shell({
           .catch((error: Error) => pushToast(traduzirErro(error), "error"))
       },
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` é o gatilho da releitura
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` is the trigger for re-reading
   }, [pessoa, canalDoPerfil, labelFor, bridge, papeisVersao, pushToast])
 
   /**
@@ -5745,7 +5780,7 @@ function Shell({
             roles: bridge.channels.rolesFor?.(propriedades, quem) ?? [],
           }))
         : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` é o gatilho da releitura
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `papeisVersao` is the trigger for re-reading
     [propriedades, membrosDasPropriedades, nameFor, bridge, papeisVersao],
   )
 
@@ -5795,7 +5830,7 @@ function Shell({
    */
   const apelidos = useMemo(
     () => (active ? (bridge.channels.nicknames?.(active) ?? {}) : {}),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `messages` é o gatilho da releitura
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `messages` is the trigger for re-reading
     [active, bridge, messages],
   )
   const apelidoDe = useCallback((quem: string): string | undefined => apelidos[quem], [apelidos])

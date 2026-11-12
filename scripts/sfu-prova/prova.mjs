@@ -72,7 +72,7 @@ check("o servidor.mjs não conhece material de chave nenhum", problemas.length =
 const linhas = fonteDoServidor.split("\n").filter((l) => l.trim() && !l.trim().startsWith("*") && !l.trim().startsWith("/*") && !l.trim().startsWith("//")).length
 check("o servidor.mjs cabe numa leitura a olho (menos de 200 linhas de código)", linhas < 200, `${linhas} linhas`)
 
-// --- 2. montar e acender -----------------------------------------------------
+// --- 2. assemble and power up ------------------------------------------------
 await rm(CAPTURA, { force: true })
 await build({
   entryPoints: [`${AQUI}pagina.js`],
@@ -149,7 +149,7 @@ try {
     daRecepcao.erro,
   )
 
-  // --- 4. a faixa atravessa, e atravessa cifrada -----------------------------
+  // --- 4. the track gets through, and gets through encrypted -----------------
   console.log("\n== o áudio")
   check("o emissor cifrou frames", daEmissao.framesCifrados > 0, `${daEmissao.framesCifrados}`)
   check("o receptor recebeu frames", daRecepcao.framesRecebidos > 0, `${daRecepcao.framesRecebidos}`)
