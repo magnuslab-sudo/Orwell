@@ -38,3 +38,11 @@ scripts/movel-wkwebview/smoke
 
 .DS_Store
 *.log
+
+# Suíte de QA (Selenium). As capturas de cada corrida ficam de fora.
+# Os recortes e o GIF de portefólio estão em qa/docs/media/ e seguem no Git.
+qa/.venv/
+qa/.env
+qa/artefactos/
+qa/.pytest_cache/
+**/__pycache__/

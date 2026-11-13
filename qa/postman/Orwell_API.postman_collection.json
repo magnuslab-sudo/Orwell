@@ -1,0 +1,151 @@
+{
+  "info": {
+    "name": "Orwell API — leva 1",
+    "description": "Cinco pedidos HTTP ao homeserver, sem sessão e sem criar conta. Saúde, rota inexistente, envelope de federação mal formado, registo com tipos errados, denúncia sem assinatura. O texto das mensagens viaja no WebSocket cifrado e fica para a leva seguinte.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Saúde — positivo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/_enclave/health",
+        "description": "GET /_enclave/health. Só diz que o processo responde e qual é o nome do servidor."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+              "const corpo = pm.response.json();",
+              "pm.test('ok é verdadeiro', function () { pm.expect(corpo.ok).to.eql(true); });",
+              "pm.test('o nome do servidor é o do ambiente', function () { pm.expect(corpo.server).to.eql(pm.environment.get('serverName')); });",
+              "pm.test('não traz contagem de gente nem de canais', function () { pm.expect(Object.keys(corpo).sort()).to.eql(['ok', 'server']); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rota inexistente — negativo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/_enclave/nao-existe",
+        "description": "Um caminho debaixo de /_enclave/ que o servidor não regista."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde 404', function () { pm.response.to.have.status(404); });",
+              "const corpo = pm.response.json();",
+              "pm.test('o corpo diz Not Found', function () {",
+              "  pm.expect(corpo.statusCode).to.eql(404);",
+              "  pm.expect(corpo.error).to.eql('Not Found');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Federação — envelope com número e script",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"origin\": 123,\n  \"payload\": \"<script>alert(1)</script>\"\n}"
+        },
+        "url": "{{baseUrl}}/_enclave/federation/v1/send",
+        "description": "POST /_enclave/federation/v1/send. Número onde a spec espera texto, e marcação no payload. Tem de falhar a validação, sem ecoar o script e sem 500."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde 400', function () { pm.response.to.have.status(400); });",
+              "pm.test('o erro é malformed-envelope', function () { pm.expect(pm.response.json().error).to.eql('malformed-envelope'); });",
+              "pm.test('não ecoa o script', function () { pm.expect(pm.response.text()).to.not.include('<script>'); });",
+              "pm.test('não é erro de servidor', function () { pm.expect(pm.response.code).to.be.below(500); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registo — número no texto e marcação no endereço",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"endereco\": \"<script>alert(1)</script>\",\n  \"versao\": 12345,\n  \"texto\": 999\n}"
+        },
+        "url": "{{baseUrl}}/_enclave/relato",
+        "description": "POST /_enclave/relato. A versão e o texto têm de ser texto. Um número e um endereço que não é @id:servidor ficam de fora, e nada é gravado."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde 400', function () { pm.response.to.have.status(400); });",
+              "pm.test('o erro é malformed-report', function () { pm.expect(pm.response.json().error).to.eql('malformed-report'); });",
+              "pm.test('não ecoa o script', function () { pm.expect(pm.response.text()).to.not.include('<script>'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Denúncia — sem assinatura",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": "{{baseUrl}}/_enclave/denuncia",
+        "description": "POST /_enclave/denuncia. O corpo tem de ser um pedido assinado pelo aparelho. Um objecto vazio não autentica."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde 401', function () { pm.response.to.have.status(401); });",
+              "pm.test('o erro é unauthorized', function () { pm.expect(pm.response.json().error).to.eql('unauthorized'); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

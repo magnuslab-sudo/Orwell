@@ -15,6 +15,49 @@ own, and I have put hundreds of hours into it so far.
   <a href="https://github.com/magnuslab-sudo/orwell"><img src="https://img.shields.io/badge/GitHub-Star%20this%20repo-24292f?logo=github&logoColor=white" alt="Star Orwell on GitHub"></a>
 </p>
 
+## QA on this fork
+
+Vinicius Jesus da Silva. This fork keeps the Orwell product and adds the suite in [`qa/`](qa/README.md). The integration layer is Vitest. Each case starts the real homeserver and reads what the screen cannot show: a signed report on disk, a ciphertext between two servers, a SQLite row, a vault opened with the real passphrase derivation.
+
+![One local run of the integration suite. Eight tests, six files.](qa/docs/media/integracao-vitest.gif)
+
+The recording is one local run of the command below. The vault case uses real Argon2id, so that file takes most of the half minute. Two log lines belong to the cases that check those failures: the campaign page that could not be read, and the media port that was already taken.
+
+### Run the integration suite
+
+Node 22 or newer, from the repository root, after `npx tsc -b`:
+
+```powershell
+node .\node_modules\vitest\vitest.mjs run --config qa/integration/vitest.config.ts
+```
+
+`qa/integration/vitest.config.ts` keeps the production Argon2id. The server's own Vitest project swaps in a fast derivation so its unit tests stay quick. `npm test` runs Vitest inside each package. `qa/pytest.ini` collects `qa/testes`.
+
+### What a green run shows
+
+| Theme | Where | What the run shows |
+| --- | --- | --- |
+| Link preview | `qa/integration/ligacao.integracao.test.ts` | A page on 127.0.0.1 receives zero connections. Every blocked address comes back with the same reason. |
+| Federation | `qa/integration/federacao.integracao.test.ts` | Ciphertext leaves one homeserver, the other reads the key over HTTP, and the peer is stored. A server outside the allowlist gets 403 and leaves no peer. |
+| Calls | `qa/integration/sfu.integracao.test.ts` | With the media engine up, `hello.ok` advertises `sfu`. With the port taken, the homeserver stays up and the hello omits `sfu`. |
+| Report | `qa/integration/denuncia.integracao.test.ts` | The same signed request is refused before the gateway login and accepted after it. Sending those same bytes again writes no second file. |
+| Campaign bar | `qa/integration/apoio.integracao.test.ts` | The watcher reads the fixture over HTTP, stores the last value, and serves `/_enclave/apoiar.json`. With the campaign down, `/_enclave/health` stays ok and the bar is absent. |
+| Vault | `qa/integration/cofre.integracao.test.ts` | The right passphrase opens the same account and connects again. The wrong passphrase leaves the vault locked. |
+
+The product calls `https://` for federation. The test rewrites that call onto the other homeserver on this machine, and only inside the test. Link preview keeps refusing loopback.
+
+### Browser, HTTP, and phone
+
+Selenium and pytest cover the public site and the account gate, and stop before "Create account". The Postman collection checks the public HTTP routes. The phone script is manual. Five cases per theme in that pass. The other GIF, the crops, and the commands are in [`qa/README.md`](qa/README.md).
+
+```text
+qa/testes/                      Selenium and pytest, five cases per theme
+qa/postman/                     collection and two environments
+qa/manual/appium-telemovel.md   phone script, no Appium code
+qa/integration/                 Vitest against the real homeserver
+qa/docs/media/                  GIFs for this README
+```
+
 <p align="center">
   <img src="docs/assets/orwell-chat.jpg" alt="The Orwell desktop app: a book club community with rooms on the left and a conversation in the middle"><br>
   <sub><i>A community in the desktop app: rooms on the left, the conversation in the middle.</i></sub>
