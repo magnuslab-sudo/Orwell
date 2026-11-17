@@ -1,387 +1,372 @@
-# Orwell QA suite
+<p align="center">
+  <img src="docs/assets/orwell-cover.jpg" alt="Orwell. Maximizing privacy.">
+</p>
 
-Checks on the public Orwell site at [orwell.pt](https://orwell.pt), plus a local integration layer. Pass 1 watches the screen and the public HTTP routes. Pass 2 starts the real homeserver. No browser case creates an account. The words "Creating your account" fail the case.
+Orwell is a place for communities to talk: text rooms, voice and video calls,
+direct messages and a wall for each account. Everything is end-to-end
+encrypted, so the server that carries your messages cannot read them. It runs
+at [orwell.pt](https://orwell.pt), in the browser and as a desktop app for
+Windows and macOS, with a Linux version on the way. The current version is 1.3.3 "Carmelo". I build it on my
+own, and I have put hundreds of hours into it so far.
 
-The run book is this page. English first. [Portuguese (Portugal)](#português-pt-pt) follows.
+<p align="center">
+  <a href="https://ko-fi.com/orwell_eu"><img src="https://img.shields.io/badge/Ko--fi-Support%20Orwell-FF5E5B?logo=ko-fi&logoColor=white" alt="Support Orwell on Ko-fi"></a>
+  &nbsp;
+  <a href="https://github.com/magnuslab-sudo/orwell"><img src="https://img.shields.io/badge/GitHub-Star%20this%20repo-24292f?logo=github&logoColor=white" alt="Star Orwell on GitHub"></a>
+</p>
 
-## Commands
+## QA on this fork
 
-PowerShell. Browser and HTTP commands run from `qa/`. The integration command runs from the repository root.
+Vinicius Jesus da Silva. This fork keeps the Orwell product and adds the suite in [`qa/`](qa/README.md). The integration layer is Vitest. Each case starts the real homeserver and reads what the screen cannot show: a signed report on disk, a ciphertext between two servers, a SQLite row, a vault opened with the real passphrase derivation.
 
-First time, from `qa/`. Python 3.10+ and Google Chrome. Selenium Manager fetches ChromeDriver.
+![One local run of the integration suite. Eight tests, six files.](qa/docs/media/integracao-vitest.gif)
 
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
+The recording is one local run of the command below. The vault case uses real Argon2id, so that file takes most of the half minute. Two log lines belong to the cases that check those failures: the campaign page that could not be read, and the media port that was already taken.
 
-The default target is orwell.pt. `ORWELL_SITE_URL` and `ORWELL_APP_URL` point elsewhere. `ORWELL_HEADED=1` in `.env` shows the Chrome window. An empty value stays headless.
+### Run the integration suite
 
-| Goal | Command |
-| --- | --- |
-| 15 browser cases | `python -m pytest` |
-| One file | `python -m pytest testes/test_site.py` |
-| One case | `python -m pytest testes/test_nome.py::test_nome_com_letras_avanca_para_a_fotografia` |
-| GIF of one case | `$env:ORWELL_GIF = "1"; python -m pytest testes/test_site.py::test_homepage_mostra_heroi_e_entrada` |
-| The two findings | `python -m pytest negativos` |
-| Short gate clip | `python scripts/gravar_gif.py` |
-| HTTP collection | `npx --yes newman run postman/Orwell_API.postman_collection.json -e postman/Orwell_orwell.pt.postman_environment.json` |
-| Integration, from the repo root | `node .\node_modules\vitest\vitest.mjs run --config qa/integration/vitest.config.ts` |
-
-`python -m pytest` with no path reads `pytest.ini` and collects only `testes/`. `negativos/` stays out of that run. Pass the folder when you want the two findings.
-
-Each browser case saves the final screen under `artefactos/ecras/`. With `ORWELL_GIF=1`, the path is `artefactos/<test-name>.gif`. Git ignores `artefactos/`. The clips on this page are the published copies. After a new run, copy the GIF you want to keep over the file in `docs/media/` or `negativos/`.
-
-## Browser clips
-
-Six layout cases, headless, 1280×900, against orwell.pt on 17 November 2026. All six passed, in 3 min 56 s. On a page taller than the window, the recorder scrolls after the checks and returns to the top. The scroll shows the layout. The assertions have already finished.
-
-Record the six again:
-
-```powershell
-$env:ORWELL_GIF = "1"
-python -m pytest `
-  testes/test_site.py::test_homepage_mostra_heroi_e_entrada `
-  testes/test_site.py::test_link_pt_abre_a_homepage_em_portugues `
-  testes/test_site.py::test_privacidade_abre_pelo_rodape `
-  testes/test_nome.py::test_nome_com_letras_avanca_para_a_fotografia `
-  testes/test_palavra_passe.py::test_menos_de_oito_caracteres_fica_no_passo `
-  testes/test_palavra_passe.py::test_mostrar_revela_e_voltar_a_ocultar
-```
-
-`test_homepage_mostra_heroi_e_entrada` opens `/`. The visible title contains "Play, talk". The link "Sign in" points at `/app/`.
-
-![Homepage: hero and Sign in, down the page, back to the top](docs/media/test_homepage_mostra_heroi_e_entrada.gif)
-
-`test_link_pt_abre_a_homepage_em_portugues` follows `a[hreflang='pt']`. The title becomes "Joga, fala", the document is `lang="pt-PT"`, and the URL ends in `/pt`.
-
-![From the English homepage to the Portuguese one](docs/media/test_link_pt_abre_a_homepage_em_portugues.gif)
-
-`test_privacidade_abre_pelo_rodape` uses the footer link. The visible title is "Privacy" and the URL ends in `/privacy.html`.
-
-![From the homepage to Privacy, through the footer](docs/media/test_privacidade_abre_pelo_rodape.gif)
-
-`test_nome_com_letras_avanca_para_a_fotografia` chooses "No, create an account", types "Ana Silva", and moves on. The next step is the photo, and the initial is "A". The app follows the browser language, so these cases pin `?lingua=en`.
-
-![From the other device to the photo, with the initial A](docs/media/test_nome_com_letras_avanca_para_a_fotografia.gif)
-
-`test_menos_de_oito_caracteres_fica_no_passo` types `abcdefg`. The question stays "What is the password going to be?" and the error is "Type at least 8 characters."
-
-![Seven characters stay on the step, with the error visible](docs/media/test_menos_de_oito_caracteres_fica_no_passo.gif)
-
-`test_mostrar_revela_e_voltar_a_ocultar` types `Valido!1`. The field starts as `type="password"`. Show turns it into text. Hide turns it back.
-
-![Show reveals Valido!1 and Hide covers it again](docs/media/test_mostrar_revela_e_voltar_a_ocultar.gif)
-
-Two more site cases have no clip. The screen barely changes, and the check is that something does not happen.
-
-| Case | What it locks |
-| --- | --- |
-| `test_caminho_desconhecido_nao_e_a_homepage` | `/esta-pagina-nao-existe-qa` is not the homepage. The observed response was a 404 with an empty body. |
-| `test_marcacao_no_endereco_nao_e_executada` | A script in the query keeps the hero, opens no alert, and injects no image. |
-
-The older gate clip, from the other device up to the password and without the error, is `docs/media/portao-nome.gif`. Regenerate it with `python scripts/gravar_gif.py`.
-
-## Findings
-
-Two cases pass and leave a problem on the screen. This suite has no red test and no demonstrated exploit. The other hostile cases pass because the control holds. Detail is in [`negativos/README.md`](negativos/README.md).
-
-Run both, with a GIF of each:
-
-```powershell
-$env:ORWELL_GIF = "1"
-python -m pytest negativos
-```
-
-That run, on 17 November 2026, passed in 41 s. No account was created. The published GIFs in `negativos/` are the copy to keep. The recorder still writes the new file under `artefactos/`.
-
-### The gate does not cap the name
-
-`test_nome_mais_longo_que_o_perfil_ainda_avanca`
-
-The profile editor cuts a name at 32 (`NAME_MAX` in `packages/ui/src/screens/profile/ProfileEditor.tsx`). The gate field has no `maxLength`. Forty letters go in, Continue enables, and the photo step opens. The case stays green because it describes the product as it is. Closing the gap means changing the oracle: the field then refuses or cuts above 32.
-
-```powershell
-python -m pytest testes/test_nome.py::test_nome_mais_longo_que_o_perfil_ainda_avanca
-```
-
-![Forty N's in the name, Continue enabled, then the photo step](negativos/test_nome_mais_longo_que_o_perfil_ainda_avanca.gif)
-
-### Eight digits are enough
-
-`test_so_digitos_com_oito_caracteres_passam_a_regra`
-
-`12345678` has no letter and no symbol, and it reaches "Confirm the password". The button already says "Create account". The suite stops there. The rule is eight characters. A letter, a digit, or a symbol is not required. This is a weak policy. It is not a broken account.
-
-```powershell
-python -m pytest testes/test_palavra_passe.py::test_so_digitos_com_oito_caracteres_passam_a_regra
-```
-
-![Eight digits reach confirmation, with Create account on screen](negativos/test_so_digitos_com_oito_caracteres_passam_a_regra.gif)
-
-These hostile cases were reviewed and the control held: a script in the homepage URL, markup in the name, an empty name, a short password, a mismatched confirmation, an unknown path, a malformed federation envelope, a malformed report, an unsigned report, a preview of 127.0.0.1, a server outside the federation allowlist, a wrong vault passphrase, a taken SFU port, and a campaign page that is down. Digits, accents, and emoji in the name also advance. That case is in `testes/test_nome.py` and is not filed as a bug.
-
-## Integration
-
-Vitest, no browser. Each case starts the real homeserver. The vault uses production Argon2id. `integration/vitest.config.ts` does not load the fast derivation used by unit tests. This run is separate from `npm test` and from `pytest`.
-
-From the repository root, Node 22 or newer, after `npx tsc -b`:
+Node 22 or newer, from the repository root, after `npx tsc -b`:
 
 ```powershell
 node .\node_modules\vitest\vitest.mjs run --config qa/integration/vitest.config.ts
 ```
 
-![One local run of the integration suite, eight tests](docs/media/integracao-vitest.gif)
+`qa/integration/vitest.config.ts` keeps the production Argon2id. The server's own Vitest project swaps in a fast derivation so its unit tests stay quick. `npm test` runs Vitest inside each package. `qa/pytest.ini` collects `qa/testes`.
+
+### What a green run shows
 
 | Theme | Where | What the run shows |
 | --- | --- | --- |
-| Link preview | `integration/ligacao.integracao.test.ts` | A page on 127.0.0.1 receives zero connections. Every blocked address comes back with the same reason. |
-| Federation | `integration/federacao.integracao.test.ts` | Ciphertext leaves one homeserver, the other reads the key over HTTP, and the peer is stored. A server outside the allowlist gets 403 and leaves no peer. |
-| Calls | `integration/sfu.integracao.test.ts` | With the media engine up, `hello.ok` advertises `sfu`. With the port taken, text still works and the hello omits `sfu`. |
-| Report | `integration/denuncia.integracao.test.ts` | The same request is 401 before login and 200 after it. Sending those bytes again writes no second file. |
-| Campaign bar | `integration/apoio.integracao.test.ts` | The watcher reads the fixture over HTTP and serves `/_enclave/apoiar.json`. With the campaign down, `/_enclave/health` stays ok. |
-| Vault | `integration/cofre.integracao.test.ts` | The right passphrase opens the same account. The wrong passphrase leaves the vault locked. |
-
-Eight tests, six files. In the recording, the vault takes most of the half minute. The two log lines in the image belong to the cases: the campaign page that could not be read, and the media port that was already taken.
+| Link preview | `qa/integration/ligacao.integracao.test.ts` | A page on 127.0.0.1 receives zero connections. Every blocked address comes back with the same reason. |
+| Federation | `qa/integration/federacao.integracao.test.ts` | Ciphertext leaves one homeserver, the other reads the key over HTTP, and the peer is stored. A server outside the allowlist gets 403 and leaves no peer. |
+| Calls | `qa/integration/sfu.integracao.test.ts` | With the media engine up, `hello.ok` advertises `sfu`. With the port taken, the homeserver stays up and the hello omits `sfu`. |
+| Report | `qa/integration/denuncia.integracao.test.ts` | The same signed request is refused before the gateway login and accepted after it. Sending those same bytes again writes no second file. |
+| Campaign bar | `qa/integration/apoio.integracao.test.ts` | The watcher reads the fixture over HTTP, stores the last value, and serves `/_enclave/apoiar.json`. With the campaign down, `/_enclave/health` stays ok and the bar is absent. |
+| Vault | `qa/integration/cofre.integracao.test.ts` | The right passphrase opens the same account and connects again. The wrong passphrase leaves the vault locked. |
 
 The product calls `https://` for federation. The test rewrites that call onto the other homeserver on this machine, and only inside the test. Link preview keeps refusing loopback.
 
-## HTTP
+### Browser, HTTP, and phone
 
-Import the collection and one environment (`Orwell — orwell.pt` or `Orwell — local`). The local environment needs `npm run server` and uses `localhost:8448`.
+Selenium and pytest cover the public site and the account gate, and stop before "Create account". The Postman collection checks the public HTTP routes. The phone script is manual. Five cases per theme in that pass.
 
-From `qa/`:
+The run book is [`qa/README.md`](qa/README.md): English first, Portuguese (Portugal) below. Six layout cases and the two findings were recorded headless at 1280×900 against orwell.pt on 17 November 2026. All of them passed. On a page taller than the window, the recording scrolls after the checks and returns to the top. That scroll shows the layout. It is not an assertion.
 
-```powershell
-npx --yes newman run postman/Orwell_API.postman_collection.json -e postman/Orwell_orwell.pt.postman_environment.json
-```
+![Homepage: the hero and Sign in, then the rest of the page, then back to the hero.](qa/docs/media/test_homepage_mostra_heroi_e_entrada.gif)
 
-Observed on orwell.pt, with the suite green on top of it: `GET /_enclave/health` returns `{"ok":true,"server":"orwell.pt"}`. A federation post with a number and a script returns 400 `malformed-envelope` and does not echo the script. A report with numeric fields returns 400 `malformed-report`. `POST /_enclave/denuncia` with `{}` returns 401 `unauthorized`.
+![The same homepage in Portuguese: Joga, fala e partilha.](qa/docs/media/test_link_pt_abre_a_homepage_em_portugues.gif)
 
-## Scope
+![Privacy, opened from the footer.](qa/docs/media/test_privacidade_abre_pelo_rodape.gif)
 
-Five cases per theme in pass 1.
+![The gate takes the name Ana Silva and shows the initial A. No account is created.](qa/docs/media/test_nome_com_letras_avanca_para_a_fotografia.gif)
 
-| Theme | Where | Cases | Oracle |
-| --- | --- | --- | --- |
-| Site | `testes/test_site.py` | 5 | Visible text, `lang`, URL, no alert |
-| Name | `testes/test_nome.py` | 5 | The next step, the button, the photo initial |
-| Password | `testes/test_palavra_passe.py` | 5 | The step, the error, the field `type` |
-| API | `postman/Orwell_API.postman_collection.json` | 5 | Status and body |
-| Phone | `manual/appium-telemovel.md` | The same gate | By hand, no Appium code |
-| Integration | `integration/*.integracao.test.ts` | 8, in 6 files | The real homeserver |
+![Seven characters stay on the password step, with the error "Type at least 8 characters."](qa/docs/media/test_menos_de_oito_caracteres_fica_no_passo.gif)
 
-Outside pass 1: creating the account, pairing, joining a community, sending a message, an invite, a call with media, the ciphertext on the WebSocket, `POST /_enclave/health`, "Advanced options" with a bad server, and automated Appium. The signed report, federation between two homeservers, the SFU port, the vault, and link preview are pass 2.
+![Show reveals Valido!1, then Hide covers it.](qa/docs/media/test_mostrar_revela_e_voltar_a_ocultar.gif)
+
+The two findings stay green. The gate accepts a 40-character name, and the profile editor cuts at 32. Eight digits are enough for a password: `12345678` reaches confirmation.
+
+![Forty N's in the name, Continue enabled, then the photo step.](qa/negativos/test_nome_mais_longo_que_o_perfil_ainda_avanca.gif)
+
+![Eight digits reach confirmation, with Create account on screen. The suite stops there.](qa/negativos/test_so_digitos_com_oito_caracteres_passam_a_regra.gif)
 
 ```text
-conftest.py            a new Chrome per test, and the final screen
-gravador.py            a GIF of the path when ORWELL_GIF=1
-dados.py               URLs and the English catalogue
-evidencias.py          screen, crop, folders
-paginas/               page objects for the site and the gate
-testes/                five cases per file, pass 1
-negativos/             the two findings, with GIFs; outside the default pytest run
-integration/           Vitest, the real homeserver, pass 2
-postman/               collection and two environments
-manual/                Appium script, no automation
-scripts/gravar_gif.py  the short gate GIF
-docs/media/            published GIFs and crops
-artefactos/            screens and GIFs from the latest run, not in Git
+qa/testes/                      Selenium and pytest, five cases per theme
+qa/postman/                     collection and two environments
+qa/manual/appium-telemovel.md   phone script, no Appium code
+qa/integration/                 Vitest against the real homeserver
+qa/docs/media/                  GIFs for this README
 ```
 
----
+<p align="center">
+  <img src="docs/assets/orwell-chat.jpg" alt="The Orwell desktop app: a book club community with rooms on the left and a conversation in the middle"><br>
+  <sub><i>A community in the desktop app: rooms on the left, the conversation in the middle.</i></sub>
+</p>
 
-# Português (PT-PT)
+## Why I made it
 
-Verificação do site público do Orwell em [orwell.pt](https://orwell.pt), mais uma camada de integração local. A leva 1 olha para o ecrã e para o HTTP público. A leva 2 sobe o homeserver verdadeiro. Nenhum caso de browser cria conta. A frase "Creating your account" falha o caso.
+I am the solo developer of Orwell, and I make it in Portugal.
 
-O guia de execução é esta página. O inglês vem primeiro. Esta é a versão em português de Portugal.
+Discord is a good product. People run communities on it, play together and
+talk for hours. But one company can read all of it: what you write, who you
+talk to, when, and for how long.
 
-## Comandos
+I wanted the same kind of place without that part. So there is one rule in all
+of the code: if the server does not need a piece of data to deliver a message,
+that data does not travel in the clear. Names, avatars, room names, reactions,
+replies, mentions and file names all stay inside the encryption.
 
-PowerShell. Os comandos de browser e de HTTP correm a partir de `qa/`. O comando de integração corre a partir da raiz do repositório.
+If you like where this is going, you can support Orwell and my work by
+[buying me a coffee](https://ko-fi.com/orwell_eu). Encryption runs on maths.
+I run on coffee.
 
-Na primeira vez, a partir de `qa/`. Python 3.10+ e Google Chrome. O Selenium Manager trata do ChromeDriver.
+## What works today
 
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+- **Communities** with text and voice rooms, categories, roles, pinned
+  messages and ticket rooms.
+- **Direct messages and replies.**
+- **Voice, video and screen sharing.** Every frame is encrypted on your device
+  before it leaves. The media relay on the server has no key.
+- **A wall for each account.** Posts in order of arrival. No ranking, no
+  like counter.
+- **Several devices on one account.** You pair a new device with a code, and
+  both screens show the same six words.
+- **No email and no phone number.** Your account is a key pair.
+- **Reports.** A member can report a message or a person. A person, not a
+  script, decides on suspensions.
+- **In Portuguese**, in the app and on the site.
+- **Your own server.** The homeserver is in this repository.
+
+<p align="center">
+  <img src="docs/assets/orwell-call.jpg" alt="A voice call in Orwell, with one member sharing their screen"><br>
+  <sub><i>A voice call with screen sharing. Sound and picture are encrypted on each device.</i></sub>
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/assets/orwell-phone.jpg" width="280" alt="Orwell on a phone, showing the book club conversation"><br>
+      <sub><i>The conversation on a phone.</i></sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/assets/orwell-phone-2.jpg" width="280" alt="Orwell on a phone, showing the book club rooms, with five people in the voice room"><br>
+      <sub><i>The rooms of a community, with five people in the voice room.</i></sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/orwell-notifications.jpg" alt="The notifications panel: a friend request, a missed call and mentions"><br>
+  <sub><i>Notifications: a friend request, a missed call and mentions.</i></sub>
+</p>
+
+## The Enclave protocol
+
+Orwell speaks its own protocol, **Enclave**. I built it on open standards,
+with one goal: the server should move messages around and learn as little as
+possible while doing it. Orwell is the app. Enclave is the language it talks.
+
+- **MLS (RFC 9420)** for every channel, room and direct message, through
+  [`ts-mls`](https://github.com/LukaJCB/ts-mls). Large groups stay practical,
+  with forward secrecy and post-compromise security.
+- **Post-quantum by default.** The cipher suite is
+  `MLS_256_XWING_CHACHA20POLY1305_SHA512_Ed25519`. X-Wing combines X25519 with
+  ML-KEM-768, so an attacker has to break both.
+- **Your identity is a key pair.** Your address is a hash of your signing key.
+  Anyone can check it. No certificate authority, no email, no phone number.
+- **Opaque channel addresses.** Every channel looks the same to the server: 40
+  random characters. Whether it is a direct message, a wall or a room, and what
+  it is called, lives only on the members' devices.
+- **Signed authorship.** Each message carries its author's device signature,
+  inside the encryption. A message can be forwarded or reported without anyone
+  being able to put words in someone else's mouth.
+- **Padding and coarse time.** Messages are padded to at least 512 bytes, and
+  timestamps are kept to the minute. Exact sizes and times help traffic
+  analysis, and the app does not need them.
+- **Encrypted calls.** Sound, video and screen sharing use SFrame, keyed from
+  the channel's MLS group. The media relay forwards frames it cannot open.
+  (Same shape as RFC 9605, not wire-compatible.)
+- **Federation without names.** Servers sign the envelopes they pass to each
+  other, never the user. The receiving server knows which server vouched for a
+  message, not which person sent it.
+
+## What the server sees
+
+I would rather tell you the limits than have you find them.
+
+**The server cannot read:** message text, names, avatars, room names,
+reactions, replies, mentions, typing activity, file names, file contents, or
+call audio and video. It keeps encrypted messages for people who are offline,
+but it has no key to open them. It never gets your password either: the
+password only unlocks your account on your own device.
+
+**The server does see:**
+
+- The IP address of whoever connects. The Orwell server itself keeps no
+  access log by default. On orwell.pt, the web server in front of it keeps a
+  short log for 14 days, with the end of each IP address removed.
+- When you are connected, and which channels you are in. Channel addresses are
+  opaque, so the database does not say who talks to whom. But someone watching
+  the running server can see which account writes in which channel, and when.
+- The size of what you send (anything under 512 bytes looks the same), and
+  the minute it arrived.
+- In a call, who is in the call with whom. Sound and picture stay encrypted.
+- How many devices an account has.
+
+**One exception.** When someone reports a message, their device decrypts it and
+gives it to the server. That is the only way the server ever reads a message:
+somebody hands it over. The [privacy page](https://orwell.pt/privacy.html) says
+what is kept and for how long.
+
+**What encryption cannot do.** Anyone in a channel can take a screenshot.
+Malware running on your device while the account is open can read your
+messages. The browser version keeps your identity key in the page, because
+there is nowhere else to put it. For an account you care about, use the desktop
+app.
+
+The full list is in [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). It lists
+the weaknesses, not only the strengths. Read it before you trust Orwell with
+anything that matters.
+
+## Try it
+
+- **In the browser:** [orwell.pt/app](https://orwell.pt/app/). Pick a name and
+  a password. No email.
+- **On the desktop:** installers for Windows and macOS at
+  [orwell.pt/transferencias](https://orwell.pt/transferencias/), each with its
+  SHA-256 sum.
+- **On Linux:** I am working on it. Until then, the browser version works.
+- **On a phone:** open orwell.pt/app and add it to your home screen. To use the
+  same account, pair the phone from the computer in Settings, "Devices", "Add
+  device".
+
+The installers are not signed by Apple or Microsoft yet, so your system will
+warn you the first time. On Windows the app updates itself, and only accepts an
+update signed with Orwell's own Ed25519 key. On macOS it tells you when a new
+version is out.
+
+## Run it yourself
+
+Orwell is free software under the AGPL-3.0. You can run your own server for
+your community, change the code and share it. If you change it and let other
+people use your version, publish your changes under the AGPL too. If that does
+not work for you, there is a commercial licence. If you would rather not run a
+server at all, I can host one for you. Both are in
+[`COMMERCIAL.md`](COMMERCIAL.md).
+
+You need Node.js 22 or later.
+
+```bash
+npm install
+npm run build
+
+npm run server      # homeserver on :8448
+npm run dev:web     # browser app on http://127.0.0.1:5173
+npm run dev:client  # desktop app
+npm run e2e         # two real clients through the local server
 ```
 
-O alvo por omissão é orwell.pt. `ORWELL_SITE_URL` e `ORWELL_APP_URL` apontam para outro sítio. `ORWELL_HEADED=1` no `.env` abre a janela do Chrome. Vazio fica headless.
+The last three can run at the same time. Two clients on one server is the
+quickest way to watch a message cross.
 
-| Objectivo | Comando |
-| --- | --- |
-| 15 casos de browser | `python -m pytest` |
-| Um ficheiro | `python -m pytest testes/test_site.py` |
-| Um caso | `python -m pytest testes/test_nome.py::test_nome_com_letras_avanca_para_a_fotografia` |
-| GIF de um caso | `$env:ORWELL_GIF = "1"; python -m pytest testes/test_site.py::test_homepage_mostra_heroi_e_entrada` |
-| Os dois achados | `python -m pytest negativos` |
-| Clip curto do portão | `python scripts/gravar_gif.py` |
-| Coleção HTTP | `npx --yes newman run postman/Orwell_API.postman_collection.json -e postman/Orwell_orwell.pt.postman_environment.json` |
-| Integração, na raiz do repositório | `node .\node_modules\vitest\vitest.mjs run --config qa/integration/vitest.config.ts` |
+### On a real server
 
-`python -m pytest` sem caminho lê o `pytest.ini` e só recolhe `testes/`. A pasta `negativos/` fica de fora dessa corrida. Passa a pasta quando quiseres os dois achados.
+`infra/` has a Docker Compose setup: the homeserver, Caddy for TLS, and notes
+for running behind an existing nginx. [`infra/README.md`](infra/README.md) walks
+through it.
 
-Cada caso de browser guarda o ecrã final em `artefactos/ecras/`. Com `ORWELL_GIF=1`, o percurso vai para `artefactos/<nome-do-teste>.gif`. O Git ignora `artefactos/`. Os clipes desta página são as cópias publicadas. Depois de uma corrida nova, copia o GIF que queres manter por cima do ficheiro em `docs/media/` ou em `negativos/`.
-
-## Clipes de browser
-
-Seis casos de layout, em headless, a 1280×900, contra orwell.pt em 17 de novembro de 2026. Os seis passaram, em 3 min 56 s. Numa página mais alta que a janela, o gravador desce e volta ao topo depois das verificações. O movimento mostra o layout. As asserções já terminaram.
-
-Gravar os seis outra vez:
-
-```powershell
-$env:ORWELL_GIF = "1"
-python -m pytest `
-  testes/test_site.py::test_homepage_mostra_heroi_e_entrada `
-  testes/test_site.py::test_link_pt_abre_a_homepage_em_portugues `
-  testes/test_site.py::test_privacidade_abre_pelo_rodape `
-  testes/test_nome.py::test_nome_com_letras_avanca_para_a_fotografia `
-  testes/test_palavra_passe.py::test_menos_de_oito_caracteres_fica_no_passo `
-  testes/test_palavra_passe.py::test_mostrar_revela_e_voltar_a_ocultar
+```bash
+cd infra
+cp .env.example .env    # set ENCLAVE_DOMAIN first
+docker compose up -d --build
 ```
 
-`test_homepage_mostra_heroi_e_entrada` abre `/`. O título visível contém "Play, talk". O link "Sign in" aponta para `/app/`.
+Choose the domain carefully. Every account address includes it, and changing it
+later means everyone creates a new account.
 
-![Homepage: herói e Sign in, descida pela página, regresso ao topo](docs/media/test_homepage_mostra_heroi_e_entrada.gif)
+The settings that matter most:
 
-`test_link_pt_abre_a_homepage_em_portugues` segue `a[hreflang='pt']`. O título passa a "Joga, fala", o documento fica `lang="pt-PT"` e o URL acaba em `/pt`.
+| Variable | Default | What it does |
+|---|---|---|
+| `ENCLAVE_SERVER_NAME` | `localhost:8448` | The server's public name. Needs a real domain to federate |
+| `ENCLAVE_RETENTION_DAYS` | `30` | Days the server keeps encrypted messages for people who are offline. `0` keeps nothing past live delivery. Your strongest privacy setting |
+| `ENCLAVE_FEDERATION_ALLOWLIST` | empty | Peer servers you trust, comma-separated. **Empty means federation is off** |
+| `ENCLAVE_LOG` | off | `debug` turns on request logging. An access log records what each user does, so leave it off in production |
+| `ENCLAVE_SFU_PORT` | empty | One port, UDP and TCP, for call media. Empty means no relay, and calls connect people directly |
+| `ENCLAVE_SFU_ANNOUNCED_IP` | empty | The public address the relay announces. Required inside Docker, or calls never connect |
 
-![Da homepage inglesa para a portuguesa](docs/media/test_link_pt_abre_a_homepage_em_portugues.gif)
+`infra/.env.example` explains the rest.
 
-`test_privacidade_abre_pelo_rodape` usa o link do rodapé. O título visível é "Privacy" e o URL acaba em `/privacy.html`.
+## How the code is laid out
 
-![Da homepage à página Privacy, pelo rodapé](docs/media/test_privacidade_abre_pelo_rodape.gif)
-
-`test_nome_com_letras_avanca_para_a_fotografia` escolhe "No, create an account", escreve "Ana Silva" e avança. O passo seguinte é a fotografia e a inicial é "A". A app segue a língua do browser, por isso estes casos fixam `?lingua=en`.
-
-![Do outro aparelho até à fotografia, com a inicial A](docs/media/test_nome_com_letras_avanca_para_a_fotografia.gif)
-
-`test_menos_de_oito_caracteres_fica_no_passo` escreve `abcdefg`. A pergunta continua "What is the password going to be?" e o erro é "Type at least 8 characters."
-
-![Sete caracteres ficam no passo, com o erro visível](docs/media/test_menos_de_oito_caracteres_fica_no_passo.gif)
-
-`test_mostrar_revela_e_voltar_a_ocultar` escreve `Valido!1`. O campo nasce `type="password"`. Show passa-o a texto. Hide devolve o tipo anterior.
-
-![Show revela Valido!1 e Hide volta a esconder](docs/media/test_mostrar_revela_e_voltar_a_ocultar.gif)
-
-Há mais dois casos do site sem clipe. O ecrã quase não muda, e a verificação é a ausência de um efeito.
-
-| Caso | O que confirma |
-| --- | --- |
-| `test_caminho_desconhecido_nao_e_a_homepage` | `/esta-pagina-nao-existe-qa` não é a homepage. A resposta observada foi 404 com corpo vazio. |
-| `test_marcacao_no_endereco_nao_e_executada` | Um script na query mantém o herói, não abre alerta e não injecta imagem. |
-
-O clip antigo do portão, do outro aparelho até à palavra-passe e sem o erro, está em `docs/media/portao-nome.gif`. Regenera-se com `python scripts/gravar_gif.py`.
-
-## Achados
-
-Dois casos passam e deixam um problema no ecrã. Nesta suíte não há teste vermelho nem exploit demonstrado. Os outros casos hostis passam porque o controlo segura. O detalhe está em [`negativos/README.md`](negativos/README.md).
-
-Correr os dois, com um GIF de cada:
-
-```powershell
-$env:ORWELL_GIF = "1"
-python -m pytest negativos
+```
+packages/protocol      wire types, addressing, identity, signed federation envelopes
+packages/crypto        MLS, SFrame, attachment encryption
+packages/client-core   session, vault and calls, with no platform imports
+packages/ui            the React app, shared by the browser and the desktop
+apps/server            gateway, federation, blind storage (SQLite) and the SFU
+apps/client            Electron host: keys in the main process, UI in a sandbox
+apps/web               browser host
+apps/site              orwell.pt
+scripts/               end-to-end tests with real clients, measurements, tools
 ```
 
-Essa corrida, em 17 de novembro de 2026, passou em 41 s. Nenhuma conta foi criada. Os GIFs publicados em `negativos/` são a cópia a manter. O gravador continua a escrever o ficheiro novo em `artefactos/`.
+Every screen has one implementation. The same session and call code runs in a
+browser tab and in Electron.
 
-### O portão não corta o nome
+The packages are named after the protocol, so you will see `@enclave/*` and
+`ENCLAVE_*` throughout the code.
 
-`test_nome_mais_longo_que_o_perfil_ainda_avanca`
+Code comments and the documentation are in English. Many identifiers are still
+in Portuguese. The app and the site are in Portuguese.
 
-O editor de perfil corta o nome a 32 (`NAME_MAX` em `packages/ui/src/screens/profile/ProfileEditor.tsx`). O campo do portão não tem `maxLength`. Quarenta letras entram, o Continue acende e o passo da fotografia abre. O caso fica verde porque descreve o produto como está. Fechar a lacuna implica mudar o oráculo: o campo passa a recusar ou a cortar acima de 32.
+## Security
 
-```powershell
-python -m pytest testes/test_nome.py::test_nome_mais_longo_que_o_perfil_ainda_avanca
-```
+Found something? Write to **orwell.eu@proton.me**, please not in a public
+issue. You will hear back within 72 hours. [`SECURITY.md`](SECURITY.md) has the
+details.
 
-![Quarenta N no nome, Continue activo, e a fotografia a seguir](negativos/test_nome_mais_longo_que_o_perfil_ainda_avanca.gif)
+## Where the project stands
 
-### Oito dígitos chegam
+Orwell is in use, and it is young. 1.0 "Arca" came out on 28 October 2026.
+The release notes are in [`docs/novidades.json`](docs/novidades.json).
 
-`test_so_digitos_com_oito_caracteres_passam_a_regra`
+Known limits:
 
-`12345678` não tem letra nem símbolo e chega a "Confirm the password". O botão já diz "Create account". A suíte pára aí. A regra é oito caracteres. Letra, dígito ou símbolo não são exigidos. É uma política fraca. A conta não fica partida.
+- **Federation is built and unit-tested, but has never run between two live
+  servers.** It is off by default.
+- **Installers are not signed by Apple or Microsoft**, and macOS has no
+  automatic update yet.
+- **No reproducible builds yet**, so you cannot check that an installer matches
+  this source.
+- **No notifications while the phone app is closed.** They would have to go
+  through Apple or Google, and I have not made that privacy decision yet.
+- **No account recovery, on purpose.** Recovery means the server holds
+  something that gives your access back. Keep your password and export your
+  account.
+- **Never open the same account file on two devices.** It breaks the channel
+  encryption for good. Pair the second device instead.
+- **No cover traffic.** Someone who watches every link can still guess that two
+  people are talking.
 
-```powershell
-python -m pytest testes/test_palavra_passe.py::test_so_digitos_com_oito_caracteres_passam_a_regra
-```
+If you run a community and want to test Orwell with it, there is an
+[ambassador programme](https://orwell.pt/ambassadors.html).
 
-![Oito dígitos chegam à confirmação, com Create account à vista](negativos/test_so_digitos_com_oito_caracteres_passam_a_regra.gif)
+## Contributing
 
-Estes casos hostis foram revistos e o controlo segurou: script no URL da homepage, marcação no nome, nome vazio, palavra-passe curta, confirmação diferente, caminho desconhecido, envelope de federação mal formado, denúncia mal formada, denúncia sem assinatura, pré-visualização de 127.0.0.1, servidor fora da allowlist, frase errada no cofre, porto do SFU tomado e campanha de apoio em baixo. Dígitos, acentos e emoji no nome também avançam. Esse caso está em `testes/test_nome.py` e não está registado como bug.
+Pull requests are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. I
+ask every contributor to agree to the [CLA](CLA.md), once.
 
-## Integração
+## License
 
-Vitest, sem browser. Cada caso sobe o homeserver verdadeiro. O cofre usa o Argon2id de produção. `integration/vitest.config.ts` não carrega a derivação rápida dos testes unitários. Esta corrida é à parte de `npm test` e de `pytest`.
+Orwell is licensed under the
+[GNU Affero General Public License, version 3 only](LICENSE)
+(AGPL-3.0-only). Copyright © 2026 Duarte Bivar.
 
-A partir da raiz do repositório, com Node 22 ou mais recente, depois de `npx tsc -b`:
+A commercial licence is available for anyone who cannot follow the AGPL, for
+example to run a modified server without publishing the changes. See
+[`COMMERCIAL.md`](COMMERCIAL.md).
 
-```powershell
-node .\node_modules\vitest\vitest.mjs run --config qa/integration/vitest.config.ts
-```
+Third-party components keep their own licences, listed in
+[`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
 
-![Uma corrida local da suíte de integração, oito testes](docs/media/integracao-vitest.gif)
+## Thanks
 
-| Tema | Onde | O que a corrida mostra |
-| --- | --- | --- |
-| Pré-visualização | `integration/ligacao.integracao.test.ts` | A página em 127.0.0.1 recebe zero ligações. O motivo é o mesmo em todos os endereços bloqueados. |
-| Federação | `integration/federacao.integracao.test.ts` | O ciphertext sai de um homeserver, o outro lê a chave por HTTP e fica com o par. Quem está fora da allowlist leva 403 e não fica inscrito. |
-| Chamadas | `integration/sfu.integracao.test.ts` | Com o motor de pé, o `hello.ok` anuncia `sfu`. Com o porto tomado, o texto continua e o `hello` não traz `sfu`. |
-| Denúncia | `integration/denuncia.integracao.test.ts` | O mesmo pedido leva 401 antes do login e 200 depois. O segundo envio não grava outro ficheiro. |
-| Barra de apoio | `integration/apoio.integracao.test.ts` | A vigia lê a fixture por HTTP e serve `/_enclave/apoiar.json`. Com a campanha em baixo, `/_enclave/health` continua ok. |
-| Cofre | `integration/cofre.integracao.test.ts` | A frase certa reabre a mesma conta. A frase errada deixa o cofre fechado. |
+- [David Rodrigues](https://github.com/davidrodrigues98), for reviewing the
+  code.
+- [Blotterrot](https://github.com/Blotterrot), for a security audit that helped me fix
+  flaws in 1.2.1.
+- [viniciussilva2504](https://github.com/viniciussilva2504), for the help.
 
-Oito testes, seis ficheiros. Na gravação, o cofre leva a maior parte do meio minuto. As duas linhas de registo na imagem pertencem aos casos: a campanha que não se leu, e o porto de média que já estava tomado.
+## Support Orwell
 
-O produto fala `https://` na federação. O teste reescreve essa chamada para o outro homeserver nesta máquina, e só dentro do teste. A pré-visualização continua a recusar loopback.
+Orwell has no ads and no investors. I build it on my own, from Portugal, and a
+few collaborators look over the code. If it is useful to you, you can support
+the server and the work on [Ko-fi](https://ko-fi.com/orwell_eu).
 
-## HTTP
+And if you have a GitHub account, a star on this repository costs nothing and
+helps other people find Orwell. Thank you.
 
-Importa a coleção e um ambiente (`Orwell — orwell.pt` ou `Orwell — local`). O ambiente local precisa de `npm run server` e usa `localhost:8448`.
+## Contact
 
-A partir de `qa/`:
-
-```powershell
-npx --yes newman run postman/Orwell_API.postman_collection.json -e postman/Orwell_orwell.pt.postman_environment.json
-```
-
-Observado em orwell.pt, com a suíte verde por cima: `GET /_enclave/health` responde `{"ok":true,"server":"orwell.pt"}`. Um post de federação com número e script responde 400 `malformed-envelope` e não ecoa o script. Um relato com versão e texto numéricos responde 400 `malformed-report`. `POST /_enclave/denuncia` com `{}` responde 401 `unauthorized`.
-
-## Âmbito
-
-Cinco casos por tema na leva 1.
-
-| Tema | Onde | Casos | Oráculo |
-| --- | --- | --- | --- |
-| Site | `testes/test_site.py` | 5 | Texto visível, `lang`, URL, ausência de alerta |
-| Nome | `testes/test_nome.py` | 5 | O passo seguinte, o botão, a inicial da fotografia |
-| Palavra-passe | `testes/test_palavra_passe.py` | 5 | O passo, o erro, o `type` do campo |
-| API | `postman/Orwell_API.postman_collection.json` | 5 | Estado e corpo |
-| Telemóvel | `manual/appium-telemovel.md` | O mesmo portão | À mão, sem código Appium |
-| Integração | `integration/*.integracao.test.ts` | 8, em 6 ficheiros | O homeserver verdadeiro |
-
-Fora da leva 1: criar a conta, emparelhar, entrar numa comunidade, enviar mensagem, convite, chamada com média, o ciphertext no WebSocket, `POST /_enclave/health`, "Advanced options" com um servidor inválido, e Appium automatizado. A denúncia assinada, a federação entre dois homeservers, o porto do SFU, o cofre e a pré-visualização estão na leva 2.
-
-```text
-conftest.py            Chrome novo por teste e ecrã final
-gravador.py            percurso em GIF quando ORWELL_GIF=1
-dados.py               URLs e frases do catálogo inglês
-evidencias.py          ecrã, recorte e pastas
-paginas/               page objects do site e do portão
-testes/                cinco casos por ficheiro, leva 1
-negativos/             os dois achados, com GIF; fora do pytest por omissão
-integration/           Vitest, homeserver verdadeiro, leva 2
-postman/               coleção e dois ambientes
-manual/                roteiro Appium, sem automação
-scripts/gravar_gif.py  GIF curto do portão
-docs/media/            GIFs e recortes publicados
-artefactos/            ecrãs e GIFs da última corrida, fora do Git
-```
+**orwell.eu@proton.me**, in Portuguese or in English.
