@@ -50,7 +50,7 @@ The product calls `https://` for federation. The test rewrites that call onto th
 
 Selenium and pytest cover the public site and the account gate, and stop before "Create account". The Postman collection checks the public HTTP routes. The phone script is manual. Five cases per theme in that pass.
 
-Six layout cases were recorded headless at 1280×900 against orwell.pt on 17 November 2026. All six passed. On a page taller than the window, the recording scrolls after the checks and returns to the top. That scroll shows the layout. It is not an assertion. The full read, the other nine browser cases, and the commands are in [`qa/README.md`](qa/README.md).
+The run book is [`qa/README.md`](qa/README.md): English first, Portuguese (Portugal) below. It has every command, the layout GIFs, and the two findings (the gate accepts a 40-character name, and eight digits are enough for a password). Six layout cases were recorded headless at 1280×900 against orwell.pt on 17 November 2026. All six passed. On a page taller than the window, the recording scrolls after the checks and returns to the top. That scroll shows the layout. It is not an assertion.
 
 ![Homepage: the hero and Sign in, then the rest of the page, then back to the hero.](qa/docs/media/test_homepage_mostra_heroi_e_entrada.gif)
 
