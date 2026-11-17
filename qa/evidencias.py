@@ -1,7 +1,8 @@
 """Capturas de ecrã, recortes e pasta do GIF.
 
-`artefactos/` é local e está no .gitignore.
-`docs/media/` é o que fica no repositório: recortes e o GIF.
+`artefactos/` é local e está no .gitignore. Os ecrãs finais ficam em
+`artefactos/ecras/`. Com `ORWELL_GIF=1`, o percurso fica em `artefactos/*.gif`.
+`docs/media/` é o que fica no repositório: recortes e o GIF de portefólio.
 """
 
 from __future__ import annotations
@@ -9,7 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
-ARTEFACTOS = RAIZ / "artefactos" / "ecras"
+PASTA_ARTEFACTOS = RAIZ / "artefactos"
+ARTEFACTOS = PASTA_ARTEFACTOS / "ecras"
 PORTFOLIO = RAIZ / "docs" / "media"
 
 

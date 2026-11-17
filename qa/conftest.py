@@ -36,8 +36,17 @@ def criar_navegador() -> webdriver.Chrome:
 @pytest.fixture
 def navegador(request: pytest.FixtureRequest):
     driver = criar_navegador()
-    yield driver
+    gravador = None
+    exposto = driver
+    if os.getenv("ORWELL_GIF") == "1":
+        from gravador import Gravador
+
+        gravador = Gravador()
+        exposto = gravador.embrulhar(driver)
+    yield exposto
     try:
         ecra(driver, request.node.name)
+        if gravador is not None:
+            gravador.guardar(driver, request.node.name)
     finally:
         driver.quit()
