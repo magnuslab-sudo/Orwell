@@ -56,10 +56,11 @@
 
   <body class="entrada editorial">
     <!--
-      The images, once, and used by reference. The landing page now uses only
-      the logo. The other three stay because `scripts/publicar-instaladores.mjs`
-      reads them FROM HERE for the downloads page. The `i-marca` is WRITTEN by
-      `marca/gerar-marca.py`: do not edit it here.
+      The images, once, and used by reference. The first four stay because
+      `scripts/publicar-instaladores.mjs` reads them FROM HERE for the downloads
+      page. The six after them are the icons of the feature cards and of the
+      hero facts. The `i-marca` is WRITTEN by `marca/gerar-marca.py`: do not
+      edit it here.
     -->
     <svg class="desenhos" aria-hidden="true">
       <defs>
@@ -87,6 +88,38 @@
           <path d="M12 3.2 5 6v5.5c0 4.2 2.9 7.6 7 9.3 4.1-1.7 7-5.1 7-9.3V6Z" />
           <path d="M9.2 11.8 11.3 14l3.7-4.2" />
         </symbol>
+        <symbol id="i-voz" viewBox="0 0 24 24">
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" />
+          <path d="M12 18v3" />
+        </symbol>
+        <symbol id="i-salas" viewBox="0 0 24 24">
+          <path d="M9.5 4 8 20" />
+          <path d="M16 4l-1.5 16" />
+          <path d="M4.5 9h16" />
+          <path d="M3.5 15h16" />
+        </symbol>
+        <symbol id="i-chave" viewBox="0 0 24 24">
+          <circle cx="8" cy="15.5" r="4.2" />
+          <path d="M11.1 12.4 20 3.5" />
+          <path d="M16.2 7.3l2.6 2.6" />
+        </symbol>
+        <symbol id="i-cadeado" viewBox="0 0 24 24">
+          <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+          <path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7" />
+          <path d="M12 14.5v2.2" />
+        </symbol>
+        <symbol id="i-sem-anuncios" viewBox="0 0 24 24">
+          <path d="M3 3l18 18" />
+          <path d="M10.6 6.2A9.6 9.6 0 0 1 12 6.1c5 0 8.3 4.2 9.2 5.9a13 13 0 0 1-2.6 3.3" />
+          <path d="M6.5 7.6A13.4 13.4 0 0 0 2.8 12c.9 1.7 4.2 5.9 9.2 5.9 1.4 0 2.7-.3 3.8-.8" />
+          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        </symbol>
+        <symbol id="i-europa" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.8" />
+          <path d="M3.2 12h17.6" />
+          <path d="M12 3.2c2.5 2.6 3.7 5.5 3.7 8.8s-1.2 6.2-3.7 8.8c-2.5-2.6-3.7-5.5-3.7-8.8S9.5 5.8 12 3.2Z" />
+        </symbol>
       </defs>
     </svg>
 
@@ -95,24 +128,37 @@
         <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
         <span>Orwell</span>
       </a>
-      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
-      <a class="topo-entrar" href="/app/">Entrar</a>
+      <nav class="topo-nav" aria-label="Secções">
+        <a href="/pt/#funcionalidades">Funcionalidades</a>
+        <a href="/pt/#comparar">Comparar</a>
+        <a href="/pt/embaixadores.html">Embaixadores</a>
+        <div class="topo-menu">
+          <a class="topo-menu-botao" href="/pt/transferencias/">Descarregar</a>
+          <div class="topo-menu-painel">
+            <div class="topo-menu-lista">
+              <a href="/pt/transferencias/"><strong>Windows e macOS</strong><span>A aplicação para computador, com avisos com a janela fechada.</span></a>
+              <a href="/app/"><strong>Browser</strong><span>Sem instalares nada.</span></a>
+              <a href="/pt/#telemovel"><strong>Telemóvel</strong><span>No ecrã principal, sem loja de apps.</span></a>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div class="topo-accoes">
+        <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
+        <a class="topo-entrar" href="/app/">Entrar</a>
+      </div>
     </header>
 
     <!--
-      The support banner. Thin and discreet, right below the
-      header. Ko-fi only, no GoFundMe and no measure (see `MEDIDOR_LIGADO` in
-      src/apoio.ts).
-    -->
+      The entry page since the revamp of November 2026, the same as the
+      English version: a centered hero with the real app in a window, six
+      features in cards, four lines of the comparison, the three questions that
+      open, the ambassadors, one sentence about who makes Orwell, and the
+      support at the end (Ko-fi only, see `MEDIDOR_LIGADO` in src/apoio.ts).
 
-    <!--
-      Direction "02 Editorial".
-      Less is more: a headline with a real screenshot of the app, the phone, and
-      everything else wrapped in two questions. The four bullet points were removed. No animated background, no grid of
-      cards. The screenshot is the only visual.
-
+      The theme follows the system, in the stylesheet: no script decides it.
       The main button changes with the system (`src/sistema.ts`). Without the
-      script, it says "Open in browser" and other paths show below it.
+      script, it says "Open in the browser" and the other paths show below it.
     -->
     <main>
       <section class="heroi">
@@ -138,65 +184,131 @@
           </p>
         </div>
         </div>
-        <figure class="heroi-captura">
-          <img
-            src="/capturas/aplicacao-0c3bf101.webp"
-            alt="A aplicação do Orwell: a lista de salas à esquerda, uma conversa ao centro e quem está no canal à direita"
-            width="1280"
-            height="800"
-          />
-        </figure>
+        <!--
+          The stage: the real app in a window, taken by `scripts/retratar-heroi.mjs`
+          in the dark theme, and in the light theme for a light page. The three
+          facts hang over the edges of the window on a wide screen, and line up
+          below it on a narrow one. Each fact is said again, in full, further down.
+        -->
+        <div class="heroi-palco">
+          <figure class="heroi-captura">
+            <picture>
+              <source media="(prefers-color-scheme: light)" srcset="/capturas/aplicacao-pt-claro-78e51d5b.webp" />
+              <img
+                src="/capturas/aplicacao-pt-escuro-a4ee4a12.webp"
+                alt="A aplicação do Orwell: a lista de salas à esquerda, uma conversa ao centro e quem está no canal à direita"
+                width="1920"
+                height="1200"
+              />
+            </picture>
+          </figure>
+          <ul class="heroi-factos">
+            <li>
+              <svg aria-hidden="true"><use href="#i-chave" /></svg>
+              <p><strong>Sem email, sem número de telefone</strong> A conta é um par de chaves.</p>
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="#i-cadeado" /></svg>
+              <p><strong>Pós-quântico por omissão</strong> Cifrado de ponta a ponta, sempre.</p>
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="#i-europa" /></svg>
+              <p><strong>Alojado na União Europeia</strong> Paris, ao abrigo do RGPD.</p>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <!--
-        We are recruiting ambassadors: the ambassador figure shows up on the landing page,
-        in its own block, not just a link.
-        
-        For people who have a community elsewhere and can bring it here. The
-        `/embaixadores.html` page has the full program and the tribute zone.
-        Applications happen INSIDE the app, in the Orwell channel, not by email:
-        so the link goes to `/app/`. The names come from `src/embaixadores.json`,
-        at build time, via the TRIBUTO_LINHA marker; with an empty list the banner
-        does not appear.
-        -->
-      <section id="embaixadores" class="seccao embaixadores">
-        <p class="etiqueta">Embaixadores</p>
-        <h2 class="seccao-titulo">Traz a tua comunidade.</h2>
-        <p class="seccao-texto">
-          Tens uma comunidade no Discord, no TeamSpeak, no Root, num servidor próprio ou noutra app? Traz o
-          administrador e a comunidade para o Orwell, e testem a app connosco. Tu testas, e quem faz a app ouve-te.
-        </p>
-        <div class="embaixadores-colunas">
-          <div>
-            <h3>O que a comunidade recebe</h3>
-            <p>
-              Contacto directo com quem faz o Orwell, num canal privado. Um canal próprio, e os vossos pedidos entram
-              primeiro. O nome na zona de tributo do site. O distintivo de embaixador na app, ao lado do nome.
-            </p>
-          </div>
-          <div>
-            <h3>O que pedimos</h3>
-            <p>
-              Trazer a comunidade, ou uma parte dela. Usar a app a sério durante um mês. Dizer o que falha e o que
-              falta, sem filtro.
-            </p>
-          </div>
+        What Orwell does, in six cards. Every card repeats a fact that the page
+        states in full further down (the comparison and "Queres saber como?"):
+        nothing here is new, it is only said earlier and shorter.
+      -->
+      <section id="funcionalidades" class="seccao">
+        <div class="seccao-cabeca">
+          <p class="etiqueta">Funcionalidades</p>
+          <h2>Comunidades, como já conheces.</h2>
+          <p class="seccao-texto">
+            Canais, categorias e salas. O que muda é quem os consegue ler: só as pessoas que estão
+            na conversa.
+          </p>
         </div>
-        <p class="embaixadores-como">
-          Cria conta, entra no canal Orwell e escreve "quero ser embaixador" com o nome da tua comunidade. Respondemos
-          lá.
-        </p>
-        <p class="embaixadores-links">
-          <a href="/app/">Candidatar a minha comunidade</a>
-          <a href="/pt/embaixadores.html">Ver o programa <span aria-hidden="true">→</span></a>
-        </p>
-        %TRIBUTO_LINHA%
-        <p class="embaixadores-versao">
-          O Orwell está na versão %VERSAO%. Ainda há coisas por fazer, e é por isso que os embaixadores contam.
-        </p>
+        <ul class="grelha">
+          <li>
+            <svg aria-hidden="true"><use href="#i-voz" /></svg>
+            <h3>Voz, vídeo e partilha de ecrã</h3>
+            <p>Entras numa sala de voz e falas. As chamadas vão cifradas de ponta a ponta, ecrã partilhado incluído.</p>
+          </li>
+          <li>
+            <svg aria-hidden="true"><use href="#i-salas" /></svg>
+            <h3>Canais, categorias e salas</h3>
+            <p>Salas, salas de voz, mural, publicações, e cargos criados pela tua comunidade.</p>
+          </li>
+          <li>
+            <svg aria-hidden="true"><use href="#i-chave" /></svg>
+            <h3>Sem email, sem número de telefone</h3>
+            <p>A conta é um par de chaves. A palavra-passe que escolhes abre-a no teu aparelho e nunca sai de lá.</p>
+          </li>
+          <li>
+            <svg aria-hidden="true"><use href="#i-cadeado" /></svg>
+            <h3>Cifra pós-quântica</h3>
+            <p>Sempre ligada, com uma troca de chaves que resiste a computadores quânticos. Nós não temos chave nenhuma.</p>
+          </li>
+          <li>
+            <svg aria-hidden="true"><use href="#i-sem-anuncios" /></svg>
+            <h3>Sem anúncios, sem algoritmo</h3>
+            <p>Nenhum anúncio, em lado nenhum. Nenhum algoritmo a decidir o que vês: o mural é por ordem de chegada.</p>
+          </li>
+          <li>
+            <svg aria-hidden="true"><use href="#i-europa" /></svg>
+            <h3>Europeu, e grátis</h3>
+            <p>Alojado em Paris, com lei portuguesa e RGPD. Não há versão paga nem função fechada.</p>
+          </li>
+        </ul>
+      </section>
+
+      <!--
+        Four lines of the comparison, in view. The same words as the full table
+        in the `#versus` drawer below, which the link opens (`src/gaveta.ts`):
+        whoever changes a line there changes it here.
+      -->
+      <section id="comparar" class="seccao comparar">
+        <div class="seccao-cabeca">
+          <p class="etiqueta">Comparar</p>
+          <h2>Orwell vs Discord, em quatro linhas.</h2>
+          <p class="seccao-texto">Nas linhas do Discord está o que o próprio Discord publica sobre si.</p>
+        </div>
+        <ul class="comparar-grelha">
+          <li>
+            <h3>Email para criar conta</h3>
+            <p class="comparar-nos"><span>Orwell</span> Não se pede.</p>
+            <p class="comparar-eles"><span>Discord</span> Obrigatório.</p>
+          </li>
+          <li>
+            <h3>Anúncios</h3>
+            <p class="comparar-nos"><span>Orwell</span> Nenhum, em lado nenhum.</p>
+            <p class="comparar-eles"><span>Discord</span> Quests patrocinadas e anúncios em vídeo, no computador e no telemóvel.</p>
+          </li>
+          <li>
+            <h3>Quem tem as chaves</h3>
+            <p class="comparar-nos"><span>Orwell</span> Só os aparelhos de quem conversa. Nós não temos nenhuma.</p>
+            <p class="comparar-eles"><span>Discord</span> O Discord, para tudo o que é texto.</p>
+          </li>
+          <li>
+            <h3>Onde vive</h3>
+            <p class="comparar-nos"><span>Orwell</span> União Europeia (Paris). Lei portuguesa e RGPD.</p>
+            <p class="comparar-eles"><span>Discord</span> Estados Unidos.</p>
+          </li>
+        </ul>
+        <p class="comparar-mais"><a href="#versus">Ver a comparação completa <span aria-hidden="true">→</span></a></p>
       </section>
 
       <section class="seccao seccao-mais">
+        <div class="seccao-cabeca">
+          <p class="etiqueta">Pormenores</p>
+          <h2>Queres os pormenores?</h2>
+        </div>
+
         <!--
           The phone: the browser app on the main screen, and the limits before steps run out.
           
@@ -477,6 +589,54 @@
         </details>
       </section>
 
+      <!--
+        We are recruiting ambassadors: the ambassador figure shows up on the landing page,
+        in its own block, not just a link.
+        
+        For people who have a community elsewhere and can bring it here. The
+        `/embaixadores.html` page has the full program and the tribute zone.
+        Applications happen INSIDE the app, in the Orwell channel, not by email:
+        so the link goes to `/app/`. The names come from `src/embaixadores.json`,
+        at build time, via the TRIBUTO_LINHA marker; with an empty list the banner
+        does not appear.
+        -->
+      <section id="embaixadores" class="seccao embaixadores">
+        <p class="etiqueta">Embaixadores</p>
+        <h2 class="seccao-titulo">Traz a tua comunidade.</h2>
+        <p class="seccao-texto">
+          Tens uma comunidade no Discord, no TeamSpeak, no Root, num servidor próprio ou noutra app? Traz o
+          administrador e a comunidade para o Orwell, e testem a app connosco. Tu testas, e quem faz a app ouve-te.
+        </p>
+        <div class="embaixadores-colunas">
+          <div>
+            <h3>O que a comunidade recebe</h3>
+            <p>
+              Contacto directo com quem faz o Orwell, num canal privado. Um canal próprio, e os vossos pedidos entram
+              primeiro. O nome na zona de tributo do site. O distintivo de embaixador na app, ao lado do nome.
+            </p>
+          </div>
+          <div>
+            <h3>O que pedimos</h3>
+            <p>
+              Trazer a comunidade, ou uma parte dela. Usar a app a sério durante um mês. Dizer o que falha e o que
+              falta, sem filtro.
+            </p>
+          </div>
+        </div>
+        <p class="embaixadores-como">
+          Cria conta, entra no canal Orwell e escreve "quero ser embaixador" com o nome da tua comunidade. Respondemos
+          lá.
+        </p>
+        <p class="embaixadores-links">
+          <a class="botao botao-forte" href="/app/">Candidatar a minha comunidade</a>
+          <a href="/pt/embaixadores.html">Ver o programa <span aria-hidden="true">→</span></a>
+        </p>
+        %TRIBUTO_LINHA%
+        <p class="embaixadores-versao">
+          O Orwell está na versão %VERSAO%. Ainda há coisas por fazer, e é por isso que os embaixadores contam.
+        </p>
+      </section>
+
       <section class="seccao seccao-nota">
         <p>
           São users como tu que criaram e operam o Orwell. Não temos empresas à espera dos teus dados.
@@ -514,44 +674,43 @@
     </main>
 
     <footer class="rodape">
-      <div class="rodape-marca">
-        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
-        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      <!-- IDENTICAL footer on all pages in the same language, link by link and in the same order. -->
+      <div class="rodape-topo">
+        <div class="rodape-marca">
+          <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+          <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+        </div>
+        <nav class="linguas" aria-label="Língua">
+          <a href="/" hreflang="en" lang="en">EN</a>
+          <span aria-hidden="true">·</span>
+          <a href="/pt/" hreflang="pt" aria-current="page">PT</a>
+        </nav>
       </div>
-      <!--
-        IDENTICAL footer on all pages, link by link and in the same order.
-
-        Each page had its own: this one had seven entries, the business page five,
-        the legal ones four, and none of them the house signature or the promise
-        that the page does not keep. A footer that changes page by page reads like
-        five different sites in the same color.
-
-        "Enter" left this spot: it is now in the lit button at the top, on every
-        page, and repeating it below only stole the line from "Home", which on the
-        landing page is the only one of these links that was missing.
-      -->
-      <nav class="rodape-links">
-        <a href="/pt/">Início</a>
-        <a href="/pt/transferencias/">Descarregar</a>
-        <a href="/pt/privacidade.html">Privacidade</a>
-        <a href="/pt/termos.html">Termos</a>
-        <a href="/pt/embaixadores.html">Embaixadores</a>
-        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
-        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
-      </nav>
-      <nav class="linguas" aria-label="Língua">
-        <a href="/" hreflang="en" lang="en">EN</a>
-        <span aria-hidden="true">·</span>
-        <a href="/pt/" hreflang="pt" aria-current="page">PT</a>
-      </nav>
-      <p class="rodape-nota">
-        Esta página corre um só guião, desta origem. Escolhe o botão do teu sistema e abre a secção para onde um link
-        aponta. Não põe cookies e não pediu nada a servidor nenhum além deste.
-        Feita em Portugal.
-      </p>
-      <p class="rodape-nota">Discord é uma marca da Discord Inc. O Orwell não tem ligação ao Discord.</p>
-      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
-      <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+      <div class="rodape-meio">
+        <div class="rodape-chamada">
+          <p class="rodape-titulo">A tua comunidade, as tuas chaves.</p>
+          <a class="botao botao-forte" href="/app/">Abrir no browser</a>
+        </div>
+        <nav class="rodape-links">
+          <a href="/pt/">Início</a>
+          <a href="/pt/transferencias/">Descarregar</a>
+          <a href="/pt/privacidade.html">Privacidade</a>
+          <a href="/pt/termos.html">Termos</a>
+          <a href="/pt/embaixadores.html">Embaixadores</a>
+          <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
+          <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+        </nav>
+      </div>
+      <div class="rodape-fundo">
+        <p class="rodape-nota">
+          Esta página corre um só guião, desta origem. Escolhe o botão do teu sistema e abre a secção para onde um link
+          aponta. Não põe cookies e não pediu nada a servidor nenhum além deste.
+          Feita em Portugal.
+        </p>
+        <p class="rodape-nota">Discord é uma marca da Discord Inc. O Orwell não tem ligação ao Discord.</p>
+        <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
+        <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+      </div>
     </footer>
   </body>
 </html>

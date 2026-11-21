@@ -400,6 +400,20 @@ describe.each(VERSOES)("a homepage ($lingua)", (versao) => {
     expect(html).not.toMatch(/discord[^"]*\.(svg|png|webp|jpg)/i)
   })
 
+  it("as quatro linhas da comparação dizem o mesmo que a tabela completa, palavra por palavra", () => {
+    // The four cards above the drawers repeat four rows of the `#versus`
+    // table, and their link opens it. Whoever changes a row there changes it
+    // in the card too: a card that says something the table does not fails here.
+    const seccao = /<section id="comparar"[\s\S]*?<\/section>/.exec(html)?.[0] ?? ""
+    const tabela = textoDe(/<details id="versus"[\s\S]*?<\/details>/.exec(html)?.[0] ?? "")
+    const frases = [...seccao.matchAll(/<p class="comparar-(?:nos|eles)"><span>[^<]+<\/span>([^<]+)<\/p>/g)].map((m) =>
+      (m[1] as string).trim(),
+    )
+    expect(frases).toHaveLength(8)
+    for (const frase of frases) expect(tabela, frase).toContain(frase)
+    expect(seccao).toContain('<a href="#versus">')
+  })
+
   it("as capturas têm texto alternativo e dimensões", () => {
     const imagens = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0])
     expect(imagens.length).toBeGreaterThan(0)

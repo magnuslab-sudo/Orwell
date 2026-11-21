@@ -42,7 +42,20 @@ const TEXTOS = {
     descricao: "Download Orwell for macOS or Windows, and check each file with its SHA-256 checksum.",
     inicio: "/",
     entrar: "Sign in",
-    apoiar: "Support us",
+    apoiaNos: "Support us",
+    seccoes: "Sections",
+    nav: [
+      ["/#funcionalidades", "Features"],
+      ["/#comparar", "Compare"],
+      ["/ambassadors.html", "Ambassadors"],
+    ],
+    transferir: "Download",
+    menu: [
+      [CAMINHOS.en, "Windows and macOS", "The desktop app, with alerts when the window is closed."],
+      ["/app/", "Browser", "Nothing to install."],
+      ["/#telemovel", "Phone", "On your home screen, no app store."],
+    ],
+    rodapeTitulo: "Your community, your keys.",
     selo: "Version",
     h1: "Download Orwell",
     lead: `The desktop app does everything the browser version does, and two more things. It tells you about
@@ -109,7 +122,20 @@ const TEXTOS = {
     descricao: "Descarrega o Orwell para macOS ou Windows, e confirma cada ficheiro com a sua soma SHA-256.",
     inicio: "/pt/",
     entrar: "Entrar",
-    apoiar: "Apoia-nos",
+    apoiaNos: "Apoia-nos",
+    seccoes: "Secções",
+    nav: [
+      ["/pt/#funcionalidades", "Funcionalidades"],
+      ["/pt/#comparar", "Comparar"],
+      ["/pt/embaixadores.html", "Embaixadores"],
+    ],
+    transferir: "Descarregar",
+    menu: [
+      [CAMINHOS.pt, "Windows e macOS", "A aplicação para computador, com avisos com a janela fechada."],
+      ["/app/", "Browser", "Sem instalares nada."],
+      ["/pt/#telemovel", "Telemóvel", "No ecrã principal, sem loja de apps."],
+    ],
+    rodapeTitulo: "A tua comunidade, as tuas chaves.",
     selo: "Versão",
     h1: "Descarregar o Orwell",
     lead: `A aplicação para computador faz tudo o que a versão do browser faz, e mais duas coisas. Avisa-te de
@@ -191,9 +217,11 @@ function selector(lingua, rotulo) {
 /**
  * The whole page, in one language.
  *
- * In the "02 Editorial" direction of the front page (before this, the
- * downloads page had a different style from the rest of the site). Same header, same typeface, thin lines and nothing in cards: the
- * `<body class="editorial">` triggers the rules in `src/estilo.css`.
+ * In the same style as the rest of the site since the revamp of November 2026:
+ * same header, same footer, same typeface, and one card per installer. The
+ * styles live in `apps/site/src/estilo.css`, and the theme follows the system
+ * there. The `<body class="editorial">` stays because tests and old links to
+ * this markup count on it.
  *
  * @param {"en" | "pt"} lingua
  * @param {{
@@ -215,9 +243,9 @@ export function paginaDeTransferencias(lingua, { versao, versaoCurta, nomeDaVers
     One button per installer, and below it the version, size, filename and
     checksum.
     
-    The button is a wide line, with the OS and the arrow, like the questions on
-    the front page: large, and no box. The text says the OS ("Download for Windows"),
-    like the hero. The `instalador-<sistema>` class is what the stylesheet uses
+    The button is the main button of the site, wide, with the OS and the arrow.
+    The text says the OS ("Download for Windows"), like the hero. The
+    `instalador-<sistema>` class is what the stylesheet uses
     to put first the one for the visitor's OS (`:root[data-sistema]`, written by
     `src/sistema.ts`). Without the script it stays in the order of `ficheiros`.
     */
@@ -297,14 +325,27 @@ export function paginaDeTransferencias(lingua, { versao, versaoCurta, nomeDaVers
       </defs>
     </svg>
 
-    <!-- O MESMO topo das outras páginas: a marca, o "Apoia-nos" e o "Entrar". -->
+    <!-- The SAME top bar as the other pages: the mark, the sections, "Support us" and "Sign in". -->
     <header class="topo">
       <a class="marca" href="${t.inicio}">
         <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
         <span>Orwell</span>
       </a>
-      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">${t.apoiar}</a>
-      <a class="topo-entrar" href="/app/">${t.entrar}</a>
+      <nav class="topo-nav" aria-label="${t.seccoes}">
+${t.nav.map(([href, nome]) => `        <a href="${href}">${nome}</a>`).join("\n")}
+        <div class="topo-menu">
+          <a class="topo-menu-botao" href="${CAMINHOS[lingua]}">${t.transferir}</a>
+          <div class="topo-menu-painel">
+            <div class="topo-menu-lista">
+${t.menu.map(([href, nome, nota]) => `              <a href="${href}"><strong>${nome}</strong><span>${nota}</span></a>`).join("\n")}
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div class="topo-accoes">
+        <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">${t.apoiaNos}</a>
+        <a class="topo-entrar" href="/app/">${t.entrar}</a>
+      </div>
     </header>
 
     <main>
@@ -347,22 +388,32 @@ ${passos}
     </main>
 
     <footer class="rodape">
-      <!-- O MESMO rodapé das outras páginas, na língua desta. -->
-      <div class="rodape-marca">
-        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
-        <span>${t.versao(versaoCurta, nomeDaVersao)}</span>
+      <!-- The SAME footer as the other pages, in the language of this one. -->
+      <div class="rodape-topo">
+        <div class="rodape-marca">
+          <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+          <span>${t.versao(versaoCurta, nomeDaVersao)}</span>
+        </div>
+        ${selector(lingua, t.rotuloLinguas)}
       </div>
-      <nav class="rodape-links">
+      <div class="rodape-meio">
+        <div class="rodape-chamada">
+          <p class="rodape-titulo">${t.rodapeTitulo}</p>
+          <a class="botao botao-forte" href="/app/">${t.browser.abrir}</a>
+        </div>
+        <nav class="rodape-links">
 ${rodape}
-        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">${t.apoiar}</a>
-        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
-      </nav>
-      ${selector(lingua, t.rotuloLinguas)}
-      <p class="rodape-nota">
-        ${t.nota}
-      </p>
-      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">${t.codigoFonte}</a></p>
-      <p class="rodape-nota"><a href="/terceiros.txt">${t.terceiros}</a></p>
+          <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">${t.apoiar}</a>
+          <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+        </nav>
+      </div>
+      <div class="rodape-fundo">
+        <p class="rodape-nota">
+          ${t.nota}
+        </p>
+        <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">${t.codigoFonte}</a></p>
+        <p class="rodape-nota"><a href="/terceiros.txt">${t.terceiros}</a></p>
+      </div>
     </footer>
   </body>
 </html>

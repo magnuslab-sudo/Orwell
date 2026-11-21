@@ -64,8 +64,25 @@
         <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
         <span>Orwell</span>
       </a>
-      <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
-      <a class="topo-entrar" href="/app/">Entrar</a>
+      <nav class="topo-nav" aria-label="Secções">
+        <a href="/pt/#funcionalidades">Funcionalidades</a>
+        <a href="/pt/#comparar">Comparar</a>
+        <a href="/pt/embaixadores.html">Embaixadores</a>
+        <div class="topo-menu">
+          <a class="topo-menu-botao" href="/pt/transferencias/">Descarregar</a>
+          <div class="topo-menu-painel">
+            <div class="topo-menu-lista">
+              <a href="/pt/transferencias/"><strong>Windows e macOS</strong><span>A aplicação para computador, com avisos com a janela fechada.</span></a>
+              <a href="/app/"><strong>Browser</strong><span>Sem instalares nada.</span></a>
+              <a href="/pt/#telemovel"><strong>Telemóvel</strong><span>No ecrã principal, sem loja de apps.</span></a>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div class="topo-accoes">
+        <a class="topo-apoio" href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoia-nos</a>
+        <a class="topo-entrar" href="/app/">Entrar</a>
+      </div>
     </header>
 
     <!--
@@ -167,30 +184,41 @@
     </main>
 
     <footer class="rodape">
-      <div class="rodape-marca">
-        <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
-        <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+      <!-- IDENTICAL footer on all pages in the same language, link by link and in the same order. -->
+      <div class="rodape-topo">
+        <div class="rodape-marca">
+          <svg class="marca-desenho" aria-hidden="true"><use href="#i-marca" /></svg>
+          <span>Orwell %VERSAO% "%NOME_DA_VERSAO%"</span>
+        </div>
+        <nav class="linguas" aria-label="Língua">
+          <a href="/ambassadors.html" hreflang="en" lang="en">EN</a>
+          <span aria-hidden="true">·</span>
+          <a href="/pt/embaixadores.html" hreflang="pt" aria-current="page">PT</a>
+        </nav>
       </div>
-      <nav class="rodape-links">
-        <a href="/pt/">Início</a>
-        <a href="/pt/transferencias/">Descarregar</a>
-        <a href="/pt/privacidade.html">Privacidade</a>
-        <a href="/pt/termos.html">Termos</a>
-        <a href="/pt/embaixadores.html">Embaixadores</a>
-        <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
-        <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
-      </nav>
-      <nav class="linguas" aria-label="Língua">
-        <a href="/ambassadors.html" hreflang="en" lang="en">EN</a>
-        <span aria-hidden="true">·</span>
-        <a href="/pt/embaixadores.html" hreflang="pt" aria-current="page">PT</a>
-      </nav>
-      <p class="rodape-nota">
-        Esta página não corre JavaScript nenhum, não põe cookies e não pediu nada a servidor nenhum além deste.
-        Feita em Portugal.
-      </p>
-      <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
-      <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+      <div class="rodape-meio">
+        <div class="rodape-chamada">
+          <p class="rodape-titulo">A tua comunidade, as tuas chaves.</p>
+          <a class="botao botao-forte" href="/app/">Abrir no browser</a>
+        </div>
+        <nav class="rodape-links">
+          <a href="/pt/">Início</a>
+          <a href="/pt/transferencias/">Descarregar</a>
+          <a href="/pt/privacidade.html">Privacidade</a>
+          <a href="/pt/termos.html">Termos</a>
+          <a href="/pt/embaixadores.html">Embaixadores</a>
+          <a href="https://ko-fi.com/orwell_eu" target="_blank" rel="noopener noreferrer">Apoiar</a>
+          <a href="mailto:orwell.eu@proton.me">orwell.eu@proton.me</a>
+        </nav>
+      </div>
+      <div class="rodape-fundo">
+        <p class="rodape-nota">
+          Esta página não corre JavaScript nenhum, não põe cookies e não pediu nada a servidor nenhum além deste.
+          Feita em Portugal.
+        </p>
+        <p class="rodape-nota"><a href="https://github.com/magnuslab-sudo/orwell" target="_blank" rel="noopener noreferrer">Código-fonte</a></p>
+        <p class="rodape-nota"><a href="/terceiros.txt">Avisos de terceiros</a></p>
+      </div>
     </footer>
   </body>
 </html>
