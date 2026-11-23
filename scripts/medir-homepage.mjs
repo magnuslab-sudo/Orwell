@@ -95,6 +95,24 @@ function dependencias(html) {
   return [...caminhos].map((c) => c.replace(/^\//, ""))
 }
 
+/**
+ * The files each `<picture>` offers.
+ *
+ * The hero has one screenshot per theme (`<source srcset>` for a light page,
+ * `<img src>` otherwise) and the browser fetches ONE of them. So every file
+ * has to exist in `dist`, and the page weighs the heaviest of each group, not
+ * the sum and not just the `src`: the light one is the one nobody was weighing.
+ */
+function alternativas(html) {
+  return [...html.matchAll(/<picture\b[\s\S]*?<\/picture>/g)].map((m) =>
+    [...m[0].matchAll(/\bsrc(?:set)?\s*=\s*"([^"]+)"/g)]
+      .flatMap((atributo) => atributo[1].split(","))
+      .map((candidato) => candidato.trim().split(/\s+/)[0])
+      .filter((caminho) => caminho.startsWith("/"))
+      .map((caminho) => caminho.replace(/^\//, "")),
+  )
+}
+
 console.log("a construir...")
 await correr("npx", ["vite", "build"], { cwd: SITE })
 
@@ -106,7 +124,8 @@ let maior = 0
 
 for (const pagina of paginas) {
   const html = await readFile(join(DIST, pagina), "utf8")
-  const partes = [pagina, ...dependencias(html)].filter((nome) => !FORA.includes(nome))
+  const grupos = alternativas(html)
+  const partes = [...new Set([pagina, ...dependencias(html), ...grupos.flat()])].filter((nome) => !FORA.includes(nome))
 
   const ficheiros = []
   for (const nome of partes) {
@@ -119,6 +138,12 @@ for (const pagina of paginas) {
       continue
     }
     ficheiros.push({ nome, bytes: await pesar(join(DIST, nome)) })
+  }
+
+  // Of each `<picture>`, only the heaviest file counts: it is the worst case a visitor pays.
+  for (const grupo of grupos) {
+    const doGrupo = ficheiros.filter((f) => grupo.includes(f.nome)).sort((a, b) => b.bytes - a.bytes)
+    for (const leve of doGrupo.slice(1)) ficheiros.splice(ficheiros.indexOf(leve), 1)
   }
 
   ficheiros.sort((a, b) => b.bytes - a.bytes)

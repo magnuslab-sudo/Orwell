@@ -3,28 +3,45 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 /**
- * The contrast of small site text, measured on the midnight skin.
+ * The contrast of the site's text, measured in BOTH themes.
  *
- * Same calculation as `packages/ui/src/hooks/usePrefs.test.ts` (WCAG 2.x,
- * relative luminance), but on the tokens the site writes to `:root` in
- * `src/estilo.css`. Reads them from the sheet, not from a copy: if someone changes a color
- * there, this test says whether small text stays readable.
+ * Same calculation as `packages/ui/src/styles/tokens.contraste.test.ts` (WCAG
+ * 2.x, relative luminance), on the tokens the site writes in `src/estilo.css`.
+ * It reads them from the sheet, not from a copy: if someone changes a color
+ * there, this test says whether the text stays readable.
  *
- * The threshold is 4.5:1 (AA for normal text) on all pairs, including those that appear
- * only in large text: simpler and costs nothing for the skin.
+ * The site follows the system (`prefers-color-scheme`). The dark theme is the
+ * first `:root` block; the light theme is the `:root` block inside
+ * `@media (prefers-color-scheme: light)`, and it only writes what changes: a
+ * token it does not write keeps the dark value, as in the browser.
+ *
+ * The threshold is 4.5:1 (AA for normal text) on all pairs, including those
+ * that appear only in large text: simpler, and it costs the skin nothing.
  */
 const folha = readFileSync(fileURLToPath(new URL("../src/estilo.css", import.meta.url)), "utf8")
-const raiz = /:root\s*\{([\s\S]*?)\n\}/.exec(folha)?.[1] ?? ""
+const blocoEscuro = /(?:^|\n):root\s*\{([\s\S]*?)\n\}/.exec(folha)?.[1] ?? ""
+const blocoClaro = /@media \(prefers-color-scheme: light\) \{\s*:root\s*\{([\s\S]*?)\n  \}/.exec(folha)?.[1] ?? ""
 
-/** The literal tokens in `:root` (those pointing to others are left out). */
-const tokens = new Map<string, string>()
-for (const m of raiz.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) tokens.set(m[1] as string, (m[2] as string).trim())
+/** The tokens a block writes, by name. */
+function tokensDe(bloco: string): Map<string, string> {
+  const tokens = new Map<string, string>()
+  for (const m of bloco.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) tokens.set(m[1] as string, (m[2] as string).trim())
+  return tokens
+}
+
+const escuro = tokensDe(blocoEscuro)
+const claro = new Map([...escuro, ...tokensDe(blocoClaro)])
+const TEMAS = [
+  { tema: "escuro", tokens: escuro },
+  { tema: "claro", tokens: claro },
+] as const
 
 type Rgb = readonly [number, number, number]
+type Tokens = Map<string, string>
 
-function cor(nome: string): string {
+function cor(tokens: Tokens, nome: string): string {
   const valor = tokens.get(nome)
-  if (!valor) throw new Error(`${nome} não está no :root de estilo.css`)
+  if (!valor) throw new Error(`${nome} não está nos tokens de estilo.css`)
   return valor
 }
 
@@ -39,14 +56,8 @@ function rgba(valor: string): { rgb: Rgb; alfa: number } {
   throw new Error(`cor que o teste não sabe ler: ${valor}`)
 }
 
-/** A color with alpha over a solid one. */
-function sobre(cima: string, baixo: Rgb): Rgb {
-  const { rgb, alfa } = rgba(cima)
-  return [0, 1, 2].map((i) => (rgb[i] as number) * alfa + (baixo[i] as number) * (1 - alfa)) as unknown as Rgb
-}
-
-function solida(nome: string): Rgb {
-  const { rgb, alfa } = rgba(cor(nome))
+function solida(tokens: Tokens, nome: string): Rgb {
+  const { rgb, alfa } = rgba(cor(tokens, nome))
   expect(alfa, `${nome} devia ser sólida`).toBe(1)
   return rgb
 }
@@ -64,75 +75,84 @@ function contraste(a: Rgb, b: Rgb): number {
   return (claro + 0.05) / (escuro + 0.05)
 }
 
-const fundo = solida("--fundo")
-const vidro = sobre(cor("--vidro"), fundo)
-const luz = sobre(cor("--luz-indigo"), fundo)
-
 /**
- * The surfaces where small text appears, composed as the browser paints them.
- * The indigo light at the top corner is the brightest part of the background: the top
- * and hero rest on it.
+ * The surfaces where text sits: the page, the cards and bands, the raised
+ * controls, and the big word behind the screenshot (the links under the main
+ * button can end up over it).
  */
-const SUPERFICIES: Record<string, Rgb> = {
-  fundo,
-  "vidro sobre o fundo": vidro,
-  "vidro sobre a luz do canto": sobre(cor("--vidro"), luz),
-  "luz do canto, sem vidro": luz,
-  "poço sobre o vidro": sobre(cor("--poco"), vidro),
-  "superfície alta": solida("--superficie-alta"),
-  "vidro-solido": solida("--vidro-solido"),
-}
+const SUPERFICIES = ["--fundo", "--superficie", "--superficie-alta", "--marca-dagua"]
 
-/** The colors the site uses for small text (12 to 14 px, and 10 px on screen). */
-const TEXTOS = ["--texto", "--titulo", "--secundario", "--apagado", "--discreto", "--acento", "--indigo", "--ocupado"]
+/** The colors the site uses for text, from the loudest to the quietest, and the accent. */
+const TEXTOS = ["--titulo", "--texto", "--secundario", "--apagado", "--discreto", "--acento"]
 
-describe("contraste na pele midnight", () => {
-  it("o vidro sobre o fundo é o vidro-solido de tokens.css", () => {
-    // The same number the app uses as "the composed glass". If it differs,
-    // the glass or background changed and the token block needs full review.
-    const esperado = solida("--vidro-solido")
-    for (const i of [0, 1, 2]) expect(Math.round(vidro[i] as number)).toBe(esperado[i])
+describe("os dois temas", () => {
+  it("a folha tem o tema escuro no :root e o claro em prefers-color-scheme: light", () => {
+    expect(blocoEscuro).toContain("color-scheme: dark;")
+    expect(blocoClaro).toContain("color-scheme: light;")
+    // The light theme changes the page: a light block that kept the dark page would be no theme at all.
+    expect(luminancia(solida(claro, "--fundo"))).toBeGreaterThan(0.8)
+    expect(luminancia(solida(escuro, "--fundo"))).toBeLessThan(0.05)
   })
+})
 
+describe.each(TEMAS)("contraste no tema $tema", ({ tokens }) => {
   it.each(TEXTOS)("%s passa 4,5:1 em todas as superfícies", (nome) => {
-    const texto = solida(nome)
-    for (const [superficie, rgb] of Object.entries(SUPERFICIES)) {
-      expect(contraste(texto, rgb), `${nome} sobre ${superficie}`).toBeGreaterThanOrEqual(4.5)
+    const texto = solida(tokens, nome)
+    for (const superficie of SUPERFICIES) {
+      expect(contraste(texto, solida(tokens, superficie)), `${nome} sobre ${superficie}`).toBeGreaterThanOrEqual(4.5)
     }
   })
 
-  it.each(["--indigo", "--acento"])("a tinta escura passa 4,5:1 sobre %s, as duas pontas do primário", (nome) => {
-    expect(contraste(solida("--tinta"), solida(nome))).toBeGreaterThanOrEqual(4.5)
+  it.each([
+    ["--primario-tinta", "--primario"],
+    ["--primario-tinta", "--primario-sobre"],
+    ["--kofi-texto", "--kofi"],
+    ["--kofi-texto", "--kofi-claro"],
+  ])("a tinta %s passa 4,5:1 sobre o enchimento %s", (tinta, enchimento) => {
+    // The main button and the Ko-fi button, still and under the cursor.
+    expect(contraste(solida(tokens, tinta), solida(tokens, enchimento))).toBeGreaterThanOrEqual(4.5)
   })
 
-  it("a tinta escura passa 4,5:1 sobre os avatares da tela", () => {
-    expect(contraste(solida("--tinta"), solida("--ocupado"))).toBeGreaterThanOrEqual(4.5)
+  it("o botão principal distingue-se da página a 3:1", () => {
+    // Pale cyan on a white page was 1.4:1: a main button nobody sees. That is
+    // why the light theme fills it with ink (WCAG 1.4.11, non-text contrast).
+    expect(contraste(solida(tokens, "--primario"), solida(tokens, "--fundo"))).toBeGreaterThanOrEqual(3)
   })
 
+  it("a risca do aviso distingue-se das superfícies a 3:1", () => {
+    for (const superficie of ["--superficie", "--superficie-alta"]) {
+      expect(contraste(solida(tokens, "--aviso"), solida(tokens, superficie)), superficie).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
+describe("a folha", () => {
   it("nenhum texto fica apagado por opacidade", () => {
     /*
       Opacity blends the text with what is behind it, and the pair measured
-      above stops being the pair painted. That is what happened to "Em concreto"
-      in the table (55 %), the table labels on mobile (70 %), the "Android and iOS"
-      card (72 %) and the footer note (75 %): all four started to fade by color.
-      
-      Outside `@keyframes` (motion, which stops with `prefers-reduced-motion`),
-      only rain has opacity, and rain has no text.
-      */
-    const semAnimacoes = folha.replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "")
-    const comOpacidade = [...semAnimacoes.matchAll(/([^{}]+)\{[^{}]*\bopacity:\s*([^;]+);/g)].map((m) =>
-      `${(m[1] as string).replace(/\/\*[\s\S]*?\*\//g, "").trim()} → ${m[2]}`,
+      above stops being the pair painted. Quiet text is quiet by its color
+      token, which is measured. The sheet has no `opacity` at all.
+    */
+    const comOpacidade = [...folha.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^{}]*\bopacity:\s*([^;]+);/g)].map(
+      (m) => `${(m[1] as string).trim()} → ${m[2]}`,
     )
-    // `opacity: 1` does not fade anything: it is the still state of the pulse and cursor.
-    const apagados = comOpacidade.filter((linha) => !linha.endsWith("→ 1"))
-    expect(apagados).toEqual([".ceu::after → var(--chuva-opacidade)"])
+    expect(comOpacidade).toEqual([])
   })
 
-  it("as cores da pele vivem no :root e só lá", () => {
-    // The `tokens.css` rule: no rule writes a skin color by hand. The `#000` on the
-    // floor masks is not color, it is the mask opacity.
-    const fora = folha.replace(raiz, "").replace(/\/\*[\s\S]*?\*\//g, "")
-    const literais = [...fora.matchAll(/#[0-9a-f]{3,8}\b/gi)].map((m) => m[0])
+  it("as cores vivem nos dois blocos de tokens e só lá", () => {
+    // No rule writes a color by hand: a color written in a rule would be the
+    // same in both themes, and measured in neither. The `#000` in the masks is
+    // not a color, it is the opacity of the mask.
+    expect(blocoEscuro).not.toBe("")
+    expect(blocoClaro).not.toBe("")
+    const fora = folha.replace(blocoEscuro, "").replace(blocoClaro, "").replace(/\/\*[\s\S]*?\*\//g, "")
+    const literais = [...fora.matchAll(/#[0-9a-f]{3,8}\b|\brgba?\([^)]*\)|\bhsla?\([^)]*\)/gi)].map((m) => m[0])
     expect(literais.filter((l) => l !== "#000")).toEqual([])
+  })
+
+  it("o tema claro só escreve tokens que o escuro também tem", () => {
+    // A token written only in the light block would be undefined on a dark system.
+    const soNoClaro = [...tokensDe(blocoClaro).keys()].filter((nome) => !escuro.has(nome))
+    expect(soNoClaro).toEqual([])
   })
 })
